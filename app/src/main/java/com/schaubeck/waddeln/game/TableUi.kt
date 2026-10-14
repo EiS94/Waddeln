@@ -23,6 +23,8 @@ data class TableUi(
     val notice: SchubNotice? = null,
     /** Seats whose human lost the connection; a bot plays for them meanwhile. */
     val absent: Set<Int> = emptySet(),
+    /** Online: seats played by a bot (marked, since bots have names like humans). */
+    val bots: Set<Int> = emptySet(),
     /** Online: this player confirmed the end of the round and waits for the others. */
     val waitingForOthers: Boolean = false,
     /** Online: shown while the connection to the server is lost. */

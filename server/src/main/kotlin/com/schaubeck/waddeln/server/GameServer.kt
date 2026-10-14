@@ -1,6 +1,7 @@
 package com.schaubeck.waddeln.server
 
 import com.schaubeck.waddeln.protocol.ClientMessage
+import com.schaubeck.waddeln.protocol.MAX_NAME_LENGTH
 import com.schaubeck.waddeln.protocol.PROTOCOL_VERSION
 import com.schaubeck.waddeln.protocol.ROOM_CODE_ALPHABET
 import com.schaubeck.waddeln.protocol.ROOM_CODE_LENGTH
@@ -104,6 +105,7 @@ class GameServer(
             ClientMessage.LeaveRoom -> leaveRoom(client, id)
             is ClientMessage.TakeSeat -> room?.takeSeat(id, message.seat)
             is ClientMessage.SetBotStrength -> room?.setStrength(id, message.strength)
+            is ClientMessage.SetBotName -> room?.setBotName(id, message.seat, message.name)
             ClientMessage.StartMatch -> room?.start(id)
             is ClientMessage.Act -> room?.act(id, message.action)
             ClientMessage.Ready -> room?.ready(id)
@@ -135,7 +137,7 @@ class GameServer(
             return
         }
         client.playerId = hello.playerId
-        client.name = cleanName(hello.name)
+        client.name = cleanName(hello.name).ifBlank { "Spieler" }
         // The same player connected again (e.g. new network): the old connection is dropped.
         clients.filter { it !== client && it.playerId == hello.playerId }.forEach {
             it.playerId = null
@@ -230,11 +232,11 @@ class GameServer(
 
     private fun quota(client: Client) = quotas.getOrPut(client.ip) { IpQuota(limits, clock) }
 
-    private fun cleanName(name: String): String =
-        name.trim().filter { !it.isISOControl() }.take(MAX_NAME_LENGTH).ifBlank { "Spieler" }
-
     companion object {
         private val log = LoggerFactory.getLogger(GameServer::class.java)
-        const val MAX_NAME_LENGTH = 16
     }
 }
+
+/** A name as shown to others: without control characters, at most [MAX_NAME_LENGTH] long; blank if nothing is left. */
+internal fun cleanName(name: String): String =
+    name.trim().filter { !it.isISOControl() }.take(MAX_NAME_LENGTH).trim()

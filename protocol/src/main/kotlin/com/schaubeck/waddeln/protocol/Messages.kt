@@ -59,6 +59,10 @@ sealed interface ClientMessage {
     @Serializable @SerialName("set_bot_strength")
     data class SetBotStrength(val strength: BotStrength) : ClientMessage
 
+    /** Host only: renames the bot of a seat no human sits on. */
+    @Serializable @SerialName("set_bot_name")
+    data class SetBotName(val seat: Int, val name: String) : ClientMessage
+
     /** Host only: start the match; empty seats are played by bots. */
     @Serializable @SerialName("start")
     data object StartMatch : ClientMessage
@@ -105,9 +109,14 @@ data class SeatInfo(
     /** False while the human is disconnected (a bot plays for them meanwhile). */
     val connected: Boolean = false,
     val host: Boolean = false,
+    /** Name of the bot that plays this seat while no human sits on it. */
+    val botName: String? = null,
 ) {
     val isHuman: Boolean get() = name != null
 }
+
+/** Longest nickname or bot name; longer ones are cut. */
+const val MAX_NAME_LENGTH = 16
 
 @Serializable
 data class GameView(

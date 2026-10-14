@@ -165,6 +165,32 @@ class GameServerTest {
     }
 
     @Test
+    fun `bots have different names that only the host can change`() = runTest {
+        val server = newServer()
+        val host = player(server, "host")
+        host.send(ClientMessage.CreateRoom)
+        val guest = player(server, "guest")
+        guest.send(ClientMessage.JoinRoom(host.table.room.code))
+        val names = host.table.room.seats.map { it.botName }
+        assertTrue(names.all { !it.isNullOrBlank() })
+        assertEquals(4, names.toSet().size)
+
+        guest.send(ClientMessage.SetBotName(2, "Gast"))
+        assertIs<ServerMessage.Error>(guest.connection.last)
+        host.send(ClientMessage.SetBotName(1, "Mensch"))
+        assertIs<ServerMessage.Error>(host.connection.last)
+        host.send(ClientMessage.SetBotName(2, "   "))
+        assertIs<ServerMessage.Error>(host.connection.last)
+
+        host.send(ClientMessage.SetBotName(2, "  Kunigunde von Bamberg  "))
+        assertEquals("Kunigunde von Ba", guest.table.room.seats[2].botName)
+        // The name stays with the seat when a human sits there for a while.
+        guest.send(ClientMessage.TakeSeat(2))
+        guest.send(ClientMessage.TakeSeat(3))
+        assertEquals("Kunigunde von Ba", host.table.room.seats[2].botName)
+    }
+
+    @Test
     fun `every player only sees their own hand`() = runTest {
         val server = newServer()
         val host = player(server, "host")

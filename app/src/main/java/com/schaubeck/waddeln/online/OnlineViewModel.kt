@@ -7,6 +7,9 @@ import androidx.lifecycle.viewModelScope
 import com.schaubeck.waddeln.game.GameSpeed
 import com.schaubeck.waddeln.game.SchubNotice
 import com.schaubeck.waddeln.game.SettingsStore
+import com.schaubeck.waddeln.game.StatsMode
+import com.schaubeck.waddeln.game.StatsStore
+import com.schaubeck.waddeln.game.StatsTracker
 import com.schaubeck.waddeln.game.TableUi
 import com.schaubeck.waddeln.protocol.BotStrength
 import com.schaubeck.waddeln.protocol.ClientMessage
@@ -39,6 +42,8 @@ data class OnlineUi(
 class OnlineViewModel(application: Application) : AndroidViewModel(application) {
     private val deviceId = SettingsStore(application).deviceId()
     private val client = OnlineClient(viewModelScope, ::onConnected, ::onMessage)
+    private val statsStore = StatsStore(application)
+    private val statsTracker = StatsTracker { statsStore.add(StatsMode.ONLINE, it) }
     private val _ui = MutableStateFlow(OnlineUi())
     val ui: StateFlow<OnlineUi> = _ui.asStateFlow()
 
@@ -66,6 +71,7 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
     fun joinRoom(code: String) = send(ClientMessage.JoinRoom(code.trim().uppercase()))
     fun takeSeat(seat: Int) = send(ClientMessage.TakeSeat(seat))
     fun setBotStrength(strength: BotStrength) = send(ClientMessage.SetBotStrength(strength))
+    fun setBotName(seat: Int, name: String) = send(ClientMessage.SetBotName(seat, name.trim()))
     fun start() = send(ClientMessage.StartMatch)
     fun act(action: Action) = send(ClientMessage.Act(action))
     fun ready() = send(ClientMessage.Ready)
@@ -96,11 +102,13 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
         when (message) {
             ServerMessage.NoRoom -> {
                 notice = null
+                statsTracker.reset()
                 update { it.copy(greeted = true, table = null) }
             }
 
             is ServerMessage.Table -> {
                 detectNotice(_ui.value.table, message)
+                message.game?.let { statsTracker.observe(it.observation) }
                 deadline = message.game?.timeLeftMs?.let { SystemClock.elapsedRealtime() + it }
                 update { it.copy(greeted = true, table = message) }
             }
@@ -139,6 +147,7 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
             speed = GameSpeed.SLOW,
             notice = notice,
             absent = table.room.seats.indices.filter { table.room.seats[it].isHuman && !table.room.seats[it].connected }.toSet(),
+            bots = table.room.seats.indices.filter { !table.room.seats[it].isHuman }.toSet(),
             waitingForOthers = over && game.ready[me],
             deadline = deadline,
             connectionProblem = if (connection == ConnectionState.LOST) "Verbindung unterbrochen – verbinde neu …" else null,
@@ -164,9 +173,14 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
         const val NOTICE_MS = 4000L
         const val ERROR_MS = 4000L
 
-        /** Display name of a seat: the nickname, or the bot named by its position relative to us. */
+        /**
+         * Display name of a seat: the nickname, else the bot's name, else (older server)
+         * the bot named by its position relative to us.
+         */
         fun seatName(table: ServerMessage.Table, seat: Int): String {
-            table.room.seats[seat].name?.let { return it }
+            val info = table.room.seats[seat]
+            info.name?.let { return it }
+            info.botName?.let { return it }
             return when ((seat - table.yourSeat + PLAYER_COUNT) % PLAYER_COUNT) {
                 1 -> "KI links"
                 2 -> "KI Partner"

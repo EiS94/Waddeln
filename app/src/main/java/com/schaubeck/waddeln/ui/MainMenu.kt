@@ -34,6 +34,7 @@ fun MainMenu(
     onNewGame: () -> Unit,
     onOnline: () -> Unit,
     onSettings: () -> Unit,
+    onStats: () -> Unit,
 ) {
     WoodBackground {
         Column(
@@ -62,6 +63,7 @@ fun MainMenu(
                 if (matchInProgress) MenuButton("Weiterspielen", onContinue)
                 MenuButton("Neues Spiel", onNewGame, primary = !matchInProgress)
                 MenuButton("Online spielen", onOnline)
+                MenuButton("Statistik", onStats, primary = false)
                 MenuButton("Einstellungen", onSettings, primary = false)
             }
         }
