@@ -32,6 +32,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private val store = SettingsStore(application)
     private var settings = store.load()
     private val game = OfflineGame()
+    private val statsStore = StatsStore(application)
+    private val statsTracker = StatsTracker { statsStore.add(StatsMode.OFFLINE, it) }
     private var notice: SchubNotice? = null
     private var matchStarted = false
     private val _ui = MutableStateFlow(snapshot())
@@ -134,6 +136,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun publish() {
+        statsTracker.observe(game.state.observationFor(OfflineGame.HUMAN))
         _ui.value = snapshot()
     }
 

@@ -71,6 +71,7 @@ class Room(
     private val seats = arrayOfNulls<Member>(PLAYER_COUNT)
     private var hostId: String? = null
     private var strength = BotStrength.HARD
+    private val botNames = BOT_NAMES.shuffled(random).take(PLAYER_COUNT).toTypedArray()
     private var agents: List<Agent> = createAgents()
     private var state: GameState? = null
     private val ready = BooleanArray(PLAYER_COUNT)
@@ -138,6 +139,16 @@ class Room(
         if (playerId != hostId) return "Nur der Gastgeber kann die Bots einstellen."
         strength = newStrength
         agents = createAgents()
+        changed()
+        return null
+    }
+
+    fun setBotName(playerId: String, seat: Int, name: String): String? {
+        if (playerId != hostId) return "Nur der Gastgeber kann die Bots umbenennen."
+        if (seat !in 0 until PLAYER_COUNT || seats[seat] != null) return "Auf diesem Platz sitzt kein Bot."
+        val clean = cleanName(name)
+        if (clean.isEmpty()) return "Der Name darf nicht leer sein."
+        botNames[seat] = clean
         changed()
         return null
     }
@@ -259,7 +270,7 @@ class Room(
         turnDeadline = null
     }
 
-    private fun seatName(seat: Int) = seats[seat]?.let { "'${it.name}'" } ?: "bot $seat"
+    private fun seatName(seat: Int) = seats[seat]?.let { "'${it.name}'" } ?: "bot '${botNames[seat]}'"
 
     private fun seatList() = seats.indices.joinToString { seat ->
         seats[seat]?.let { m -> "'${m.name}'" + if (m.client == null) " (offline)" else "" } ?: "bot"
@@ -294,8 +305,13 @@ class Room(
 
     private fun info() = RoomInfo(
         code = code,
-        seats = seats.map { m ->
-            if (m == null) SeatInfo() else SeatInfo(m.name, connected = m.client != null, host = m.playerId == hostId)
+        seats = seats.mapIndexed { seat, m ->
+            val botName = botNames[seat]
+            if (m == null) {
+                SeatInfo(botName = botName)
+            } else {
+                SeatInfo(m.name, connected = m.client != null, host = m.playerId == hostId, botName = botName)
+            }
         },
         botStrength = strength,
         started = started,
@@ -314,5 +330,11 @@ class Room(
 
     private companion object {
         val log = LoggerFactory.getLogger(Room::class.java)
+
+        /** Franconian first names; every bot of a room gets a different one, the host may rename them. */
+        val BOT_NAMES = listOf(
+            "Schorsch", "Kalle", "Gerdi", "Gustl", "Ernst", "Eddi", "Paul",
+            "Werner", "Gusti", "Heidi", "Lisbeth", "Wanda", "Marga", "Resi", "Hilde",
+        )
     }
 }

@@ -9,22 +9,28 @@ import androidx.activity.viewModels
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.schaubeck.waddeln.game.GameViewModel
+import com.schaubeck.waddeln.game.StatsMode
+import com.schaubeck.waddeln.game.StatsStore
 import com.schaubeck.waddeln.online.OnlineViewModel
 import com.schaubeck.waddeln.ui.GameScreen
 import com.schaubeck.waddeln.ui.MainMenu
 import com.schaubeck.waddeln.ui.OnlineScreen
 import com.schaubeck.waddeln.ui.SettingsScreen
+import com.schaubeck.waddeln.ui.StatsScreen
 
-private enum class Screen { MENU, GAME, SETTINGS, ONLINE }
+private enum class Screen { MENU, GAME, SETTINGS, STATS, ONLINE }
 
 class MainActivity : ComponentActivity() {
     private val viewModel: GameViewModel by viewModels()
     private val onlineViewModel: OnlineViewModel by viewModels()
+    private val statsStore by lazy { StatsStore(applicationContext) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -57,6 +63,7 @@ class MainActivity : ComponentActivity() {
                         },
                         onOnline = { screen = Screen.ONLINE },
                         onSettings = { screen = Screen.SETTINGS },
+                        onStats = { screen = Screen.STATS },
                     )
 
                     Screen.GAME -> GameScreen(
@@ -72,6 +79,23 @@ class MainActivity : ComponentActivity() {
                         onChange = viewModel::onSettingsChanged,
                         onBack = { screen = Screen.MENU },
                     )
+
+                    Screen.STATS -> {
+                        // Loaded each time the page is opened; reloaded after a reset.
+                        var resets by remember { mutableIntStateOf(0) }
+                        val (offline, online) = remember(resets) {
+                            statsStore.load(StatsMode.OFFLINE) to statsStore.load(StatsMode.ONLINE)
+                        }
+                        StatsScreen(
+                            offline = offline,
+                            online = online,
+                            onReset = {
+                                statsStore.reset()
+                                resets++
+                            },
+                            onBack = { screen = Screen.MENU },
+                        )
+                    }
 
                     Screen.ONLINE -> {
                         val game = online.game
@@ -103,6 +127,7 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onTakeSeat = onlineViewModel::takeSeat,
                                 onBotStrength = onlineViewModel::setBotStrength,
+                                onBotName = onlineViewModel::setBotName,
                                 onStart = onlineViewModel::start,
                                 onLeave = onlineViewModel::leave,
                                 onBack = { screen = Screen.MENU },

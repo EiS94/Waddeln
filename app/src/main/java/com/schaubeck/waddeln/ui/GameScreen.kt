@@ -143,12 +143,15 @@ private fun BarText(text: String, size: Int = 14, bold: Boolean = false, color: 
 @Composable
 private fun Table(table: TableUi, onSchub: () -> Unit) {
     val s = table.obs
-    Box(Modifier.fillMaxSize()) {
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        // The Haubi has the size of the own cards; the table is as wide as the hand.
+        val haubiWidth = handCardWidth(maxWidth)
+        // Below the Haubi so they never overlap
+        val sideSeatTop = haubiWidth * CARD_ASPECT + 48.dp
         PartnerSeat(table, Modifier.align(Alignment.TopCenter))
-        // Below the corner cards so they never overlap
-        SideSeat(table, table.seatAt(1), left = true, modifier = Modifier.align(Alignment.TopStart).padding(top = SideSeatTop))
-        SideSeat(table, table.seatAt(3), left = false, modifier = Modifier.align(Alignment.TopEnd).padding(top = SideSeatTop))
-        HaubiCorner(s, Modifier.align(Alignment.TopStart).padding(8.dp))
+        SideSeat(table, table.seatAt(1), left = true, modifier = Modifier.align(Alignment.TopStart).padding(top = sideSeatTop))
+        SideSeat(table, table.seatAt(3), left = false, modifier = Modifier.align(Alignment.TopEnd).padding(top = sideSeatTop))
+        HaubiCorner(s, haubiWidth, Modifier.align(Alignment.TopStart).padding(8.dp))
         BottomCardCorner(s, Modifier.align(Alignment.TopEnd).padding(8.dp))
         TrickArea(table, Modifier.align(Alignment.Center))
         TableInfo(table, Modifier.align(Alignment.BottomCenter).padding(bottom = 4.dp))
@@ -174,8 +177,6 @@ private fun PartnerSeat(table: TableUi, modifier: Modifier) {
         SeatChip(table, seat)
     }
 }
-
-private val SideSeatTop = 150.dp
 
 /** Opponent on the left/right: cards lie sideways at the screen edge, partly outside. */
 @Composable
@@ -215,6 +216,7 @@ private fun SeatChip(table: TableUi, seat: Int, modifier: Modifier = Modifier) {
         }
         s.laidOutCounts?.get(seat)?.takeIf { it > 0 }?.let { add("$it hingelegt") }
         if (seat in table.absent) add("offline – KI spielt")
+        if (seat in table.bots) add("KI")
     }
     val shape = RoundedCornerShape(10.dp)
     Column(
@@ -244,16 +246,15 @@ private val CornerCardWidth = 52.dp
 
 /** Top left: the Haubi as a card, so everyone sees what is trump. */
 @Composable
-private fun HaubiCorner(s: Observation, modifier: Modifier) {
+private fun HaubiCorner(s: Observation, width: Dp, modifier: Modifier) {
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         CornerLabel("Haubi")
         Spacer(Modifier.height(3.dp))
         val trump = s.trump
         if (trump != null) {
-            CardView(trump.haubi, width = CornerCardWidth)
-            Texts.kritteName(trump.haubi)?.let { CornerLabel(it) }
+            CardView(trump.haubi, width = width)
         } else {
-            EmptySlot(s.schlag?.let { "Schlag\n${Texts.rank(it)}" } ?: "?")
+            EmptySlot(s.schlag?.let { "Schlag\n${Texts.rank(it)}" } ?: "?", width)
         }
     }
 }
@@ -269,15 +270,15 @@ private fun BottomCardCorner(s: Observation, modifier: Modifier) {
 }
 
 @Composable
-private fun EmptySlot(text: String) {
+private fun EmptySlot(text: String, width: Dp) {
     Box(
         modifier = Modifier
-            .size(CornerCardWidth, CornerCardWidth * CARD_ASPECT)
+            .size(width, width * CARD_ASPECT)
             .border(1.5.dp, Color.White.copy(alpha = 0.6f), RoundedCornerShape(6.dp))
             .background(Color.Black.copy(alpha = 0.2f), RoundedCornerShape(6.dp)),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, color = Color.White, fontSize = 12.sp, textAlign = TextAlign.Center)
+        Text(text, color = Color.White, fontSize = 14.sp, textAlign = TextAlign.Center)
     }
 }
 
@@ -300,9 +301,9 @@ private fun trickSpot(relative: Int): Pair<DpOffset, Float> = when (relative) {
 /** Approximate position of a [relative] seat to the trick centre: cards fly from and to there. */
 private fun seatOrigin(relative: Int): DpOffset = when (relative) {
     0 -> DpOffset(0.dp, 330.dp)
-    1 -> DpOffset((-210).dp, (-30).dp)
+    1 -> DpOffset((-210).dp, (-10).dp)
     2 -> DpOffset(0.dp, (-240).dp)
-    else -> DpOffset(210.dp, (-30).dp)
+    else -> DpOffset(210.dp, (-10).dp)
 }
 
 private fun lerp(a: DpOffset, b: DpOffset, t: Float) = DpOffset(lerp(a.x, b.x, t), lerp(a.y, b.y, t))
@@ -506,7 +507,7 @@ private fun Hand(table: TableUi, onAction: (Action) -> Unit) {
             .navigationBarsPadding(),
     ) {
         val areaWidth = maxWidth
-        val cardWidth = min(areaWidth * 0.25f, 120.dp)
+        val cardWidth = handCardWidth(areaWidth)
         val raise = 18.dp
         val n = hand.size
         val step: Dp = if (n > 1) min(cardWidth + 6.dp, (areaWidth - 16.dp - cardWidth) / (n - 1)) else 0.dp
@@ -529,6 +530,9 @@ private fun Hand(table: TableUi, onAction: (Action) -> Unit) {
         }
     }
 }
+
+/** Width of the own cards (and of the Haubi) on a screen [areaWidth] wide. */
+private fun handCardWidth(areaWidth: Dp): Dp = min(areaWidth * 0.21f, 100.dp)
 
 /** Trumps first (strongest left), then plain cards grouped by suit, high to low. */
 private fun sortHand(hand: List<Card>, trump: Trump?): List<Card> =

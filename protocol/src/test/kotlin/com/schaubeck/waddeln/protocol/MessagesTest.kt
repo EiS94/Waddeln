@@ -23,6 +23,7 @@ class MessagesTest {
             ClientMessage.JoinRoom("K7QM"),
             ClientMessage.TakeSeat(2),
             ClientMessage.SetBotStrength(BotStrength.MEDIUM),
+            ClientMessage.SetBotName(3, "Schorsch"),
             ClientMessage.StartMatch,
             ClientMessage.Act(Action.AnnounceSchlag(Rank.OBER)),
             ClientMessage.Act(Action.AnnounceFarbe(Suit.GRAS)),
