@@ -3,6 +3,7 @@ package com.schaubeck.waddeln.protocol
 import com.schaubeck.waddeln.rules.Action
 import com.schaubeck.waddeln.rules.Observation
 import com.schaubeck.waddeln.rules.PLAYER_COUNT
+import com.schaubeck.waddeln.rules.agent.PartnerHint
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -70,6 +71,10 @@ sealed interface ClientMessage {
     @Serializable @SerialName("act")
     data class Act(val action: Action) : ClientMessage
 
+    /** During a Schub against the own team: ask the bot partner how good its cards are. */
+    @Serializable @SerialName("ask_partner")
+    data object AskPartner : ClientMessage
+
     /** After a round or match: ready for the next one. It starts once all connected players are ready. */
     @Serializable @SerialName("ready")
     data object Ready : ClientMessage
@@ -128,10 +133,17 @@ data class GameView(
     val ready: List<Boolean> = List(PLAYER_COUNT) { false },
     /** Time left for the human decision the game waits for; afterwards a bot decides. Null if nobody is waited for. */
     val timeLeftMs: Long? = null,
+    /** True if the partner is a bot that can be asked about its cards ([ClientMessage.AskPartner]) now. */
+    val canAskPartner: Boolean = false,
+    /** The partner's answer during the open Schub; only sent to the partner's team. */
+    val partnerHint: SeatHint? = null,
 )
 
 @Serializable
 data class SeatAction(val seat: Int, val action: Action)
+
+@Serializable
+data class SeatHint(val seat: Int, val hint: PartnerHint)
 
 /** The JSON format used on both ends. */
 val ProtocolJson = Json {

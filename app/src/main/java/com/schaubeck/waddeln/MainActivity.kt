@@ -71,6 +71,7 @@ class MainActivity : ComponentActivity() {
                         onAction = viewModel::onHumanAction,
                         onContinue = viewModel::onContinue,
                         onNoticeConfirmed = viewModel::onNoticeConfirmed,
+                        onAskPartner = viewModel::onAskPartner,
                         onMenu = { screen = Screen.MENU },
                     )
 
@@ -105,6 +106,7 @@ class MainActivity : ComponentActivity() {
                                 onAction = onlineViewModel::act,
                                 onContinue = onlineViewModel::ready,
                                 onNoticeConfirmed = onlineViewModel::onNoticeConfirmed,
+                                onAskPartner = onlineViewModel::askPartner,
                                 onMenu = { screen = Screen.MENU },
                                 onLeave = onlineViewModel::leave,
                             )

@@ -7,16 +7,19 @@ import androidx.lifecycle.viewModelScope
 import com.schaubeck.waddeln.game.GameSpeed
 import com.schaubeck.waddeln.game.SchubNotice
 import com.schaubeck.waddeln.game.SettingsStore
+import com.schaubeck.waddeln.game.Speech
 import com.schaubeck.waddeln.game.StatsMode
 import com.schaubeck.waddeln.game.StatsStore
 import com.schaubeck.waddeln.game.StatsTracker
 import com.schaubeck.waddeln.game.TableUi
+import com.schaubeck.waddeln.game.isSpoken
 import com.schaubeck.waddeln.protocol.BotStrength
 import com.schaubeck.waddeln.protocol.ClientMessage
 import com.schaubeck.waddeln.protocol.ServerMessage
 import com.schaubeck.waddeln.rules.Action
 import com.schaubeck.waddeln.rules.PLAYER_COUNT
 import com.schaubeck.waddeln.rules.Phase
+import com.schaubeck.waddeln.ui.Texts
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -48,6 +51,7 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
     val ui: StateFlow<OnlineUi> = _ui.asStateFlow()
 
     private var notice: SchubNotice? = null
+    private var speech = emptyList<Speech>()
 
     /** Local time at which the server decides for us (from [com.schaubeck.waddeln.protocol.GameView.timeLeftMs]). */
     private var deadline: Long? = null
@@ -74,6 +78,7 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
     fun setBotName(seat: Int, name: String) = send(ClientMessage.SetBotName(seat, name.trim()))
     fun start() = send(ClientMessage.StartMatch)
     fun act(action: Action) = send(ClientMessage.Act(action))
+    fun askPartner() = send(ClientMessage.AskPartner)
     fun ready() = send(ClientMessage.Ready)
     fun leave() = send(ClientMessage.LeaveRoom)
 
@@ -108,6 +113,7 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
 
             is ServerMessage.Table -> {
                 detectNotice(_ui.value.table, message)
+                detectSpeech(_ui.value.table, message)
                 message.game?.let { statsTracker.observe(it.observation) }
                 deadline = message.game?.timeLeftMs?.let { SystemClock.elapsedRealtime() + it }
                 update { it.copy(greeted = true, table = message) }
@@ -132,6 +138,24 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    /** Turns announcements, Schub, answers and partner hints into speech bubbles. */
+    private fun detectSpeech(before: ServerMessage.Table?, now: ServerMessage.Table) {
+        val old = before?.game ?: return
+        val game = now.game ?: return
+        val obs = game.observation
+        val last = game.lastAction
+        // Views are also sent for other reasons (e.g. connections); only a new state means a new action.
+        if (last != null && last.action.isSpoken() && old.observation != obs) {
+            Texts.speech(last.action)?.let { say(last.seat, it) }
+        }
+        val hint = game.partnerHint
+        if (hint != null && old.partnerHint == null) say(hint.seat, Texts.partnerHint(hint.hint, obs.tricksWon[obs.team]))
+    }
+
+    private fun say(seat: Int, text: String) {
+        speech = (speech + Speech(seat, text, SystemClock.elapsedRealtime())).takeLast(MAX_SPEECH)
+    }
+
     private fun refreshGame() = update { it }
 
     private fun tableUi(table: ServerMessage.Table, connection: ConnectionState): TableUi? {
@@ -146,6 +170,9 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
             // The server sets the pace; it matches the slow speed.
             speed = GameSpeed.SLOW,
             notice = notice,
+            speech = speech,
+            canAskPartner = game.canAskPartner,
+            partnerHint = game.partnerHint?.let { Texts.partnerHint(it.hint, obs.tricksWon[obs.team]) },
             absent = table.room.seats.indices.filter { table.room.seats[it].isHuman && !table.room.seats[it].connected }.toSet(),
             bots = table.room.seats.indices.filter { !table.room.seats[it].isHuman }.toSet(),
             waitingForOthers = over && game.ready[me],
@@ -172,6 +199,7 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
     companion object {
         const val NOTICE_MS = 4000L
         const val ERROR_MS = 4000L
+        const val MAX_SPEECH = 8
 
         /**
          * Display name of a seat: the nickname, else the bot's name, else (older server)

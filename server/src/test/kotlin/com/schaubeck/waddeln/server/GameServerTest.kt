@@ -523,6 +523,35 @@ class GameServerTest {
         }
     }
 
+    @Test
+    fun `during a Schub the bot partner tells its team how good its cards are`() = runTest {
+        val server = newServer(seed = 2)
+        val host = player(server, "host")
+        host.send(ClientMessage.CreateRoom)
+        val guest = player(server, "guest")
+        guest.send(ClientMessage.JoinRoom(host.table.room.code))
+        host.send(ClientMessage.StartMatch)
+        assertEquals(1, guest.seat)
+        // Announce Schlag/Farbe if a human has to, until the host may say Schub.
+        var steps = 0
+        while (Action.Schub !in host.table.game!!.legalActions && steps++ < 1000) {
+            listOf(host, guest).forEach { p -> p.table.game!!.legalActions.firstOrNull { it != Action.Schub }?.let { p.send(ClientMessage.Act(it)) } }
+            advanceTimeBy(100)
+        }
+        assertFalse(guest.table.game!!.canAskPartner)
+        host.send(ClientMessage.Act(Action.Schub))
+        assertTrue(guest.table.game!!.canAskPartner)
+        assertFalse(host.table.game!!.canAskPartner, "the asking team waits for the answer")
+
+        guest.send(ClientMessage.AskPartner)
+        assertEquals(3, guest.table.game!!.partnerHint?.seat)
+        assertNull(host.table.game!!.partnerHint, "the opponents don't learn the hint")
+        assertFalse(guest.table.game!!.canAskPartner, "asked once per Schub")
+
+        guest.send(ClientMessage.Act(Action.Bleiben))
+        assertNull(guest.table.game!!.partnerHint)
+    }
+
     private fun TestScope.playUntilRoundOver(humans: List<Player>) {
         repeat(10_000) {
             advanceUntilIdle()

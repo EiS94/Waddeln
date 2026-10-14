@@ -10,6 +10,12 @@ import com.schaubeck.waddeln.rules.PLAYER_COUNT
  */
 data class SchubNotice(val askingPlayer: Int, val answeringPlayer: Int, val newGameValue: Int)
 
+/** Something [seat] said aloud, shown as a speech bubble for [GameSpeed.speechMs] from [at] (SystemClock.elapsedRealtime). */
+data class Speech(val seat: Int, val text: String, val at: Long)
+
+/** True for actions that are said aloud at the table (everything but playing a card). */
+fun Action.isSpoken(): Boolean = this !is Action.PlayCard
+
 /**
  * Everything the table screen shows, from the perspective of [Observation.player]
  * (drawn at the bottom). Built by the offline game and by the online client alike.
@@ -21,6 +27,12 @@ data class TableUi(
     val names: List<String>,
     val speed: GameSpeed,
     val notice: SchubNotice? = null,
+    /** Recent speech bubbles, oldest first; the UI shows the latest per seat while it is fresh. */
+    val speech: List<Speech> = emptyList(),
+    /** During a Schub against us: the partner can be asked how good their cards are. */
+    val canAskPartner: Boolean = false,
+    /** The partner's answer to that question, shown until the Schub is answered. */
+    val partnerHint: String? = null,
     /** Seats whose human lost the connection; a bot plays for them meanwhile. */
     val absent: Set<Int> = emptySet(),
     /** Online: seats played by a bot (marked, since bots have names like humans). */

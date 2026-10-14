@@ -9,6 +9,8 @@ import com.schaubeck.waddeln.rules.RoundResult
 import com.schaubeck.waddeln.rules.Trick
 import com.schaubeck.waddeln.rules.Waddeln
 import com.schaubeck.waddeln.rules.agent.Agent
+import com.schaubeck.waddeln.rules.agent.PartnerHint
+import com.schaubeck.waddeln.rules.agent.PartnerHints
 import com.schaubeck.waddeln.rules.agent.RuleBasedAgent
 import com.schaubeck.waddeln.rules.nextPlayer
 import com.schaubeck.waddeln.rules.observationFor
@@ -57,10 +59,22 @@ class OfflineGame(
         return actor.takeIf { it != HUMAN }
     }
 
-    fun stepBot() {
+    /** Lets the next bot act and returns what it did. */
+    fun stepBot(): Action {
         val bot = checkNotNull(botToAct()) { "No bot to act" }
         val action = bots[bot].chooseAction(state.observationFor(bot), Waddeln.legalActions(state, bot))
         apply(bot, action)
+        return action
+    }
+
+    /**
+     * The partner's answer when the human asks about their cards during a Schub against the
+     * human's team; null if there is no such Schub.
+     */
+    fun partnerHint(): PartnerHint? {
+        val pending = state.pendingSchub ?: return null
+        if (pending.answeringTeam != teamOf(HUMAN)) return null
+        return PartnerHints.hintFor(state.observationFor(PARTNER))
     }
 
     fun nextRound() {
@@ -85,5 +99,6 @@ class OfflineGame(
 
     companion object {
         const val HUMAN = 0
+        const val PARTNER = 2
     }
 }

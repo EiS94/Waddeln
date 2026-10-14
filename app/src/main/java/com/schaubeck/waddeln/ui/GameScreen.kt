@@ -3,9 +3,13 @@ package com.schaubeck.waddeln.ui
 import android.os.SystemClock
 import androidx.compose.runtime.produceState
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -22,6 +26,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -44,6 +49,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
@@ -51,6 +57,7 @@ import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import com.schaubeck.waddeln.game.Speech
 import com.schaubeck.waddeln.game.TableUi
 import com.schaubeck.waddeln.rules.Action
 import com.schaubeck.waddeln.rules.Card
@@ -65,8 +72,8 @@ import kotlinx.coroutines.delay
 
 /**
  * The card table, drawn for the player [TableUi.me] at the bottom (offline and online).
- * [onContinue] starts the next round or match after the result; [onLeave] (online only)
- * leaves the room for good.
+ * [onContinue] starts the next round or match after the result; [onAskPartner] asks the partner
+ * about their cards during a Schub; [onLeave] (online only) leaves the room for good.
  */
 @Composable
 fun GameScreen(
@@ -74,6 +81,7 @@ fun GameScreen(
     onAction: (Action) -> Unit,
     onContinue: () -> Unit,
     onNoticeConfirmed: () -> Unit,
+    onAskPartner: () -> Unit,
     onMenu: () -> Unit,
     onLeave: (() -> Unit)? = null,
 ) {
@@ -84,7 +92,7 @@ fun GameScreen(
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 Table(table, onSchub = { onAction(Action.Schub) })
             }
-            ActionArea(table, onAction, onNoticeConfirmed)
+            ActionArea(table, onAction, onNoticeConfirmed, onAskPartner)
             Hand(table, onAction)
         }
         RoundEndOverlay(table, onContinue, onMenu, onLeave)
@@ -148,9 +156,10 @@ private fun Table(table: TableUi, onSchub: () -> Unit) {
         val haubiWidth = handCardWidth(maxWidth)
         // Below the Haubi so they never overlap
         val sideSeatTop = haubiWidth * CARD_ASPECT + 48.dp
-        PartnerSeat(table, Modifier.align(Alignment.TopCenter))
-        SideSeat(table, table.seatAt(1), left = true, modifier = Modifier.align(Alignment.TopStart).padding(top = sideSeatTop))
-        SideSeat(table, table.seatAt(3), left = false, modifier = Modifier.align(Alignment.TopEnd).padding(top = sideSeatTop))
+        // Above the trick so speech bubbles stay readable
+        PartnerSeat(table, Modifier.align(Alignment.TopCenter).zIndex(1f))
+        SideSeat(table, table.seatAt(1), left = true, modifier = Modifier.align(Alignment.TopStart).padding(top = sideSeatTop).zIndex(1f))
+        SideSeat(table, table.seatAt(3), left = false, modifier = Modifier.align(Alignment.TopEnd).padding(top = sideSeatTop).zIndex(1f))
         HaubiCorner(s, haubiWidth, Modifier.align(Alignment.TopStart).padding(8.dp))
         BottomCardCorner(s, Modifier.align(Alignment.TopEnd).padding(8.dp))
         TrickArea(table, Modifier.align(Alignment.Center))
@@ -175,6 +184,7 @@ private fun PartnerSeat(table: TableUi, modifier: Modifier) {
         }
         Spacer(Modifier.height(4.dp))
         SeatChip(table, seat)
+        SpeechBubble(table, seat, BubbleFrom.ABOVE, Modifier.padding(top = 4.dp))
     }
 }
 
@@ -192,13 +202,63 @@ private fun SideSeat(table: TableUi, seat: Int, left: Boolean, modifier: Modifie
         }
         if (left) {
             backs()
-            SeatChip(table, seat, Modifier.offset(x = (-18).dp))
+            Column {
+                SeatChip(table, seat, Modifier.offset(x = (-18).dp))
+                SpeechBubble(table, seat, BubbleFrom.LEFT, Modifier.padding(top = 4.dp))
+            }
         } else {
-            SeatChip(table, seat, Modifier.offset(x = 18.dp))
+            Column(horizontalAlignment = Alignment.End) {
+                SeatChip(table, seat, Modifier.offset(x = 18.dp))
+                SpeechBubble(table, seat, BubbleFrom.RIGHT, Modifier.padding(top = 4.dp))
+            }
             backs()
         }
     }
 }
+
+/** Where the speaker sits as seen from the bubble; the corner towards them is pointed. */
+private enum class BubbleFrom(val shape: Shape) {
+    ABOVE(RoundedCornerShape(12.dp)),
+    LEFT(RoundedCornerShape(topStart = 2.dp, topEnd = 12.dp, bottomStart = 12.dp, bottomEnd = 12.dp)),
+    RIGHT(RoundedCornerShape(topStart = 12.dp, topEnd = 2.dp, bottomStart = 12.dp, bottomEnd = 12.dp)),
+}
+
+/**
+ * What [seat] said last (announcement, Schub, answer, hint), shown for
+ * [com.schaubeck.waddeln.game.GameSpeed.speechMs] from when it was said.
+ */
+@Composable
+private fun SpeechBubble(table: TableUi, seat: Int, from: BubbleFrom, modifier: Modifier = Modifier) {
+    val speech: Speech? = table.speech.lastOrNull { it.seat == seat }
+    val durationMs = table.speed.speechMs
+    var visible by remember(speech) { mutableStateOf(speech != null && remainingMs(speech, durationMs) > 0) }
+    LaunchedEffect(speech) {
+        if (speech == null) return@LaunchedEffect
+        delay(remainingMs(speech, durationMs))
+        visible = false
+    }
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(tween(150)) + scaleIn(tween(150), initialScale = 0.7f),
+        exit = fadeOut(tween(250)),
+        modifier = modifier,
+    ) {
+        Text(
+            speech?.text.orEmpty(),
+            color = Color(0xFF2B1F14),
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .widthIn(max = 150.dp)
+                .background(Color(0xFFFFF8E1), from.shape)
+                .border(1.5.dp, Highlight, from.shape)
+                .padding(horizontal = 10.dp, vertical = 5.dp),
+        )
+    }
+}
+
+private fun remainingMs(speech: Speech, durationMs: Long) = durationMs - (SystemClock.elapsedRealtime() - speech.at)
 
 /**
  * Name of a seat with badges (dealer, Kritten taken while cutting, laid out cards, lost connection);
@@ -405,7 +465,12 @@ private fun remainingSeconds(deadline: Long) =
 // ---- Actions ---------------------------------------------------------------------------------
 
 @Composable
-private fun ActionArea(table: TableUi, onAction: (Action) -> Unit, onNoticeConfirmed: () -> Unit) {
+private fun ActionArea(
+    table: TableUi,
+    onAction: (Action) -> Unit,
+    onNoticeConfirmed: () -> Unit,
+    onAskPartner: () -> Unit,
+) {
     val s = table.obs
     val actions = table.actions
     val notice = table.notice
@@ -455,6 +520,15 @@ private fun ActionArea(table: TableUi, onAction: (Action) -> Unit, onNoticeConfi
         Action.Bleiben in actions -> {
             {
                 PanelTitle("${table.names[s.pendingSchub!!.askingPlayer]} sagt Schub! Geht ihr?")
+                val partner = table.names[table.seatAt(2)]
+                table.partnerHint?.let {
+                    Text("$partner: „$it“", color = Highlight, fontSize = 15.sp, modifier = Modifier.padding(bottom = 4.dp))
+                }
+                if (table.canAskPartner) {
+                    TextButton(onClick = onAskPartner) {
+                        Text("$partner fragen, wie gut die Karten sind", color = Highlight)
+                    }
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Button(onClick = { onAction(Action.Bleiben) }, colors = woodButton()) {
                         Text("Bleiben (Wert ${s.gameValue + 1})")
@@ -557,7 +631,11 @@ private fun RoundEndOverlay(
     var visible by remember(s.roundNumber) { mutableStateOf(false) }
     LaunchedEffect(s.roundNumber, over) {
         if (over) {
-            if (s.result?.reason == RoundEndReason.TRICKS) delay(table.speed.trickPauseMs)
+            when {
+                s.result?.reason == RoundEndReason.TRICKS -> delay(table.speed.trickPauseMs)
+                // Someone else gave up: let their bubble be read first.
+                table.speech.lastOrNull()?.seat != table.me -> delay(table.speed.speechMs)
+            }
             visible = true
         }
     }
