@@ -109,6 +109,7 @@ class GameServer(
             ClientMessage.StartMatch -> room?.start(id)
             is ClientMessage.Act -> room?.act(id, message.action)
             ClientMessage.AskPartner -> room?.askPartner(id)
+            is ClientMessage.AnswerPartner -> room?.answerPartner(id, message.hint)
             ClientMessage.Ready -> room?.ready(id)
         }
         error?.let { client.send(ServerMessage.Error(it)) }

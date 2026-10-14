@@ -10,7 +10,7 @@ import com.schaubeck.waddeln.rules.PLAYER_COUNT
 import com.schaubeck.waddeln.rules.Phase
 import com.schaubeck.waddeln.rules.observationFor
 import com.schaubeck.waddeln.rules.teamOf
-import com.schaubeck.waddeln.ui.Texts
+import com.schaubeck.waddeln.ui.Sayings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -90,7 +90,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         if (partnerHint() != null) return
         val hint = game.partnerHint() ?: return
         val s = game.state
-        val text = Texts.partnerHint(hint, s.tricksWon[teamOf(OfflineGame.HUMAN)])
+        val text = Sayings.partnerHint(hint, s.tricksWon[teamOf(OfflineGame.HUMAN)])
         givenHint = s.gameValue to text
         say(OfflineGame.PARTNER, text)
         publish()
@@ -163,7 +163,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun say(seat: Int, action: Action) {
-        Texts.speech(action)?.let { say(seat, it) }
+        Sayings.speech(action)?.let { say(seat, it) }
     }
 
     private fun say(seat: Int, text: String) {

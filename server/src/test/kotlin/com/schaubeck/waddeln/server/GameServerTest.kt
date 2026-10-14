@@ -4,11 +4,13 @@ package com.schaubeck.waddeln.server
 
 import com.schaubeck.waddeln.protocol.BotStrength
 import com.schaubeck.waddeln.protocol.ClientMessage
+import com.schaubeck.waddeln.protocol.SeatHint
 import com.schaubeck.waddeln.protocol.ServerMessage
 import com.schaubeck.waddeln.protocol.decodeServerMessage
 import com.schaubeck.waddeln.protocol.encode
 import com.schaubeck.waddeln.rules.Action
 import com.schaubeck.waddeln.rules.Phase
+import com.schaubeck.waddeln.rules.agent.PartnerHint
 import com.schaubeck.waddeln.rules.agent.RuleBasedAgent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -523,8 +525,18 @@ class GameServerTest {
         }
     }
 
+    /** Plays announcements and cards for [humans] until [asking] may say Schub, then says it. */
+    private fun TestScope.schubBy(asking: Player, humans: List<Player>) {
+        var steps = 0
+        while (Action.Schub !in asking.table.game!!.legalActions && steps++ < 1000) {
+            humans.forEach { p -> p.table.game!!.legalActions.firstOrNull { it != Action.Schub }?.let { p.send(ClientMessage.Act(it)) } }
+            advanceTimeBy(100)
+        }
+        asking.send(ClientMessage.Act(Action.Schub))
+    }
+
     @Test
-    fun `during a Schub the bot partner tells its team how good its cards are`() = runTest {
+    fun `during a Schub the bot partner tells how good its cards are, the whole table hears it`() = runTest {
         val server = newServer(seed = 2)
         val host = player(server, "host")
         host.send(ClientMessage.CreateRoom)
@@ -532,24 +544,60 @@ class GameServerTest {
         guest.send(ClientMessage.JoinRoom(host.table.room.code))
         host.send(ClientMessage.StartMatch)
         assertEquals(1, guest.seat)
-        // Announce Schlag/Farbe if a human has to, until the host may say Schub.
-        var steps = 0
-        while (Action.Schub !in host.table.game!!.legalActions && steps++ < 1000) {
-            listOf(host, guest).forEach { p -> p.table.game!!.legalActions.firstOrNull { it != Action.Schub }?.let { p.send(ClientMessage.Act(it)) } }
-            advanceTimeBy(100)
-        }
         assertFalse(guest.table.game!!.canAskPartner)
-        host.send(ClientMessage.Act(Action.Schub))
+        schubBy(host, listOf(host, guest))
         assertTrue(guest.table.game!!.canAskPartner)
         assertFalse(host.table.game!!.canAskPartner, "the asking team waits for the answer")
 
         guest.send(ClientMessage.AskPartner)
-        assertEquals(3, guest.table.game!!.partnerHint?.seat)
-        assertNull(host.table.game!!.partnerHint, "the opponents don't learn the hint")
+        assertEquals(1, host.table.game!!.partnerQuestion)
+        assertEquals(3, guest.table.game!!.partnerHint?.seat, "the bot answers at once")
+        assertEquals(3, host.table.game!!.partnerHint?.seat, "the opponents hear it too")
         assertFalse(guest.table.game!!.canAskPartner, "asked once per Schub")
 
         guest.send(ClientMessage.Act(Action.Bleiben))
         assertNull(guest.table.game!!.partnerHint)
+        assertNull(guest.table.game!!.partnerQuestion)
+    }
+
+    @Test
+    fun `a human partner answers the question`() = runTest {
+        val server = newServer(seed = 2)
+        val host = player(server, "host")
+        host.send(ClientMessage.CreateRoom)
+        val guest = player(server, "guest")
+        guest.send(ClientMessage.JoinRoom(host.table.room.code))
+        val partner = player(server, "partner")
+        partner.send(ClientMessage.JoinRoom(host.table.room.code))
+        host.send(ClientMessage.StartMatch)
+        assertEquals(2, partner.seat)
+        schubBy(guest, listOf(host, guest, partner))
+
+        host.send(ClientMessage.AskPartner)
+        assertEquals(0, partner.table.game!!.partnerQuestion)
+        assertNull(partner.table.game!!.partnerHint, "a human partner is not answered for")
+        guest.send(ClientMessage.AnswerPartner(PartnerHint.ALL_TRICKS))
+        assertNull(host.table.game!!.partnerHint, "only the asked partner may answer")
+
+        partner.send(ClientMessage.AnswerPartner(PartnerHint.ONE_TRICK))
+        assertEquals(SeatHint(2, PartnerHint.ONE_TRICK), host.table.game!!.partnerHint)
+        assertEquals(SeatHint(2, PartnerHint.ONE_TRICK), guest.table.game!!.partnerHint)
+    }
+
+    @Test
+    fun `the bot answers when the asked partner leaves`() = runTest {
+        val server = newServer(seed = 2)
+        val host = player(server, "host")
+        host.send(ClientMessage.CreateRoom)
+        val guest = player(server, "guest")
+        guest.send(ClientMessage.JoinRoom(host.table.room.code))
+        val partner = player(server, "partner")
+        partner.send(ClientMessage.JoinRoom(host.table.room.code))
+        host.send(ClientMessage.StartMatch)
+        schubBy(guest, listOf(host, guest, partner))
+        host.send(ClientMessage.AskPartner)
+        partner.disconnect()
+        assertEquals(2, host.table.game!!.partnerHint?.seat)
     }
 
     private fun TestScope.playUntilRoundOver(humans: List<Player>) {

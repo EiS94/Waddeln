@@ -14,6 +14,7 @@ import com.schaubeck.waddeln.rules.PLAYER_COUNT
 import com.schaubeck.waddeln.rules.Phase
 import com.schaubeck.waddeln.rules.Waddeln
 import com.schaubeck.waddeln.rules.agent.Agent
+import com.schaubeck.waddeln.rules.agent.PartnerHint
 import com.schaubeck.waddeln.rules.agent.PartnerHints
 import com.schaubeck.waddeln.rules.nextPlayer
 import com.schaubeck.waddeln.rules.observationFor
@@ -81,7 +82,8 @@ class Room(
     private val ready = BooleanArray(PLAYER_COUNT)
     private var lastAction: SeatAction? = null
 
-    /** The bot partner's answer to a question during the open Schub. */
+    /** Seat that asked its partner during the open Schub, and the partner's answer. */
+    private var question: Int? = null
     private var hint: SeatHint? = null
     private var botJob: Job? = null
 
@@ -178,14 +180,25 @@ class Room(
         return null
     }
 
-    /** During a Schub against the player's team: their bot partner tells roughly how good its cards are. */
+    /**
+     * During a Schub against the player's team: asks the partner how good their cards are.
+     * A bot partner answers at once, a human one with [answerPartner].
+     */
     fun askPartner(playerId: String): String? {
         val seat = seatOf(playerId) ?: return null
         val s = state ?: return null
         if (!canAskPartner(s, seat)) return null
-        val partner = partnerOf(seat)
-        hint = SeatHint(partner, PartnerHints.hintFor(s.observationFor(partner)))
-        broadcast()
+        question = seat
+        changed()
+        return null
+    }
+
+    fun answerPartner(playerId: String, answer: PartnerHint): String? {
+        val seat = seatOf(playerId) ?: return null
+        val asking = question ?: return null
+        if (hint != null || partnerOf(asking) != seat) return null
+        hint = SeatHint(seat, answer)
+        changed()
         return null
     }
 
@@ -193,7 +206,16 @@ class Room(
 
     private fun canAskPartner(s: GameState, seat: Int): Boolean {
         val pending = s.pendingSchub ?: return false
-        return hint == null && pending.answeringTeam == teamOf(seat) && partnerOf(seat) !in humanSeats()
+        return question == null && pending.answeringTeam == teamOf(seat)
+    }
+
+    /** A partner played by a bot (also after its human left) answers the question itself. */
+    private fun botAnswersQuestion() {
+        val s = state ?: return
+        val asking = question ?: return
+        val partner = partnerOf(asking)
+        if (hint != null || s.pendingSchub == null || partner in humanSeats()) return
+        hint = SeatHint(partner, PartnerHints.hintFor(s.observationFor(partner)))
     }
 
     /** Confirms the end of a round or match; the next one starts once all connected humans confirmed. */
@@ -215,7 +237,10 @@ class Room(
         val after = Waddeln.apply(before, seat, action)
         state = after
         lastAction = SeatAction(seat, action)
-        if (after.pendingSchub == null) hint = null
+        if (after.pendingSchub == null) {
+            question = null
+            hint = null
+        }
         if (before.result == null) after.result?.let { logRoundEnd(after) }
         val pause = when {
             after.completedTricks.size > before.completedTricks.size -> timing.trickPauseMs
@@ -246,6 +271,7 @@ class Room(
     private fun changed(botPauseMs: Long = 0) {
         val anyConnected = members.any { it.client != null }
         abandonedSince = if (anyConnected) null else abandonedSince ?: clock()
+        botAnswersQuestion()
         advanceIfReady()
         scheduleBots(botPauseMs)
         broadcast()
@@ -353,7 +379,8 @@ class Room(
             ready = ready.toList(),
             timeLeftMs = turnDeadline?.let { (it - clock()).coerceAtLeast(0) },
             canAskPartner = canAskPartner(s, seat),
-            partnerHint = hint?.takeIf { teamOf(it.seat) == teamOf(seat) },
+            partnerQuestion = question,
+            partnerHint = hint,
         )
     }
 

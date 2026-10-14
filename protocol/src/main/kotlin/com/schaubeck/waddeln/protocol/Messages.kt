@@ -71,9 +71,16 @@ sealed interface ClientMessage {
     @Serializable @SerialName("act")
     data class Act(val action: Action) : ClientMessage
 
-    /** During a Schub against the own team: ask the bot partner how good its cards are. */
+    /**
+     * During a Schub against the own team: ask the partner how good their cards are. A bot answers
+     * at once, a human with [AnswerPartner]. Everybody at the table hears question and answer.
+     */
     @Serializable @SerialName("ask_partner")
     data object AskPartner : ClientMessage
+
+    /** Answer to the partner's [AskPartner]. */
+    @Serializable @SerialName("answer_partner")
+    data class AnswerPartner(val hint: PartnerHint) : ClientMessage
 
     /** After a round or match: ready for the next one. It starts once all connected players are ready. */
     @Serializable @SerialName("ready")
@@ -133,9 +140,11 @@ data class GameView(
     val ready: List<Boolean> = List(PLAYER_COUNT) { false },
     /** Time left for the human decision the game waits for; afterwards a bot decides. Null if nobody is waited for. */
     val timeLeftMs: Long? = null,
-    /** True if the partner is a bot that can be asked about its cards ([ClientMessage.AskPartner]) now. */
+    /** True if the partner can be asked about their cards ([ClientMessage.AskPartner]) now. */
     val canAskPartner: Boolean = false,
-    /** The partner's answer during the open Schub; only sent to the partner's team. */
+    /** Seat that asked its partner during the open Schub, or null. */
+    val partnerQuestion: Int? = null,
+    /** The partner's answer during the open Schub, or null. */
     val partnerHint: SeatHint? = null,
 )
 
