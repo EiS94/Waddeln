@@ -4,6 +4,7 @@ import com.schaubeck.waddeln.protocol.BotStrength
 import com.schaubeck.waddeln.protocol.GameView
 import com.schaubeck.waddeln.protocol.RoomInfo
 import com.schaubeck.waddeln.protocol.SeatAction
+import com.schaubeck.waddeln.protocol.SeatHint
 import com.schaubeck.waddeln.protocol.SeatInfo
 import com.schaubeck.waddeln.protocol.ServerMessage
 import com.schaubeck.waddeln.rules.Action
@@ -13,6 +14,7 @@ import com.schaubeck.waddeln.rules.PLAYER_COUNT
 import com.schaubeck.waddeln.rules.Phase
 import com.schaubeck.waddeln.rules.Waddeln
 import com.schaubeck.waddeln.rules.agent.Agent
+import com.schaubeck.waddeln.rules.agent.PartnerHints
 import com.schaubeck.waddeln.rules.nextPlayer
 import com.schaubeck.waddeln.rules.observationFor
 import com.schaubeck.waddeln.rules.playersOf
@@ -31,6 +33,8 @@ data class Timing(
     val trickPauseMs: Long = 2600,
     /** After a Schub was answered with Bleiben, so the notice can be read. */
     val schubPauseMs: Long = 1500,
+    /** After a Schlag, Farbe or Schub was said, so the speech bubble can be read (with [botDelayMs] like the app's speechMs). */
+    val speechPauseMs: Long = 1400,
     /** A human who has to decide gets this long; then the bot decides for them. Null = no limit. */
     val turnTimeoutMs: Long? = 60_000,
 )
@@ -76,6 +80,9 @@ class Room(
     private var state: GameState? = null
     private val ready = BooleanArray(PLAYER_COUNT)
     private var lastAction: SeatAction? = null
+
+    /** The bot partner's answer to a question during the open Schub. */
+    private var hint: SeatHint? = null
     private var botJob: Job? = null
 
     /** Runs out when a human takes too long; [timerState] is the state it was started for. */
@@ -171,6 +178,24 @@ class Room(
         return null
     }
 
+    /** During a Schub against the player's team: their bot partner tells roughly how good its cards are. */
+    fun askPartner(playerId: String): String? {
+        val seat = seatOf(playerId) ?: return null
+        val s = state ?: return null
+        if (!canAskPartner(s, seat)) return null
+        val partner = partnerOf(seat)
+        hint = SeatHint(partner, PartnerHints.hintFor(s.observationFor(partner)))
+        broadcast()
+        return null
+    }
+
+    private fun partnerOf(seat: Int) = (seat + 2) % PLAYER_COUNT
+
+    private fun canAskPartner(s: GameState, seat: Int): Boolean {
+        val pending = s.pendingSchub ?: return false
+        return hint == null && pending.answeringTeam == teamOf(seat) && partnerOf(seat) !in humanSeats()
+    }
+
     /** Confirms the end of a round or match; the next one starts once all connected humans confirmed. */
     fun ready(playerId: String): String? {
         val seat = seatOf(playerId) ?: return null
@@ -190,10 +215,12 @@ class Room(
         val after = Waddeln.apply(before, seat, action)
         state = after
         lastAction = SeatAction(seat, action)
+        if (after.pendingSchub == null) hint = null
         if (before.result == null) after.result?.let { logRoundEnd(after) }
         val pause = when {
             after.completedTricks.size > before.completedTricks.size -> timing.trickPauseMs
             action == Action.Bleiben -> timing.schubPauseMs
+            action !is Action.PlayCard -> timing.speechPauseMs
             else -> 0
         }
         changed(pause)
@@ -325,6 +352,8 @@ class Room(
             lastAction = lastAction,
             ready = ready.toList(),
             timeLeftMs = turnDeadline?.let { (it - clock()).coerceAtLeast(0) },
+            canAskPartner = canAskPartner(s, seat),
+            partnerHint = hint?.takeIf { teamOf(it.seat) == teamOf(seat) },
         )
     }
 

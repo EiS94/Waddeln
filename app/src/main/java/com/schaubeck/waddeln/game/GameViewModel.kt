@@ -1,6 +1,7 @@
 package com.schaubeck.waddeln.game
 
 import android.app.Application
+import android.os.SystemClock
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.schaubeck.waddeln.ai.BotFactory
@@ -8,6 +9,8 @@ import com.schaubeck.waddeln.rules.Action
 import com.schaubeck.waddeln.rules.PLAYER_COUNT
 import com.schaubeck.waddeln.rules.Phase
 import com.schaubeck.waddeln.rules.observationFor
+import com.schaubeck.waddeln.rules.teamOf
+import com.schaubeck.waddeln.ui.Texts
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -35,6 +38,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private val statsStore = StatsStore(application)
     private val statsTracker = StatsTracker { statsStore.add(StatsMode.OFFLINE, it) }
     private var notice: SchubNotice? = null
+    private var speech = emptyList<Speech>()
+
+    /** The partner's answer during the current Schub and the game value it was given at. */
+    private var givenHint: Pair<Int, String>? = null
     private var matchStarted = false
     private val _ui = MutableStateFlow(snapshot())
     val ui: StateFlow<GameUiState> = _ui.asStateFlow()
@@ -72,9 +79,21 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         if (notice != null || action !in game.humanActions()) return
         val tricksBefore = game.state.completedTricks.size
         game.applyHuman(action)
+        say(OfflineGame.HUMAN, action)
         publish()
         // Give a trick finished by the human time to be shown and collected before bots go on.
         runBots(initialPauseMs = if (game.state.completedTricks.size > tricksBefore) settings.speed.trickPauseMs else 0)
+    }
+
+    /** During a Schub against us: the partner tells roughly how good their cards are. */
+    fun onAskPartner() {
+        if (partnerHint() != null) return
+        val hint = game.partnerHint() ?: return
+        val s = game.state
+        val text = Texts.partnerHint(hint, s.tricksWon[teamOf(OfflineGame.HUMAN)])
+        givenHint = s.gameValue to text
+        say(OfflineGame.PARTNER, text)
+        publish()
     }
 
     fun onNoticeConfirmed() {
@@ -97,6 +116,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun onNextRound() {
+        speech = emptyList()
+        givenHint = null
         game.nextRound()
         publish()
         runBots()
@@ -105,6 +126,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     fun onNewMatch() {
         botJob?.cancel()
         notice = null
+        speech = emptyList()
+        givenHint = null
         game.newMatch()
         publish()
         runBots()
@@ -115,12 +138,16 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         if (paused || botFactory == null || notice != null || botJob?.isActive == true) return
         botJob = viewModelScope.launch {
             if (initialPauseMs > 0) delay(initialPauseMs)
+            // Something said aloud stays readable before the next bot acts.
+            var speechPause = 0L
             while (game.botToAct() != null && notice == null) {
-                delay(settings.speed.botDelayMs)
+                delay(settings.speed.botDelayMs + speechPause)
                 val bot = game.botToAct() ?: break // the human acted (e.g. Schub) in the meantime
                 val tricksBefore = game.state.completedTricks.size
                 val schubBefore = game.state.pendingSchub
-                game.stepBot()
+                val action = game.stepBot()
+                say(bot, action)
+                speechPause = if (action.isSpoken()) (settings.speed.speechMs - settings.speed.botDelayMs).coerceAtLeast(0) else 0
                 val s = game.state
                 if (schubBefore != null && s.pendingSchub == null && s.phase == Phase.PLAYING) {
                     notice = SchubNotice(schubBefore.askingPlayer, bot, s.gameValue)
@@ -135,6 +162,21 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         botFactory?.close()
     }
 
+    private fun say(seat: Int, action: Action) {
+        Texts.speech(action)?.let { say(seat, it) }
+    }
+
+    private fun say(seat: Int, text: String) {
+        speech = (speech + Speech(seat, text, SystemClock.elapsedRealtime())).takeLast(MAX_SPEECH)
+    }
+
+    /** The partner's answer if it belongs to the Schub that is open right now. */
+    private fun partnerHint(): String? {
+        val s = game.state
+        val (value, text) = givenHint ?: return null
+        return text.takeIf { s.pendingSchub != null && s.gameValue == value }
+    }
+
     private fun publish() {
         statsTracker.observe(game.state.observationFor(OfflineGame.HUMAN))
         _ui.value = snapshot()
@@ -147,8 +189,15 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             names = List(PLAYER_COUNT) { settings.name(it) },
             speed = settings.speed,
             notice = notice,
+            speech = speech,
+            canAskPartner = notice == null && partnerHint() == null && game.partnerHint() != null,
+            partnerHint = partnerHint(),
         ),
         settings = settings,
         matchInProgress = matchStarted && game.state.phase != Phase.MATCH_OVER,
     )
+
+    private companion object {
+        const val MAX_SPEECH = 8
+    }
 }

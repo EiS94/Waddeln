@@ -4,11 +4,15 @@ import android.content.Context
 import com.schaubeck.waddeln.rules.PLAYER_COUNT
 import java.util.UUID
 
-/** How long bots think before acting and how long a finished trick stays on the table. */
-enum class GameSpeed(val label: String, val botDelayMs: Long, val trickPauseMs: Long) {
-    SLOW("Langsam", 1600, 2600),
-    NORMAL("Normal", 1100, 1900),
-    FAST("Schnell", 600, 1300),
+/**
+ * How long bots think before acting, how long a finished trick stays on the table and how long
+ * a speech bubble (announcement, Schub, answer) is shown. After a bot spoke, the next bot waits
+ * until the bubble is gone.
+ */
+enum class GameSpeed(val label: String, val botDelayMs: Long, val trickPauseMs: Long, val speechMs: Long) {
+    SLOW("Langsam", 1600, 2600, 3000),
+    NORMAL("Normal", 1100, 1900, 2200),
+    FAST("Schnell", 600, 1300, 1400),
 }
 
 /**
