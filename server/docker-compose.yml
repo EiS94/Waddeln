@@ -1,0 +1,25 @@
+services:
+  waddeln:
+    build: .
+    container_name: waddeln-server
+    restart: unless-stopped
+    environment:
+      # Log times in German time instead of UTC.
+      TZ: Europe/Berlin
+    # Only cloudflared on the Pi itself reaches the server; nothing is open in the home network.
+    ports:
+      - "127.0.0.1:8765:8765"
+    read_only: true
+    tmpfs:
+      # ONNX Runtime unpacks its native library here, so it must be executable.
+      - /tmp:exec,size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 200
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"

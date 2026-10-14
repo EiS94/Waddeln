@@ -1,0 +1,6 @@
+# Tested with torch 2.14.1, numpy 2.4.6, onnx 1.23.2, onnxruntime 1.31.0 (Python 3.11)
+torch>=2.4
+numpy>=1.26
+onnx>=1.16
+onnxruntime>=1.18
+pytest>=8
