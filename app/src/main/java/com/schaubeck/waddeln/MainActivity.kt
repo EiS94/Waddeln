@@ -72,6 +72,8 @@ class MainActivity : ComponentActivity() {
                         onContinue = viewModel::onContinue,
                         onNoticeConfirmed = viewModel::onNoticeConfirmed,
                         onAskPartner = viewModel::onAskPartner,
+                        onAskSchadet = viewModel::onAskSchadet,
+                        onAnswerSchadet = viewModel::onAnswerSchadet,
                         onMenu = { screen = Screen.MENU },
                     )
 
@@ -108,6 +110,8 @@ class MainActivity : ComponentActivity() {
                                 onNoticeConfirmed = onlineViewModel::onNoticeConfirmed,
                                 onAskPartner = onlineViewModel::askPartner,
                                 onAnswerPartner = onlineViewModel::answerPartner,
+                                onAskSchadet = onlineViewModel::askSchadet,
+                                onAnswerSchadet = onlineViewModel::answerSchadet,
                                 onMenu = { screen = Screen.MENU },
                                 onLeave = onlineViewModel::leave,
                             )

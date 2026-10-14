@@ -68,6 +68,7 @@ import com.schaubeck.waddeln.rules.RoundEndReason
 import com.schaubeck.waddeln.rules.Suit
 import com.schaubeck.waddeln.rules.Trump
 import com.schaubeck.waddeln.rules.agent.PartnerHint
+import com.schaubeck.waddeln.rules.agent.SchadetAnswer
 import com.schaubeck.waddeln.rules.teamOf
 import kotlinx.coroutines.delay
 
@@ -75,6 +76,7 @@ import kotlinx.coroutines.delay
  * The card table, drawn for the player [TableUi.me] at the bottom (offline and online).
  * [onContinue] starts the next round or match after the result; [onAskPartner] asks the partner
  * about their cards during a Schub, [onAnswerPartner] (online only) answers such a question;
+ * [onAskSchadet] asks the partner "Schadder?" before leading the Haubi, [onAnswerSchadet] answers it;
  * [onLeave] (online only) leaves the room for good.
  */
 @Composable
@@ -86,6 +88,8 @@ fun GameScreen(
     onAskPartner: () -> Unit,
     onMenu: () -> Unit,
     onAnswerPartner: (PartnerHint) -> Unit = {},
+    onAskSchadet: () -> Unit = {},
+    onAnswerSchadet: (SchadetAnswer) -> Unit = {},
     onLeave: (() -> Unit)? = null,
 ) {
     WoodBackground {
@@ -95,7 +99,7 @@ fun GameScreen(
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 Table(table, onSchub = { onAction(Action.Schub) })
             }
-            ActionArea(table, onAction, onNoticeConfirmed, onAskPartner, onAnswerPartner)
+            ActionArea(table, onAction, onNoticeConfirmed, onAskPartner, onAnswerPartner, onAskSchadet, onAnswerSchadet)
             Hand(table, onAction)
         }
         RoundEndOverlay(table, onContinue, onMenu, onLeave)
@@ -474,6 +478,8 @@ private fun ActionArea(
     onNoticeConfirmed: () -> Unit,
     onAskPartner: () -> Unit,
     onAnswerPartner: (PartnerHint) -> Unit,
+    onAskSchadet: () -> Unit,
+    onAnswerSchadet: (SchadetAnswer) -> Unit,
 ) {
     val s = table.obs
     val actions = table.actions
@@ -556,6 +562,35 @@ private fun ActionArea(
                     OutlinedButton(onClick = { onAction(Action.Gehen) }) {
                         Text("Gehen (−${s.gameValue})", color = Color.White)
                     }
+                }
+            }
+        }
+
+        table.partnerAsksSchadet -> {
+            {
+                PanelTitle("${table.names[table.seatAt(2)]} will den Haubi spielen: Schadest du?")
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    SchadetAnswer.entries.forEach { answer ->
+                        Button(
+                            onClick = { onAnswerSchadet(answer) },
+                            colors = woodButton(),
+                            contentPadding = CompactPadding,
+                            modifier = Modifier.weight(1f),
+                        ) { Text(Sayings.schadetLabel(answer), maxLines = 1) }
+                    }
+                }
+            }
+        }
+
+        table.canAskSchadet || table.waitingForSchadet || table.schadetAnswer != null -> {
+            {
+                val partner = table.names[table.seatAt(2)]
+                when {
+                    table.canAskSchadet -> TextButton(onClick = onAskSchadet) {
+                        Text("Schadder? – $partner fragen, ob der Haubi schadet", color = Highlight)
+                    }
+                    table.waitingForSchadet -> Text("Warte auf Antwort von $partner …", color = Highlight, fontSize = 14.sp)
+                    else -> Text("$partner: „${table.schadetAnswer}“", color = Highlight, fontSize = 15.sp)
                 }
             }
         }

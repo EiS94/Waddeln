@@ -158,6 +158,28 @@ Der Gewinner des Stichs spielt die erste Karte des nächsten Stichs.
 
 ---
 
+## Absprachen mit dem Partner
+
+Partner dürfen sich in zwei Situationen kurz absprechen, **ohne ihre Karten zu verraten**.
+Das gegnerische Team hört dabei mit.
+
+### Beim Schub
+- Wird das eigene Team gefragt, ob es geht, darf ein Spieler seinen Partner fragen, wie gut dessen Karten sind.
+- Der Partner antwortet grob in 5 Stufen: *gar nichts* – *wenig* – *einen Stich* – *zwei Stiche* –
+  *alle (noch nötigen) Stiche*.
+- Gefragt werden darf einmal pro Schub.
+
+### „Schadder?“ (vor dem Haubi-Anspiel im ersten Stich)
+- Wer den ersten Stich eröffnet und den Haubi hat, darf vor dem Ausspielen seinen Partner fragen,
+  ob er „schadet“: ob ihm die Bekennen-Pflicht eine Karte der Haubi-Farbe kostet, die ihm später fehlt.
+- Antworten: *Ja*, *ein bisschen*, *Nein*.
+- Faustregel: Ohne Haubi-Farbe oder mit 3 und mehr Karten davon schadet es nicht. Mit 1–2 Karten entscheidet
+  die niedrigste davon (die abgegeben würde): hoch (Ober, König, Ass) → ja, mittel (Unter, 10) → ein bisschen,
+  niedrig (7–9) → nein.
+- Gefragt werden darf einmal pro Spiel, nur bevor die erste Karte gespielt ist.
+
+---
+
 ## Punkte & Matchende
 
 | Situation | Punkte |

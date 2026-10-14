@@ -4,6 +4,7 @@ import com.schaubeck.waddeln.rules.Action
 import com.schaubeck.waddeln.rules.Observation
 import com.schaubeck.waddeln.rules.PLAYER_COUNT
 import com.schaubeck.waddeln.rules.agent.PartnerHint
+import com.schaubeck.waddeln.rules.agent.SchadetAnswer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -82,6 +83,14 @@ sealed interface ClientMessage {
     @Serializable @SerialName("answer_partner")
     data class AnswerPartner(val hint: PartnerHint) : ClientMessage
 
+    /** Before leading the Haubi into the first trick: ask the partner "Schadder?". */
+    @Serializable @SerialName("ask_schadet")
+    data object AskSchadet : ClientMessage
+
+    /** Answer to the partner's [AskSchadet]. */
+    @Serializable @SerialName("answer_schadet")
+    data class AnswerSchadet(val answer: SchadetAnswer) : ClientMessage
+
     /** After a round or match: ready for the next one. It starts once all connected players are ready. */
     @Serializable @SerialName("ready")
     data object Ready : ClientMessage
@@ -146,6 +155,12 @@ data class GameView(
     val partnerQuestion: Int? = null,
     /** The partner's answer during the open Schub, or null. */
     val partnerHint: SeatHint? = null,
+    /** True if we lead the first trick with the Haubi and may ask "Schadder?" ([ClientMessage.AskSchadet]). */
+    val canAskSchadet: Boolean = false,
+    /** Seat that asked "Schadder?" in this round, or null. */
+    val schadetQuestion: Int? = null,
+    /** The partner's answer to it, or null. */
+    val schadetAnswer: SeatSchadet? = null,
 )
 
 @Serializable
@@ -153,6 +168,9 @@ data class SeatAction(val seat: Int, val action: Action)
 
 @Serializable
 data class SeatHint(val seat: Int, val hint: PartnerHint)
+
+@Serializable
+data class SeatSchadet(val seat: Int, val answer: SchadetAnswer)
 
 /** The JSON format used on both ends. */
 val ProtocolJson = Json {

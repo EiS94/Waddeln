@@ -9,6 +9,8 @@ import com.schaubeck.waddeln.rules.Action
 import com.schaubeck.waddeln.rules.PLAYER_COUNT
 import com.schaubeck.waddeln.rules.Phase
 import com.schaubeck.waddeln.rules.observationFor
+import com.schaubeck.waddeln.rules.agent.Schadet
+import com.schaubeck.waddeln.rules.agent.SchadetAnswer
 import com.schaubeck.waddeln.rules.teamOf
 import com.schaubeck.waddeln.ui.Sayings
 import kotlinx.coroutines.Dispatchers
@@ -42,6 +44,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     /** The partner's answer during the current Schub and the game value it was given at. */
     private var givenHint: Pair<Int, String>? = null
+
+    /** The variant picked for the partner bot's answer to the human's "Schadder?". */
+    private var schadetText: String? = null
     private var matchStarted = false
     private val _ui = MutableStateFlow(snapshot())
     val ui: StateFlow<GameUiState> = _ui.asStateFlow()
@@ -85,6 +90,23 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         runBots(initialPauseMs = if (game.state.completedTricks.size > tricksBefore) settings.speed.trickPauseMs else 0)
     }
 
+    /** Before leading the Haubi: ask the partner "Schadder?"; the partner bot answers in its next step. */
+    fun onAskSchadet() {
+        if (!game.humanCanAskSchadet()) return
+        game.askSchadet()
+        publish()
+        runBots()
+    }
+
+    /** Answer to the partner bot's "Schadder?". */
+    fun onAnswerSchadet(answer: SchadetAnswer) {
+        if (!game.humanMustAnswerSchadet()) return
+        game.answerSchadet(answer)
+        say(OfflineGame.HUMAN, Sayings.schadetAnswer(answer))
+        publish()
+        runBots()
+    }
+
     /** During a Schub against us: the partner tells roughly how good their cards are. */
     fun onAskPartner() {
         if (partnerHint() != null) return
@@ -118,6 +140,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     fun onNextRound() {
         speech = emptyList()
         givenHint = null
+        schadetText = null
         game.nextRound()
         publish()
         runBots()
@@ -128,6 +151,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         notice = null
         speech = emptyList()
         givenHint = null
+        schadetText = null
         game.newMatch()
         publish()
         runBots()
@@ -145,9 +169,23 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 val bot = game.botToAct() ?: break // the human acted (e.g. Schub) in the meantime
                 val tricksBefore = game.state.completedTricks.size
                 val schubBefore = game.state.pendingSchub
-                val action = game.stepBot()
-                say(bot, action)
-                speechPause = if (action.isSpoken()) (settings.speed.speechMs - settings.speed.botDelayMs).coerceAtLeast(0) else 0
+                val spoken = when (val step = game.stepBot()) {
+                    is BotStep.Acted -> {
+                        say(bot, step.action)
+                        step.action.isSpoken()
+                    }
+                    is BotStep.AskedSchadet -> {
+                        say(bot, Sayings.schadetQuestion())
+                        true
+                    }
+                    is BotStep.AnsweredSchadet -> {
+                        val text = Sayings.schadetAnswer(step.answer)
+                        if (game.schadet?.asker == OfflineGame.HUMAN) schadetText = text
+                        say(bot, text)
+                        true
+                    }
+                }
+                speechPause = if (spoken) (settings.speed.speechMs - settings.speed.botDelayMs).coerceAtLeast(0) else 0
                 val s = game.state
                 if (schubBefore != null && s.pendingSchub == null && s.phase == Phase.PLAYING) {
                     notice = SchubNotice(schubBefore.askingPlayer, bot, s.gameValue)
@@ -192,6 +230,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             speech = speech,
             canAskPartner = notice == null && partnerHint() == null && game.partnerHint() != null,
             partnerHint = partnerHint(),
+            canAskSchadet = notice == null && game.humanCanAskSchadet(),
+            waitingForSchadet = game.schadet?.let { it.asker == OfflineGame.HUMAN && it.answer == null } == true,
+            schadetAnswer = schadetText?.takeIf { Schadet.canAsk(game.state, OfflineGame.HUMAN) },
+            partnerAsksSchadet = game.humanMustAnswerSchadet(),
         ),
         settings = settings,
         matchInProgress = matchStarted && game.state.phase != Phase.MATCH_OVER,
