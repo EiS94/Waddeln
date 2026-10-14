@@ -600,6 +600,31 @@ class GameServerTest {
         assertEquals(2, host.table.game!!.partnerHint?.seat)
     }
 
+    @Test
+    fun `the bot partner answers Schadder before the Haubi is led`() = runTest {
+        for (seed in 0 until 300) {
+            val server = newServer(seed = seed)
+            val host = player(server, "host")
+            host.send(ClientMessage.CreateRoom)
+            host.send(ClientMessage.StartMatch)
+            var steps = 0
+            while (host.table.game!!.observation.phase != Phase.PLAYING && steps++ < 100) {
+                host.table.game!!.legalActions.firstOrNull { it != Action.Schub }?.let { host.send(ClientMessage.Act(it)) }
+                advanceTimeBy(500)
+            }
+            advanceUntilIdle()
+            if (!host.table.game!!.canAskSchadet) continue
+
+            host.send(ClientMessage.AskSchadet)
+            assertEquals(0, host.table.game!!.schadetQuestion)
+            assertFalse(host.table.game!!.canAskSchadet, "asked once per round")
+            advanceTimeBy(Timing().botDelayMs + 1)
+            assertEquals(2, host.table.game!!.schadetAnswer?.seat)
+            return@runTest
+        }
+        error("the host never led the first trick with the Haubi")
+    }
+
     private fun TestScope.playUntilRoundOver(humans: List<Player>) {
         repeat(10_000) {
             advanceUntilIdle()

@@ -37,6 +37,14 @@ data class TableUi(
     val waitingForPartner: Boolean = false,
     /** Online: our partner asked us how good our cards are; we answer with a [com.schaubeck.waddeln.rules.agent.PartnerHint]. */
     val partnerAsksUs: Boolean = false,
+    /** We lead the first trick with the Haubi and may ask the partner "Schadder?". */
+    val canAskSchadet: Boolean = false,
+    /** We asked "Schadder?" and wait for the partner's answer. */
+    val waitingForSchadet: Boolean = false,
+    /** The partner's answer to our "Schadder?", shown until we lead. */
+    val schadetAnswer: String? = null,
+    /** The partner asked us "Schadder?"; we answer with a [com.schaubeck.waddeln.rules.agent.SchadetAnswer]. */
+    val partnerAsksSchadet: Boolean = false,
     /** Seats whose human lost the connection; a bot plays for them meanwhile. */
     val absent: Set<Int> = emptySet(),
     /** Online: seats played by a bot (marked, since bots have names like humans). */

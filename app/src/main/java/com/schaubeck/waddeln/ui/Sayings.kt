@@ -5,6 +5,7 @@ import com.schaubeck.waddeln.rules.Rank
 import com.schaubeck.waddeln.rules.Suit
 import com.schaubeck.waddeln.rules.TRICKS_TO_WIN
 import com.schaubeck.waddeln.rules.agent.PartnerHint
+import com.schaubeck.waddeln.rules.agent.SchadetAnswer
 import kotlin.random.Random
 
 /**
@@ -56,6 +57,13 @@ object Sayings {
         1 to listOf("Den letzten Stich mach ich!", "Den letzten hab ich!"),
     )
 
+    // ---- "Schadder?" before leading the Haubi into the first trick ------------------------
+
+    val SCHADET_QUESTION = listOf("Schadder?", "Schadest du?", "Schadet's dir?")
+    val SCHADET_YES = listOf("Ja.", "Ja, schadet.", "Lieber nicht.")
+    val SCHADET_A_LITTLE = listOf("Ein bisschen.", "A bissl.", "Geht scho.")
+    val SCHADET_NO = listOf("Nein.", "Schadet nix.", "Kannst spielen.")
+
     // ---- Picking -------------------------------------------------------------------------
 
     /** A random variant for an action said aloud; null for playing a card. */
@@ -78,6 +86,21 @@ object Sayings {
         PartnerHint.TWO_TRICKS -> HINT_TWO_TRICKS
         PartnerHint.ALL_TRICKS -> HINT_ALL_TRICKS.getValue((TRICKS_TO_WIN - tricksWon).coerceIn(1, TRICKS_TO_WIN))
     }.random(random)
+
+    fun schadetQuestion(random: Random = Random.Default): String = SCHADET_QUESTION.random(random)
+
+    fun schadetAnswer(answer: SchadetAnswer, random: Random = Random.Default): String = when (answer) {
+        SchadetAnswer.YES -> SCHADET_YES
+        SchadetAnswer.A_LITTLE -> SCHADET_A_LITTLE
+        SchadetAnswer.NO -> SCHADET_NO
+    }.random(random)
+
+    /** Label of the buttons a human answers "Schadder?" with. */
+    fun schadetLabel(answer: SchadetAnswer): String = when (answer) {
+        SchadetAnswer.YES -> "Ja"
+        SchadetAnswer.A_LITTLE -> "Ein bisschen"
+        SchadetAnswer.NO -> "Nein"
+    }
 
     /** Short label of a hint level for the buttons a human partner answers with. */
     fun hintLabel(hint: PartnerHint): String = when (hint) {

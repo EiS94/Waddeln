@@ -11,11 +11,28 @@ import com.schaubeck.waddeln.rules.Waddeln
 import com.schaubeck.waddeln.rules.agent.Agent
 import com.schaubeck.waddeln.rules.agent.PartnerHint
 import com.schaubeck.waddeln.rules.agent.PartnerHints
+import com.schaubeck.waddeln.rules.agent.Schadet
+import com.schaubeck.waddeln.rules.agent.SchadetAnswer
 import com.schaubeck.waddeln.rules.agent.RuleBasedAgent
 import com.schaubeck.waddeln.rules.nextPlayer
 import com.schaubeck.waddeln.rules.observationFor
 import com.schaubeck.waddeln.rules.teamOf
 import kotlin.random.Random
+
+/** "Schadder?" before the first lead: who asked and, once given, the partner's answer. */
+data class SchadetTalk(val asker: Int, val answer: SchadetAnswer? = null)
+
+/** What a bot did in one step. */
+sealed interface BotStep {
+    val bot: Int
+
+    data class Acted(override val bot: Int, val action: Action) : BotStep
+
+    /** Before leading the Haubi the bot asks its partner "Schadder?". */
+    data class AskedSchadet(override val bot: Int) : BotStep
+
+    data class AnsweredSchadet(override val bot: Int, val answer: SchadetAnswer) : BotStep
+}
 
 /** Something that happened in the game, shown to the human as a message. */
 sealed interface GameEvent {
@@ -36,6 +53,10 @@ class OfflineGame(
     var state: GameState = Waddeln.newMatch(random)
         private set
 
+    /** "Schadder?" of the current round, if somebody asked. */
+    var schadet: SchadetTalk? = null
+        private set
+
     private val _events = mutableListOf<GameEvent>()
     val events: List<GameEvent> get() = _events
 
@@ -45,9 +66,11 @@ class OfflineGame(
 
     /**
      * The bot that has to act next, or null if the game waits for the human (or a new round).
-     * An open Schub against the human's team is always answered by the human.
+     * An open Schub against the human's team is always answered by the human; an open
+     * "Schadder?" is answered by the asked partner first.
      */
     fun botToAct(): Int? {
+        schadetAnswerer()?.let { return it.takeIf { it != HUMAN } }
         val toMove = state.playerToMove ?: return null
         val pending = state.pendingSchub
         val actor = if (pending == null) {
@@ -60,12 +83,51 @@ class OfflineGame(
     }
 
     /** Lets the next bot act and returns what it did. */
-    fun stepBot(): Action {
+    fun stepBot(): BotStep {
         val bot = checkNotNull(botToAct()) { "No bot to act" }
-        val action = bots[bot].chooseAction(state.observationFor(bot), Waddeln.legalActions(state, bot))
+        val talk = schadet
+        if (talk != null && talk.answer == null) {
+            val answer = Schadet.answerFor(state.observationFor(bot))
+            schadet = talk.copy(answer = answer)
+            return BotStep.AnsweredSchadet(bot, answer)
+        }
+        val obs = state.observationFor(bot)
+        val legal = Waddeln.legalActions(state, bot)
+        var action = bots[bot].chooseAction(obs, legal)
+        if (Schadet.leadsHaubi(state, bot, action)) {
+            if (talk == null) {
+                schadet = SchadetTalk(bot)
+                return BotStep.AskedSchadet(bot)
+            }
+            talk.answer?.let { answer ->
+                val allowed = Schadet.actionsAfter(answer, state, bot, legal)
+                if (action !in allowed) action = bots[bot].chooseAction(obs, allowed)
+            }
+        }
         apply(bot, action)
-        return action
+        return BotStep.Acted(bot, action)
     }
+
+    /** The human leads the first trick with the Haubi and may ask the partner "Schadder?". */
+    fun humanCanAskSchadet(): Boolean = schadet == null && Schadet.canAsk(state, HUMAN)
+
+    /** The human asks; the partner bot answers in its next step. */
+    fun askSchadet() {
+        if (humanCanAskSchadet()) schadet = SchadetTalk(HUMAN)
+    }
+
+    /** True while the partner bot waits for the human's answer to its "Schadder?". */
+    fun humanMustAnswerSchadet(): Boolean = schadetAnswerer() == HUMAN
+
+    fun answerSchadet(answer: SchadetAnswer) {
+        val talk = schadet ?: return
+        if (humanMustAnswerSchadet()) schadet = talk.copy(answer = answer)
+    }
+
+    /** The partner who still has to answer an open "Schadder?" (moot once the asker led). */
+    private fun schadetAnswerer(): Int? = schadet
+        ?.takeIf { it.answer == null && Schadet.canAsk(state, it.asker) }
+        ?.let { (it.asker + 2) % PLAYER_COUNT }
 
     /**
      * The partner's answer when the human asks about their cards during a Schub against the
@@ -78,11 +140,13 @@ class OfflineGame(
     }
 
     fun nextRound() {
+        schadet = null
         state = Waddeln.startNextRound(state, Deal.random(random))
         _events.clear()
     }
 
     fun newMatch() {
+        schadet = null
         state = Waddeln.newMatch(random)
         _events.clear()
     }

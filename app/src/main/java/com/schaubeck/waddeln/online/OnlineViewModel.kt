@@ -21,6 +21,7 @@ import com.schaubeck.waddeln.rules.PLAYER_COUNT
 import com.schaubeck.waddeln.rules.Phase
 import com.schaubeck.waddeln.rules.teamOf
 import com.schaubeck.waddeln.rules.agent.PartnerHint
+import com.schaubeck.waddeln.rules.agent.SchadetAnswer
 import com.schaubeck.waddeln.ui.Sayings
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -58,6 +59,9 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
     /** The variant picked for the partner's answer during the open Schub (stays the same while shown). */
     private var hintText: String? = null
 
+    /** The variant picked for the partner's answer to our "Schadder?". */
+    private var schadetText: String? = null
+
     /** Local time at which the server decides for us (from [com.schaubeck.waddeln.protocol.GameView.timeLeftMs]). */
     private var deadline: Long? = null
     private var noticeJob: Job? = null
@@ -85,6 +89,8 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
     fun act(action: Action) = send(ClientMessage.Act(action))
     fun askPartner() = send(ClientMessage.AskPartner)
     fun answerPartner(hint: PartnerHint) = send(ClientMessage.AnswerPartner(hint))
+    fun askSchadet() = send(ClientMessage.AskSchadet)
+    fun answerSchadet(answer: SchadetAnswer) = send(ClientMessage.AnswerSchadet(answer))
     fun ready() = send(ClientMessage.Ready)
     fun leave() = send(ClientMessage.LeaveRoom)
 
@@ -164,6 +170,15 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
             hintText = text
             say(hint.seat, text)
         }
+        val schadetAsker = game.schadetQuestion
+        if (schadetAsker == null) schadetText = null
+        if (schadetAsker != null && old.schadetQuestion == null) say(schadetAsker, Sayings.schadetQuestion())
+        val schadet = game.schadetAnswer
+        if (schadet != null && old.schadetAnswer == null) {
+            val text = Sayings.schadetAnswer(schadet.answer)
+            if (schadetAsker == now.yourSeat) schadetText = text
+            say(schadet.seat, text)
+        }
     }
 
     private fun say(seat: Int, text: String) {
@@ -177,6 +192,7 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
         val me = table.yourSeat
         val obs = game.observation
         val over = obs.phase == Phase.ROUND_OVER || obs.phase == Phase.MATCH_OVER
+        val beforeFirstLead = obs.phase == Phase.PLAYING && obs.completedTricks.isEmpty() && obs.currentTrick.isEmpty()
         return TableUi(
             obs = obs,
             actions = game.legalActions,
@@ -190,6 +206,10 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
             partnerHint = hintText.takeIf { game.partnerHint?.let { teamOf(it.seat) == obs.team } == true },
             waitingForPartner = game.partnerQuestion == me && game.partnerHint == null,
             partnerAsksUs = game.partnerQuestion == (me + 2) % PLAYER_COUNT && game.partnerHint == null,
+            canAskSchadet = game.canAskSchadet,
+            waitingForSchadet = game.schadetQuestion == me && game.schadetAnswer == null && beforeFirstLead,
+            schadetAnswer = schadetText.takeIf { game.schadetQuestion == me && beforeFirstLead && obs.playerToMove == me },
+            partnerAsksSchadet = game.schadetQuestion == (me + 2) % PLAYER_COUNT && game.schadetAnswer == null && beforeFirstLead,
             absent = table.room.seats.indices.filter { table.room.seats[it].isHuman && !table.room.seats[it].connected }.toSet(),
             bots = table.room.seats.indices.filter { !table.room.seats[it].isHuman }.toSet(),
             waitingForOthers = over && game.ready[me],
