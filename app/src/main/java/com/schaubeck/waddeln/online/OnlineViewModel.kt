@@ -19,7 +19,9 @@ import com.schaubeck.waddeln.protocol.ServerMessage
 import com.schaubeck.waddeln.rules.Action
 import com.schaubeck.waddeln.rules.PLAYER_COUNT
 import com.schaubeck.waddeln.rules.Phase
-import com.schaubeck.waddeln.ui.Texts
+import com.schaubeck.waddeln.rules.teamOf
+import com.schaubeck.waddeln.rules.agent.PartnerHint
+import com.schaubeck.waddeln.ui.Sayings
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -53,6 +55,9 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
     private var notice: SchubNotice? = null
     private var speech = emptyList<Speech>()
 
+    /** The variant picked for the partner's answer during the open Schub (stays the same while shown). */
+    private var hintText: String? = null
+
     /** Local time at which the server decides for us (from [com.schaubeck.waddeln.protocol.GameView.timeLeftMs]). */
     private var deadline: Long? = null
     private var noticeJob: Job? = null
@@ -79,6 +84,7 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
     fun start() = send(ClientMessage.StartMatch)
     fun act(action: Action) = send(ClientMessage.Act(action))
     fun askPartner() = send(ClientMessage.AskPartner)
+    fun answerPartner(hint: PartnerHint) = send(ClientMessage.AnswerPartner(hint))
     fun ready() = send(ClientMessage.Ready)
     fun leave() = send(ClientMessage.LeaveRoom)
 
@@ -138,18 +144,26 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    /** Turns announcements, Schub, answers and partner hints into speech bubbles. */
+    /** Turns announcements, Schub, answers and the talk between partners into speech bubbles. */
     private fun detectSpeech(before: ServerMessage.Table?, now: ServerMessage.Table) {
+        val game = now.game
+        val hint = game?.partnerHint
+        if (hint == null) hintText = null
         val old = before?.game ?: return
-        val game = now.game ?: return
+        game ?: return
         val obs = game.observation
         val last = game.lastAction
         // Views are also sent for other reasons (e.g. connections); only a new state means a new action.
         if (last != null && last.action.isSpoken() && old.observation != obs) {
-            Texts.speech(last.action)?.let { say(last.seat, it) }
+            Sayings.speech(last.action)?.let { say(last.seat, it) }
         }
-        val hint = game.partnerHint
-        if (hint != null && old.partnerHint == null) say(hint.seat, Texts.partnerHint(hint.hint, obs.tricksWon[obs.team]))
+        val asking = game.partnerQuestion
+        if (asking != null && old.partnerQuestion == null) say(asking, Sayings.partnerQuestion())
+        if (hint != null && old.partnerHint == null) {
+            val text = Sayings.partnerHint(hint.hint, obs.tricksWon[teamOf(hint.seat)])
+            hintText = text
+            say(hint.seat, text)
+        }
     }
 
     private fun say(seat: Int, text: String) {
@@ -172,7 +186,10 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
             notice = notice,
             speech = speech,
             canAskPartner = game.canAskPartner,
-            partnerHint = game.partnerHint?.let { Texts.partnerHint(it.hint, obs.tricksWon[obs.team]) },
+            // Only our own partner's answer goes into the answer panel; the opponents' talk is just a bubble.
+            partnerHint = hintText.takeIf { game.partnerHint?.let { teamOf(it.seat) == obs.team } == true },
+            waitingForPartner = game.partnerQuestion == me && game.partnerHint == null,
+            partnerAsksUs = game.partnerQuestion == (me + 2) % PLAYER_COUNT && game.partnerHint == null,
             absent = table.room.seats.indices.filter { table.room.seats[it].isHuman && !table.room.seats[it].connected }.toSet(),
             bots = table.room.seats.indices.filter { !table.room.seats[it].isHuman }.toSet(),
             waitingForOthers = over && game.ready[me],

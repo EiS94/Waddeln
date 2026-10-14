@@ -107,6 +107,7 @@ class MainActivity : ComponentActivity() {
                                 onContinue = onlineViewModel::ready,
                                 onNoticeConfirmed = onlineViewModel::onNoticeConfirmed,
                                 onAskPartner = onlineViewModel::askPartner,
+                                onAnswerPartner = onlineViewModel::answerPartner,
                                 onMenu = { screen = Screen.MENU },
                                 onLeave = onlineViewModel::leave,
                             )

@@ -33,6 +33,10 @@ data class TableUi(
     val canAskPartner: Boolean = false,
     /** The partner's answer to that question, shown until the Schub is answered. */
     val partnerHint: String? = null,
+    /** Online: we asked our human partner and wait for the answer. */
+    val waitingForPartner: Boolean = false,
+    /** Online: our partner asked us how good our cards are; we answer with a [com.schaubeck.waddeln.rules.agent.PartnerHint]. */
+    val partnerAsksUs: Boolean = false,
     /** Seats whose human lost the connection; a bot plays for them meanwhile. */
     val absent: Set<Int> = emptySet(),
     /** Online: seats played by a bot (marked, since bots have names like humans). */
