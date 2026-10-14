@@ -1,0 +1,24 @@
+# Gradle / Android
+.gradle/
+build/
+local.properties
+.externalNativeBuild/
+.cxx/
+/captures/
+*.apk
+*.aab
+
+# IDE (personal settings)
+.idea/
+*.iml
+.vscode/
+
+# Signing keys
+*.jks
+*.keystore
+
+# OS
+.DS_Store
+Thumbs.db
+
+/training.tgz
