@@ -70,6 +70,7 @@ import com.schaubeck.waddeln.rules.Trump
 import com.schaubeck.waddeln.rules.agent.PartnerHint
 import com.schaubeck.waddeln.rules.agent.SchadetAnswer
 import com.schaubeck.waddeln.rules.teamOf
+import com.schaubeck.waddeln.sound.LocalTableSound
 import kotlinx.coroutines.delay
 
 /**
@@ -77,7 +78,8 @@ import kotlinx.coroutines.delay
  * [onContinue] starts the next round or match after the result; [onAskPartner] asks the partner
  * about their cards during a Schub, [onAnswerPartner] (online only) answers such a question;
  * [onAskSchadet] asks the partner "Schadder?" before leading the Haubi, [onAnswerSchadet] answers it;
- * [onLeave] (online only) leaves the room for good.
+ * [onLeave] (online only) leaves the room for good. [soundKey] tells the offline and the online
+ * table apart for the sounds.
  */
 @Composable
 fun GameScreen(
@@ -91,7 +93,10 @@ fun GameScreen(
     onAskSchadet: () -> Unit = {},
     onAnswerSchadet: (SchadetAnswer) -> Unit = {},
     onLeave: (() -> Unit)? = null,
+    soundKey: String = "offline",
 ) {
+    val sound = LocalTableSound.current
+    LaunchedEffect(table) { sound?.observe(soundKey, table) }
     WoodBackground {
         Column(Modifier.fillMaxSize()) {
             TopBar(table.obs)
@@ -232,15 +237,20 @@ private enum class BubbleFrom(val shape: Shape) {
 
 /**
  * What [seat] said last (announcement, Schub, answer, hint), shown for
- * [com.schaubeck.waddeln.game.GameSpeed.speechMs] from when it was said.
+ * [com.schaubeck.waddeln.game.GameSpeed.speechMs] from when it is said.
  */
 @Composable
 private fun SpeechBubble(table: TableUi, seat: Int, from: BubbleFrom, modifier: Modifier = Modifier) {
     val speech: Speech? = table.speech.lastOrNull { it.seat == seat }
     val durationMs = table.speed.speechMs
-    var visible by remember(speech) { mutableStateOf(speech != null && remainingMs(speech, durationMs) > 0) }
+    var visible by remember(speech) { mutableStateOf(speech != null && startsInMs(speech) <= 0 && remainingMs(speech, durationMs) > 0) }
     LaunchedEffect(speech) {
         if (speech == null) return@LaunchedEffect
+        val wait = startsInMs(speech)
+        if (wait > 0) {
+            delay(wait)
+            visible = true
+        }
         delay(remainingMs(speech, durationMs))
         visible = false
     }
@@ -266,6 +276,8 @@ private fun SpeechBubble(table: TableUi, seat: Int, from: BubbleFrom, modifier: 
 }
 
 private fun remainingMs(speech: Speech, durationMs: Long) = durationMs - (SystemClock.elapsedRealtime() - speech.at)
+
+private fun startsInMs(speech: Speech) = speech.at - SystemClock.elapsedRealtime()
 
 /**
  * Name of a seat with badges (dealer, Kritten taken while cutting, laid out cards, lost connection);
@@ -388,12 +400,14 @@ private fun TrickArea(table: TableUi, modifier: Modifier) {
     val plays = if (s.currentTrick.isNotEmpty()) s.currentTrick else completed?.plays.orEmpty()
     val winner = if (showingCompleted) completed.winner else null
     val roundOver = s.phase != Phase.PLAYING
+    val sound = LocalTableSound.current
 
     val collect = remember(s.roundNumber, s.completedTricks.size) { Animatable(0f) }
     LaunchedEffect(s.roundNumber, s.completedTricks.size, showingCompleted, roundOver) {
         // At the end of a round the last trick stays visible below the result.
         if (showingCompleted && !roundOver) {
             delay((speed.trickPauseMs - COLLECT_MS - 100).coerceAtLeast(300))
+            sound?.trickTaken()
             collect.animateTo(1f, tween(COLLECT_MS, easing = FastOutSlowInEasing))
         }
     }

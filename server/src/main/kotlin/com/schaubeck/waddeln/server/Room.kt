@@ -15,12 +15,14 @@ import com.schaubeck.waddeln.rules.PLAYER_COUNT
 import com.schaubeck.waddeln.rules.Phase
 import com.schaubeck.waddeln.rules.Waddeln
 import com.schaubeck.waddeln.rules.agent.Agent
+import com.schaubeck.waddeln.rules.agent.BotTalk
 import com.schaubeck.waddeln.rules.agent.PartnerHint
 import com.schaubeck.waddeln.rules.agent.PartnerHints
 import com.schaubeck.waddeln.rules.agent.Schadet
 import com.schaubeck.waddeln.rules.agent.SchadetAnswer
 import com.schaubeck.waddeln.rules.nextPlayer
 import com.schaubeck.waddeln.rules.observationFor
+import com.schaubeck.waddeln.rules.partnerOf
 import com.schaubeck.waddeln.rules.playersOf
 import com.schaubeck.waddeln.rules.teamOf
 import kotlinx.coroutines.CoroutineScope
@@ -85,13 +87,11 @@ class Room(
     private val ready = BooleanArray(PLAYER_COUNT)
     private var lastAction: SeatAction? = null
 
-    /** Seat that asked its partner during the open Schub, and the partner's answer. */
+    /**
+     * Seat that asked its partner during the open Schub. The answer and "Schadder?" are part of
+     * the game state (everybody hears them, the bots take them into account).
+     */
     private var question: Int? = null
-    private var hint: SeatHint? = null
-
-    /** Seat that asked "Schadder?" in this round, and the partner's answer. */
-    private var schadetAsker: Int? = null
-    private var schadetAnswer: SeatSchadet? = null
     private var botJob: Job? = null
 
     /** Runs out when a human takes too long; [timerState] is the state it was started for. */
@@ -202,35 +202,36 @@ class Room(
 
     fun answerPartner(playerId: String, answer: PartnerHint): String? {
         val seat = seatOf(playerId) ?: return null
+        val s = state ?: return null
         val asking = question ?: return null
-        if (hint != null || partnerOf(asking) != seat) return null
-        hint = SeatHint(seat, answer)
+        if (partnerOf(asking) != seat || !Waddeln.canGiveHint(s, seat)) return null
+        state = Waddeln.giveHint(s, seat, answer)
         changed()
         return null
     }
 
-    private fun partnerOf(seat: Int) = (seat + 2) % PLAYER_COUNT
-
-    private fun canAskPartner(s: GameState, seat: Int): Boolean {
-        val pending = s.pendingSchub ?: return false
-        return question == null && pending.answeringTeam == teamOf(seat)
-    }
+    private fun canAskPartner(s: GameState, seat: Int): Boolean =
+        question == null && Waddeln.canGiveHint(s, partnerOf(seat))
 
     /** A partner played by a bot (also after its human left) answers the question itself. */
     private fun botAnswersQuestion() {
         val s = state ?: return
-        val asking = question ?: return
-        val partner = partnerOf(asking)
-        if (hint != null || s.pendingSchub == null || partner in humanSeats()) return
-        hint = SeatHint(partner, PartnerHints.hintFor(s.observationFor(partner)))
+        val partner = partnerOf(question ?: return)
+        if (partner in humanSeats() || !Waddeln.canGiveHint(s, partner)) return
+        state = Waddeln.giveHint(s, partner, PartnerHints.hintFor(s.observationFor(partner)))
     }
+
+    /** The partner's answer during the open Schub, if given. */
+    private fun currentHint(s: GameState): SeatHint? = s.hints.lastOrNull()
+        ?.takeIf { s.pendingSchub != null && it.schub == s.schubs.lastIndex }
+        ?.let { SeatHint(it.player, it.hint) }
 
     /** Before leading the Haubi into the first trick: asks the partner "Schadder?". */
     fun askSchadet(playerId: String): String? {
         val seat = seatOf(playerId) ?: return null
         val s = state ?: return null
-        if (schadetAsker != null || !Schadet.canAsk(s, seat)) return null
-        schadetAsker = seat
+        if (!Waddeln.canAskSchadet(s, seat)) return null
+        state = Waddeln.askSchadet(s, seat)
         changed()
         return null
     }
@@ -238,42 +239,33 @@ class Room(
     fun answerSchadet(playerId: String, answer: SchadetAnswer): String? {
         val seat = seatOf(playerId) ?: return null
         val s = state ?: return null
-        if (schadetAnswerer(s) != seat) return null
-        schadetAnswer = SeatSchadet(seat, answer)
+        if (Waddeln.schadetAnswerer(s) != seat) return null
+        state = Waddeln.answerSchadet(s, seat, answer)
         changed(timing.speechPauseMs)
         return null
     }
 
-    /** The partner who still has to answer an open "Schadder?" (moot once the asker led). */
-    private fun schadetAnswerer(s: GameState): Int? {
-        val asker = schadetAsker ?: return null
-        if (schadetAnswer != null || !Schadet.canAsk(s, asker)) return null
-        return partnerOf(asker)
-    }
-
     private fun botAnswersSchadet(s: GameState, seat: Int) {
-        schadetAnswer = SeatSchadet(seat, Schadet.answerFor(s.observationFor(seat)))
+        state = Waddeln.answerSchadet(s, seat, Schadet.answerFor(s.observationFor(seat)))
         changed(timing.speechPauseMs)
     }
 
     /**
-     * Lets the bot [actor] act. Before leading the Haubi it asks its partner "Schadder?" and
-     * on "yes" plays another card.
+     * Lets the bot [actor] act, talking like [BotTalk]: before answering a Schub it asks its
+     * partner, before leading the Haubi it asks "Schadder?" and then decides knowing the answer.
      */
     private fun botAct(s: GameState, actor: Int) {
-        val obs = s.observationFor(actor)
-        val legal = Waddeln.legalActions(s, actor)
-        var action = agents[actor].chooseAction(obs, legal)
-        if (Schadet.leadsHaubi(s, actor, action)) {
-            if (schadetAsker == null) {
-                schadetAsker = actor
-                changed(timing.speechPauseMs)
-                return
-            }
-            schadetAnswer?.takeIf { schadetAsker == actor }?.let {
-                val allowed = Schadet.actionsAfter(it.answer, s, actor, legal)
-                if (action !in allowed) action = agents[actor].chooseAction(obs, allowed)
-            }
+        if (question == null && Waddeln.canGiveHint(s, partnerOf(actor))) {
+            question = actor
+            changed(timing.speechPauseMs)
+            return
+        }
+        val legal = Schadet.allowedActions(s, actor, Waddeln.legalActions(s, actor))
+        val action = agents[actor].chooseAction(s.observationFor(actor), legal)
+        if (BotTalk.asksSchadet(s, actor, action)) {
+            state = Waddeln.askSchadet(s, actor)
+            changed(timing.speechPauseMs)
+            return
         }
         apply(actor, action)
     }
@@ -297,10 +289,7 @@ class Room(
         val after = Waddeln.apply(before, seat, action)
         state = after
         lastAction = SeatAction(seat, action)
-        if (after.pendingSchub == null) {
-            question = null
-            hint = null
-        }
+        if (after.pendingSchub == null) question = null
         if (before.result == null) after.result?.let { logRoundEnd(after) }
         val pause = when {
             after.completedTricks.size > before.completedTricks.size -> timing.trickPauseMs
@@ -319,8 +308,6 @@ class Room(
         if (waiting.isEmpty() || waiting.any { !ready[it] }) return
         ready.fill(false)
         lastAction = null
-        schadetAsker = null
-        schadetAnswer = null
         if (s.phase == Phase.MATCH_OVER) {
             state = Waddeln.newMatch(random)
             logMatchStart()
@@ -347,7 +334,7 @@ class Room(
         // Nobody watching: the game waits for the players to come back.
         if (humans.isEmpty() || s.playerToMove == null) return stopTimer()
         // An open "Schadder?" is answered first.
-        val answerer = schadetAnswerer(s)
+        val answerer = Waddeln.schadetAnswerer(s)
         if (answerer != null) {
             if (answerer in humans) return startTimer(s)
             stopTimer()
@@ -355,7 +342,7 @@ class Room(
                 delay(pauseMs + timing.botDelayMs)
                 botJob = null
                 val current = state ?: return@launch
-                if (schadetAnswerer(current) == answerer) botAnswersSchadet(current, answerer)
+                if (Waddeln.schadetAnswerer(current) == answerer) botAnswersSchadet(current, answerer)
             }
             return
         }
@@ -381,7 +368,7 @@ class Room(
             delay(timeout)
             val current = state ?: return@launch
             if (current !== s) return@launch
-            schadetAnswerer(current)?.let { seat ->
+            Waddeln.schadetAnswerer(current)?.let { seat ->
                 timeoutJob = null
                 log.info("Room {}: time is up for {}, the bot answers Schadder", code, seatName(seat))
                 return@launch botAnswersSchadet(current, seat)
@@ -390,7 +377,8 @@ class Room(
             val actor = nextBotActor(current, humanSeats = emptySet()) ?: return@launch
             timeoutJob = null
             log.info("Room {}: time is up for {}, the bot decides", code, seatName(actor))
-            val action = agents[actor].chooseAction(current.observationFor(actor), Waddeln.legalActions(current, actor))
+            val legal = Schadet.allowedActions(current, actor, Waddeln.legalActions(current, actor))
+            val action = agents[actor].chooseAction(current.observationFor(actor), legal)
             apply(actor, action)
         }
     }
@@ -459,10 +447,10 @@ class Room(
             timeLeftMs = turnDeadline?.let { (it - clock()).coerceAtLeast(0) },
             canAskPartner = canAskPartner(s, seat),
             partnerQuestion = question,
-            partnerHint = hint,
-            canAskSchadet = schadetAsker == null && Schadet.canAsk(s, seat),
-            schadetQuestion = schadetAsker,
-            schadetAnswer = schadetAnswer,
+            partnerHint = currentHint(s),
+            canAskSchadet = Waddeln.canAskSchadet(s, seat),
+            schadetQuestion = s.schadet?.asker,
+            schadetAnswer = s.schadet?.let { talk -> talk.answer?.let { SeatSchadet(partnerOf(talk.asker), it) } },
         )
     }
 

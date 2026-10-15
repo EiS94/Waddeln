@@ -9,7 +9,7 @@ from torch import nn
 
 from .bots import apply_discard_rule
 from .engine import A_SCHUB, Observation
-from .features import INPUT_SIZE, encode_actions
+from .features import INPUT_SIZE, encode_actions, for_model
 
 DEFAULT_HIDDEN = (512, 512, 256)
 
@@ -56,7 +56,8 @@ class ModelAgent:
     def scores(self, obs: Observation, legal: list[int]):
         x = encode_actions(obs, legal)
         with torch.no_grad():
-            return x, self.model(torch.from_numpy(x)).numpy()
+            # Older checkpoints (before the table talk features) can still play, e.g. in evaluate.py
+            return x, self.model(torch.from_numpy(for_model(x, self.model.input_size))).numpy()
 
     def choose_with_input(self, obs: Observation, legal: list[int]):
         """Returns (action, network input row of that action); the row is None for forced moves."""

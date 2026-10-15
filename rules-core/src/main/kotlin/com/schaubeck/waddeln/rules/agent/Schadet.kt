@@ -3,8 +3,8 @@ package com.schaubeck.waddeln.rules.agent
 import com.schaubeck.waddeln.rules.Action
 import com.schaubeck.waddeln.rules.GameState
 import com.schaubeck.waddeln.rules.Observation
-import com.schaubeck.waddeln.rules.Phase
 import com.schaubeck.waddeln.rules.Rank
+import com.schaubeck.waddeln.rules.Waddeln
 import kotlinx.serialization.Serializable
 
 /** Answer to "Schadder?": would leading the Haubi (Bekennen-Pflicht) cost the partner a good card? */
@@ -18,12 +18,7 @@ enum class SchadetAnswer { NO, A_LITTLE, YES }
 object Schadet {
 
     /** True if [player] is about to lead the first trick and holds the Haubi, so asking makes sense. */
-    fun canAsk(state: GameState, player: Int): Boolean {
-        val trump = state.trump ?: return false
-        return state.phase == Phase.PLAYING && state.pendingSchub == null &&
-            state.completedTricks.isEmpty() && state.currentTrick.isEmpty() &&
-            state.playerToMove == player && trump.haubi in state.hands[player]
-    }
+    fun canAsk(state: GameState, player: Int): Boolean = Waddeln.leadsFirstTrickWithHaubi(state, player)
 
     /** True if [action] leads the Haubi into the first trick (the move "Schadder?" is asked before). */
     fun leadsHaubi(state: GameState, player: Int, action: Action): Boolean =
@@ -38,6 +33,12 @@ object Schadet {
         val haubi = Action.PlayCard(state.trump!!.haubi)
         val others = legalActions.filter { it is Action.PlayCard && it != haubi }
         return others.ifEmpty { legalActions }
+    }
+
+    /** The actions [player] chooses from: restricted by [actionsAfter] once their own "Schadder?" was answered. */
+    fun allowedActions(state: GameState, player: Int, legalActions: List<Action>): List<Action> {
+        val answer = state.schadet?.takeIf { it.asker == player }?.answer ?: return legalActions
+        return actionsAfter(answer, state, player, legalActions)
     }
 
     /**

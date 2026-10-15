@@ -13,6 +13,8 @@ import com.schaubeck.waddeln.rules.Suit
 import com.schaubeck.waddeln.rules.Trump
 import com.schaubeck.waddeln.rules.teamOf
 import com.schaubeck.waddeln.rules.trickWinnerIndex
+import com.schaubeck.waddeln.rules.agent.PartnerHint
+import com.schaubeck.waddeln.rules.agent.SchadetAnswer
 
 /**
  * Integer codes for actions, shared with the Python simulator (training/waddeln/engine.py):
@@ -53,9 +55,17 @@ object ActionCodec {
  * Seats are relative to the observing player: 0 = self, 1 = next (left), 2 = partner, 3 = right.
  */
 object FeatureEncoder {
-    const val STATE_SIZE = 478
+    const val STATE_SIZE = 517
     const val ACTION_SIZE = ActionCodec.SIZE + 4
     const val INPUT_SIZE = STATE_SIZE + ACTION_SIZE
+
+    /**
+     * State features of models trained before the table talk (Schub calls, partner hints,
+     * "Schadder?", known Haubi-Farbe voids) was added. New features are only appended, so such a
+     * model gets the first [LEGACY_STATE_SIZE] state features (see [encodeFor]).
+     */
+    const val LEGACY_STATE_SIZE = 478
+    const val LEGACY_INPUT_SIZE = LEGACY_STATE_SIZE + ACTION_SIZE
 
     private fun rel(obs: Observation, seat: Int) = (seat - obs.player + PLAYER_COUNT) % PLAYER_COUNT
 
@@ -142,6 +152,27 @@ object FeatureEncoder {
         scalar(if (leading != null && teamOf(leading.player) == own) 1f else 0f) // 475: own team holds the trick
         scalar(if (leading != null && teamOf(leading.player) == opp) 1f else 0f) // 476: opponents hold it
         scalar(leading?.let { trumpValue(trump, it.card) } ?: 0f)             // 477: strength of the leading card
+
+        // ---- Table talk (everybody hears it) ----
+        for (r in 0 until PLAYER_COUNT) {                                     // 478: latest hint per seat
+            val seat = (obs.player + r) % PLAYER_COUNT
+            oneHot(obs.hints.lastOrNull { it.player == seat }?.hint?.ordinal ?: -1, PartnerHint.entries.size)
+        }
+        val schadet = obs.schadet
+        oneHot(schadet?.let { rel(obs, it.asker) } ?: -1, 4)                  // 498: who asked "Schadder?" (holds the Haubi)
+        oneHot(schadet?.answer?.ordinal ?: -1, SchadetAnswer.entries.size)    // 502: the partner's answer
+        val voids = haubiFarbeVoids(obs)
+        for (r in 0 until PLAYER_COUNT) {                                     // 505: known to have no Haubi-Farbe
+            scalar(if ((obs.player + r) % PLAYER_COUNT in voids) 1f else 0f)
+        }
+        for (r in 0 until PLAYER_COUNT) {                                     // 509: Schubs said per seat
+            val seat = (obs.player + r) % PLAYER_COUNT
+            scalar(obs.schubs.count { it.player == seat } / 2f)
+        }
+        for (r in 0 until PLAYER_COUNT) {                                     // 513: said Schub before the first card
+            val seat = (obs.player + r) % PLAYER_COUNT
+            scalar(if (obs.schubs.any { it.player == seat && it.cardsPlayed == 0 }) 1f else 0f)
+        }
         check(o == STATE_SIZE) { "Feature layout mismatch: $o" }
         return f
     }
@@ -157,6 +188,22 @@ object FeatureEncoder {
             f[ActionCodec.SIZE + 3] = if (isUnbeatable(obs, action.card)) 1f else 0f
         }
         return f
+    }
+
+    /**
+     * Players known to hold no Haubi-Farbe: the Haubi was led into the first trick and they
+     * followed with neither Haubi-Farbe nor a Kritte while the Bekennen-Pflicht was in force.
+     */
+    fun haubiFarbeVoids(obs: Observation): Set<Int> {
+        val trump = obs.trump ?: return emptySet()
+        val firstTrick = obs.completedTricks.firstOrNull()?.plays ?: obs.currentTrick
+        if (firstTrick.firstOrNull()?.card != trump.haubi) return emptySet()
+        val voids = mutableSetOf<Int>()
+        for (play in firstTrick.drop(1)) {
+            if (play.card.isKritte) break
+            if (!trump.isHaubiFarbe(play.card)) voids += play.player
+        }
+        return voids
     }
 
     /** The play currently winning the trick, or null if the trick is empty / trump not yet fixed. */
@@ -187,4 +234,11 @@ object FeatureEncoder {
 
     /** Network input for one candidate action: state features followed by action features. */
     fun encode(obs: Observation, action: Action): FloatArray = encodeState(obs) + encodeAction(obs, action)
+
+    /** Network input for a model with [inputSize] inputs: the current layout or the legacy one. */
+    fun encodeFor(inputSize: Int, state: FloatArray, action: FloatArray): FloatArray = when (inputSize) {
+        INPUT_SIZE -> state + action
+        LEGACY_INPUT_SIZE -> state.copyOf(LEGACY_STATE_SIZE) + action
+        else -> throw IllegalArgumentException("Model has $inputSize inputs, expected $INPUT_SIZE or $LEGACY_INPUT_SIZE")
+    }
 }

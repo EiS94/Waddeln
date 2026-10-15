@@ -19,6 +19,7 @@ import onnxruntime as ort
 import torch
 
 from waddeln import engine as E
+from waddeln import talk as T
 from waddeln.bots import RuleBot
 from waddeln.features import INPUT_SIZE, encode_actions
 from waddeln.model import QNet, load_checkpoint
@@ -47,11 +48,16 @@ def sample_inputs(count: int, seed: int = 7) -> list[np.ndarray]:
         state = E.new_random_match(rng)
         while state.phase in (E.SCHLAG, E.FARBE, E.PLAYING) and len(out) < count:
             actor = E.seated_actor(state)
-            legal = E.legal_actions(state, actor)
+            T.hint_before_answer(state, actor)
+            legal = T.allowed_actions(state, actor, E.legal_actions(state, actor))
             obs = E.observe(state, actor)
             if len(legal) > 1:
                 out.append(encode_actions(obs, legal))
-            E.apply(state, actor, bot.choose(obs, legal))
+            action = bot.choose(obs, legal)
+            if T.asks_schadet(state, actor, action):
+                T.ask_and_answer_schadet(state, actor)
+                continue
+            E.apply(state, actor, action)
     return out
 
 
@@ -77,6 +83,9 @@ def main() -> None:
         model = QNet((int(args.checkpoint.split(":")[1]),))
     else:
         model, _ = load_checkpoint(args.checkpoint)
+    if model.input_size != INPUT_SIZE:
+        raise SystemExit(f"{args.checkpoint} has {model.input_size} inputs, the features have {INPUT_SIZE}: "
+                         "migrate it first (migrate_checkpoint.py)")
     out = Path(args.output)
     export(model, out)
     inputs = sample_inputs(50)

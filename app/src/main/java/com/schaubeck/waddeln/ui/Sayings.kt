@@ -18,28 +18,28 @@ object Sayings {
     // ---- Announcements -------------------------------------------------------------------
 
     val SCHLAG: Map<Rank, List<String>> = mapOf(
-        Rank.SEVEN to listOf("Sieben", "Siebener"),
-        Rank.EIGHT to listOf("Acht", "Achter"),
-        Rank.NINE to listOf("Neun", "Neuner"),
-        Rank.TEN to listOf("Zehn", "Zehner"),
-        Rank.UNTER to listOf("Unter"),
-        Rank.OBER to listOf("Ober"),
-        Rank.KOENIG to listOf("König", "Könige"),
-        Rank.ASS to listOf("Ass", "Sau", "Assen"),
+        Rank.SEVEN to listOf("Sieben", "Siebener", "Die Siebener"),
+        Rank.EIGHT to listOf("Acht", "Achter", "Die Achter"),
+        Rank.NINE to listOf("Neun", "Neuner", "Die Neuner"),
+        Rank.TEN to listOf("Zehn", "Zehner", "Die Zehner"),
+        Rank.UNTER to listOf("Unter", "Die Unter"),
+        Rank.OBER to listOf("Ober", "Die Ober"),
+        Rank.KOENIG to listOf("König", "Könige", "Die Könige"),
+        Rank.ASS to listOf("Ass", "Sau", "Assen", "Die Assen"),
     )
 
     val FARBE: Map<Suit, List<String>> = mapOf(
-        Suit.SCHELL to listOf("Schell", "Schellen"),
-        Suit.HERZ to listOf("Herz"),
-        Suit.EICHEL to listOf("Eichel"),
-        Suit.GRAS to listOf("Gras", "Grün", "Laub"),
+        Suit.SCHELL to listOf("Schell", "In Schell"),
+        Suit.HERZ to listOf("Herz", "In Herz"),
+        Suit.EICHEL to listOf("Eichel", "In Eichel"),
+        Suit.GRAS to listOf("Gras", "Grün", "Laub", "In Grün"),
     )
 
     // ---- Schub ---------------------------------------------------------------------------
 
     val SCHUB = listOf("Schub!", "Geht ihr?", "Gehen?", "Ab mit euch")
     val BLEIBEN = listOf("Wir bleiben!", "Bleiben!", "Nix da, wir bleiben.")
-    val GEHEN = listOf("Wir gehen.", "Gehen.", "Müss ma gehen.")
+    val GEHEN = listOf("Wir gehen.", "Gehen.", "Müss ma gehen.", "Da müss ma gehen.")
 
     // ---- Asking the partner during a Schub ----------------------------------------------
 
@@ -59,10 +59,10 @@ object Sayings {
 
     // ---- "Schadder?" before leading the Haubi into the first trick ------------------------
 
-    val SCHADET_QUESTION = listOf("Schadder?", "Schadest du?", "Schadet's dir?")
-    val SCHADET_YES = listOf("Ja.", "Ja, schadet.", "Lieber nicht.")
+    val SCHADET_QUESTION = listOf("Schadder?", "Schadet er?", "Schadet er dir?")
+    val SCHADET_YES = listOf("Ja.", "Ja, schadet.")
     val SCHADET_A_LITTLE = listOf("Ein bisschen.", "A bissl.", "Geht scho.")
-    val SCHADET_NO = listOf("Nein.", "Schadet nix.", "Kannst spielen.")
+    val SCHADET_NO = listOf("Nein.", "Schadet net.", "Kannst spielen.")
 
     // ---- Picking -------------------------------------------------------------------------
 

@@ -4,6 +4,7 @@ import android.app.Application
 import android.os.SystemClock
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.schaubeck.waddeln.game.ANSWER_DELAY_MS
 import com.schaubeck.waddeln.game.GameSpeed
 import com.schaubeck.waddeln.game.SchubNotice
 import com.schaubeck.waddeln.game.SettingsStore
@@ -164,11 +165,13 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
             Sayings.speech(last.action)?.let { say(last.seat, it) }
         }
         val asking = game.partnerQuestion
-        if (asking != null && old.partnerQuestion == null) say(asking, Sayings.partnerQuestion())
+        val newQuestion = asking != null && old.partnerQuestion == null
+        if (newQuestion) say(asking, Sayings.partnerQuestion())
         if (hint != null && old.partnerHint == null) {
             val text = Sayings.partnerHint(hint.hint, obs.tricksWon[teamOf(hint.seat)])
             hintText = text
-            say(hint.seat, text)
+            // A bot partner answers at once; the answer still follows the question.
+            say(hint.seat, text, delayMs = if (newQuestion) ANSWER_DELAY_MS else 0)
         }
         val schadetAsker = game.schadetQuestion
         if (schadetAsker == null) schadetText = null
@@ -181,8 +184,8 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    private fun say(seat: Int, text: String) {
-        speech = (speech + Speech(seat, text, SystemClock.elapsedRealtime())).takeLast(MAX_SPEECH)
+    private fun say(seat: Int, text: String, delayMs: Long = 0) {
+        speech = (speech + Speech(seat, text, SystemClock.elapsedRealtime() + delayMs)).takeLast(MAX_SPEECH)
     }
 
     private fun refreshGame() = update { it }

@@ -5,8 +5,9 @@ import numpy as np
 import torch
 
 from waddeln import engine as E
+from waddeln import talk as T
 from waddeln.bots import RandomBot, RuleBot
-from waddeln.features import INPUT_SIZE
+from waddeln.features import INPUT_SIZE, LEGACY_STATE_SIZE, STATE_SIZE
 from waddeln.model import ModelAgent, QNet, load_checkpoint, save_checkpoint
 from waddeln.selfplay import evaluate, play_match
 
@@ -96,7 +97,7 @@ def test_batched_choice_equals_single_model_agent():
     mismatches = []
 
     def spy(state, player, action, check=True):
-        legal = E.legal_actions(state, player)
+        legal = T.allowed_actions(state, player, E.legal_actions(state, player))
         if len(legal) > 1:
             expected = single.choose(E.observe(state, player), legal)
             if expected != action:
@@ -109,6 +110,18 @@ def test_batched_choice_equals_single_model_agent():
     finally:
         E.apply = original_step_apply
     assert not mismatches
+
+
+def test_selfplay_inputs_contain_table_talk():
+    """Bots ask their partner before answering a Schub and ask "Schadder?" before leading the Haubi."""
+    agent = ModelAgent(QNet((32,)), epsilon=0.3, rng=random.Random(1))
+    talk = np.zeros(STATE_SIZE - LEGACY_STATE_SIZE)
+    for seed in range(20):
+        X, _, _ = play_match([agent] * 4, random.Random(seed), record_seats=[0, 1, 2, 3])
+        talk += X[:, LEGACY_STATE_SIZE:STATE_SIZE].sum(axis=0)
+    hints, asker, answer = talk[0:20], talk[20:24], talk[24:27]
+    assert hints.sum() > 0 and asker.sum() > 0 and answer.sum() > 0
+    assert talk[31:35].sum() > 0, "Schubs per seat"
 
 
 def test_batched_records_only_model_seats_of_mixed_matches():

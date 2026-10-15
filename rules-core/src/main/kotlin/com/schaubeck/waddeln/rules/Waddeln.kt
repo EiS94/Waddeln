@@ -1,5 +1,7 @@
 package com.schaubeck.waddeln.rules
 
+import com.schaubeck.waddeln.rules.agent.PartnerHint
+import com.schaubeck.waddeln.rules.agent.SchadetAnswer
 import kotlin.random.Random
 
 /** The rules engine: pure functions from state + action to new state. */
@@ -110,13 +112,60 @@ object Waddeln {
             is Action.AnnounceSchlag -> state.copy(schlag = action.rank, phase = Phase.FARBE)
             is Action.AnnounceFarbe -> fixHaubi(state, action.suit)
             is Action.PlayCard -> playCard(state, player, action.card)
-            Action.Schub -> state.copy(pendingSchub = PendingSchub(player), lastSchubTeam = teamOf(player))
+            Action.Schub -> state.copy(
+                pendingSchub = PendingSchub(player),
+                lastSchubTeam = teamOf(player),
+                schubs = state.schubs + SchubCall(player, state.cardsPlayed),
+            )
             Action.Bleiben -> state.copy(pendingSchub = null, gameValue = state.gameValue + 1)
             Action.Gehen -> {
                 val pending = state.pendingSchub!!
                 endRound(state, RoundResult(pending.askingTeam, state.gameValue, RoundEndReason.GIVEN_UP))
             }
         }
+    }
+
+    // ---- Table talk: not actions of the game, but heard by everybody and part of the state ----
+
+    /**
+     * During a Schub, [player] of the asked team may tell (once per Schub, on the partner's
+     * question) how good their cards are.
+     */
+    fun canGiveHint(state: GameState, player: Int): Boolean {
+        val pending = state.pendingSchub ?: return false
+        return teamOf(player) == pending.answeringTeam && state.hints.none { it.schub == state.schubs.lastIndex }
+    }
+
+    fun giveHint(state: GameState, player: Int, hint: PartnerHint): GameState {
+        if (!canGiveHint(state, player)) throw IllegalActionException("Player $player may not give a hint now")
+        return state.copy(hints = state.hints + HintCall(player, hint, state.schubs.lastIndex))
+    }
+
+    /** True while [player] is about to lead the first trick holding the Haubi (the moment for "Schadder?"). */
+    fun leadsFirstTrickWithHaubi(state: GameState, player: Int): Boolean {
+        val trump = state.trump ?: return false
+        return state.phase == Phase.PLAYING && state.pendingSchub == null &&
+            state.completedTricks.isEmpty() && state.currentTrick.isEmpty() &&
+            state.playerToMove == player && trump.haubi in state.hands[player]
+    }
+
+    /** "Schadder?" may be asked once per round, by the player leading the first trick with the Haubi. */
+    fun canAskSchadet(state: GameState, player: Int): Boolean =
+        state.schadet == null && leadsFirstTrickWithHaubi(state, player)
+
+    fun askSchadet(state: GameState, player: Int): GameState {
+        if (!canAskSchadet(state, player)) throw IllegalActionException("Player $player may not ask Schadder now")
+        return state.copy(schadet = SchadetTalk(player))
+    }
+
+    /** The partner who still has to answer an open "Schadder?" (none once it became moot by a lead). */
+    fun schadetAnswerer(state: GameState): Int? = state.schadet
+        ?.takeIf { it.answer == null && leadsFirstTrickWithHaubi(state, it.asker) }
+        ?.let { partnerOf(it.asker) }
+
+    fun answerSchadet(state: GameState, player: Int, answer: SchadetAnswer): GameState {
+        if (schadetAnswerer(state) != player) throw IllegalActionException("Player $player may not answer Schadder now")
+        return state.copy(schadet = state.schadet!!.copy(answer = answer))
     }
 
     private fun fixHaubi(state: GameState, farbe: Suit): GameState {

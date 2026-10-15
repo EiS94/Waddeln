@@ -3,10 +3,10 @@ package com.schaubeck.waddeln.server
 import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
+import ai.onnxruntime.TensorInfo
 import com.schaubeck.waddeln.protocol.BotStrength
 import com.schaubeck.waddeln.rules.agent.Agent
 import com.schaubeck.waddeln.rules.agent.RuleBasedAgent
-import com.schaubeck.waddeln.rules.ml.FeatureEncoder
 import com.schaubeck.waddeln.rules.ml.MlAgent
 import com.schaubeck.waddeln.rules.ml.QFunction
 import org.slf4j.LoggerFactory
@@ -46,11 +46,14 @@ class OrtQFunction(modelBytes: ByteArray) : QFunction, AutoCloseable {
     private val env = OrtEnvironment.getEnvironment()
     private val session: OrtSession = env.createSession(modelBytes)
 
+    /** Input width of the loaded model (it may predate the table talk features). */
+    override val inputSize: Int = (session.inputInfo.getValue("input").info as TensorInfo).shape[1].toInt()
+
     override fun evaluate(inputs: Array<FloatArray>): FloatArray {
-        val buffer = FloatBuffer.allocate(inputs.size * FeatureEncoder.INPUT_SIZE)
+        val buffer = FloatBuffer.allocate(inputs.size * inputSize)
         inputs.forEach { buffer.put(it) }
         buffer.rewind()
-        val shape = longArrayOf(inputs.size.toLong(), FeatureEncoder.INPUT_SIZE.toLong())
+        val shape = longArrayOf(inputs.size.toLong(), inputSize.toLong())
         OnnxTensor.createTensor(env, buffer, shape).use { tensor ->
             session.run(mapOf("input" to tensor)).use { result ->
                 @Suppress("UNCHECKED_CAST")

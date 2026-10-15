@@ -6,7 +6,7 @@ produced by the Kotlin engine (./gradlew :rules-core:generateProtocols) and comp
 Cards are ints 0..31: suit * 8 + rank.
 Suits: SCHELL, HERZ, EICHEL, GRAS. Ranks: 7, 8, 9, 10, UNTER, OBER, KOENIG, ASS.
 Action codes (see ActionCodec.kt): 0..7 Schlag, 8..11 Farbe, 12..43 play card, 44 Schub,
-45 Bleiben, 46 Gehen.
+45 Bleiben, 46 Gehen. Table talk (partner hints, "Schadder?") is no action but part of the state.
 """
 from __future__ import annotations
 
@@ -73,6 +73,10 @@ def team_of(player: int) -> int:
 
 def next_player(player: int) -> int:
     return (player + 1) % PLAYER_COUNT
+
+
+def partner_of(player: int) -> int:
+    return (player + 2) % PLAYER_COUNT
 
 
 def abheber_of(dealer: int) -> int:
@@ -184,6 +188,9 @@ class State:
     game_value: int = BASE_GAME_VALUE
     last_schub_team: int | None = None
     pending_schub: int | None = None  # asking player
+    schubs: list[tuple[int, int]] = field(default_factory=list)  # (player, cards played before)
+    hints: list[tuple[int, int, int]] = field(default_factory=list)  # (player, hint, schub index)
+    schadet: tuple[int, int | None] | None = None  # (asker, answer)
     result: tuple[int, int, str] | None = None  # (winning team, points, reason)
 
     @property
@@ -212,6 +219,10 @@ class State:
 
     def is_gespannt(self, team: int) -> bool:
         return self.scores[team] >= GESPANNT_POINTS
+
+    @property
+    def cards_played(self) -> int:
+        return len(self.completed_tricks) * PLAYER_COUNT + len(self.current_trick)
 
     @property
     def player_to_move(self) -> int | None:
@@ -309,6 +320,7 @@ def apply(state: State, player: int, action: int, check: bool = True) -> None:
     elif action < A_SCHUB:
         _play_card(state, player, action - CARD_OFFSET)
     elif action == A_SCHUB:
+        state.schubs.append((player, state.cards_played))
         state.pending_schub = player
         state.last_schub_team = team_of(player)
     elif action == A_BLEIBEN:
@@ -319,6 +331,58 @@ def apply(state: State, player: int, action: int, check: bool = True) -> None:
         _end_round(state, (asking_team, state.game_value, GIVEN_UP))
     else:
         raise IllegalAction(f"unknown action {action}")
+
+
+# ---- Table talk (mirror of the talk functions in Waddeln.kt) ------------------------------
+
+# PartnerHint ordinals: NOTHING, LITTLE, ONE_TRICK, TWO_TRICKS, ALL_TRICKS
+HINT_COUNT = 5
+# SchadetAnswer ordinals
+SCHADET_NO, SCHADET_A_LITTLE, SCHADET_YES = range(3)
+
+
+def can_give_hint(state: State, player: int) -> bool:
+    if state.pending_schub is None:
+        return False
+    current = len(state.schubs) - 1
+    return team_of(player) != team_of(state.pending_schub) and not any(h[2] == current for h in state.hints)
+
+
+def give_hint(state: State, player: int, hint: int) -> None:
+    if not can_give_hint(state, player):
+        raise IllegalAction(f"player {player} may not give a hint now")
+    state.hints.append((player, hint, len(state.schubs) - 1))
+
+
+def leads_first_trick_with_haubi(state: State, player: int) -> bool:
+    return (state.strengths is not None and state.phase == PLAYING and state.pending_schub is None
+            and not state.completed_tricks and not state.current_trick
+            and state.player_to_move == player and state.haubi in state.hands[player])
+
+
+def can_ask_schadet(state: State, player: int) -> bool:
+    return state.schadet is None and leads_first_trick_with_haubi(state, player)
+
+
+def ask_schadet(state: State, player: int) -> None:
+    if not can_ask_schadet(state, player):
+        raise IllegalAction(f"player {player} may not ask Schadder now")
+    state.schadet = (player, None)
+
+
+def schadet_answerer(state: State) -> int | None:
+    if state.schadet is None:
+        return None
+    asker, answer = state.schadet
+    if answer is not None or not leads_first_trick_with_haubi(state, asker):
+        return None
+    return partner_of(asker)
+
+
+def answer_schadet(state: State, player: int, answer: int) -> None:
+    if schadet_answerer(state) != player:
+        raise IllegalAction(f"player {player} may not answer Schadder now")
+    state.schadet = (state.schadet[0], answer)
 
 
 def _fix_haubi(state: State, farbe: int) -> None:
@@ -393,6 +457,9 @@ class Observation:
     last_schub_team: int | None
     pending_schub: int | None
     laid_out_counts: list[int] | None
+    schubs: list[tuple[int, int]] = field(default_factory=list)
+    hints: list[tuple[int, int, int]] = field(default_factory=list)
+    schadet: tuple[int, int | None] | None = None
 
     @property
     def team(self) -> int:
@@ -417,5 +484,5 @@ def observe(state: State, player: int) -> Observation:
         current_trick=state.current_trick, completed_tricks=state.completed_tricks,
         tricks_won=state.tricks_won, game_value=state.game_value,
         last_schub_team=state.last_schub_team, pending_schub=state.pending_schub,
-        laid_out_counts=laid,
+        laid_out_counts=laid, schubs=state.schubs, hints=state.hints, schadet=state.schadet,
     )

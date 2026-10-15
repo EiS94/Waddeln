@@ -6,6 +6,7 @@ import random
 import numpy as np
 
 from . import engine as E
+from . import talk as T
 from .bots import apply_discard_rule
 from .features import INPUT_SIZE, encode_actions
 
@@ -14,7 +15,9 @@ def play_match(agents, rng: random.Random, record_seats=(), max_rounds: int = 20
     """Plays one match. Agents with `choose_with_input` on seats in `record_seats` produce samples.
 
     Returns (X, y, final_state): X holds the network inputs of all recorded decisions, y the points
-    the decider's team gained (+) or conceded (−) in that game (round).
+    the decider's team gained (+) or conceded (−) in that game (round). All seats talk at the table
+    like bots (talk.py); a decision that leads to "Schadder?" is taken again with the answer and
+    only the second one is recorded.
     """
     state = E.new_random_match(rng)
     xs: list[np.ndarray] = []
@@ -23,15 +26,20 @@ def play_match(agents, rng: random.Random, record_seats=(), max_rounds: int = 20
         pending: list[tuple[int, np.ndarray]] = []
         while state.phase in (E.SCHLAG, E.FARBE, E.PLAYING):
             actor = E.seated_actor(state)
-            legal = E.legal_actions(state, actor)
+            T.hint_before_answer(state, actor)
+            legal = T.allowed_actions(state, actor, E.legal_actions(state, actor))
             obs = E.observe(state, actor)
             agent = agents[actor]
+            row = None
             if actor in record_seats:
                 action, row = agent.choose_with_input(obs, legal)
-                if row is not None:
-                    pending.append((actor, row))
             else:
                 action = agent.choose(obs, legal)
+            if T.asks_schadet(state, actor, action):
+                T.ask_and_answer_schadet(state, actor)
+                continue
+            if row is not None:
+                pending.append((actor, row))
             E.apply(state, actor, action, check=False)
         team, points, _ = state.result
         for seat, row in pending:
@@ -129,17 +137,25 @@ class BatchedSelfPlay:
                         slot.state = E.start_next_round(st, *E.random_deal(self.rng))
                     continue
                 actor = E.seated_actor(st)
-                legal = E.legal_actions(st, actor)
+                T.hint_before_answer(st, actor)
+                legal = T.allowed_actions(st, actor, E.legal_actions(st, actor))
                 obs = E.observe(st, actor)
                 agent = slot.agents[actor]
                 if agent is not MODEL:
-                    E.apply(st, actor, agent.choose(obs, legal), check=False)
+                    a = agent.choose(obs, legal)
+                    if T.asks_schadet(st, actor, a):
+                        T.ask_and_answer_schadet(st, actor)  # decides again with the answer
+                    else:
+                        E.apply(st, actor, a, check=False)
                     continue
                 if len(legal) == 1 and legal[0] != E.A_SCHUB:
                     E.apply(st, actor, legal[0], check=False)
                     continue
                 if self.rng.random() < self.epsilon:
                     a = apply_discard_rule(obs, legal, legal[self.rng.randrange(len(legal))])
+                    if T.asks_schadet(st, actor, a):
+                        T.ask_and_answer_schadet(st, actor)
+                        continue
                     self._record(slot, actor, encode_actions(obs, [a])[0])
                     E.apply(st, actor, a, check=False)
                     continue
@@ -157,6 +173,10 @@ class BatchedSelfPlay:
             k = int(q[offset:offset + len(legal)].argmax())
             offset += len(legal)
             k = legal.index(apply_discard_rule(obs, legal, legal[k]))
+            if T.asks_schadet(slot.state, actor, legal[k]):
+                # Not recorded: the actor decides again in the next step, knowing the answer.
+                T.ask_and_answer_schadet(slot.state, actor)
+                continue
             self._record(slot, actor, x[k])
             E.apply(slot.state, actor, legal[k], check=False)
 

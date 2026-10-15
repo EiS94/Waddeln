@@ -5,7 +5,8 @@ import kotlinx.serialization.Serializable
 /**
  * What [player] is allowed to know about a [GameState]: their own hand, all played cards,
  * the number (not identity) of Kritten the Abheber took, the open bottom card of the stock and,
- * when gespannt meets gespannt, how many cards each player still has laid out.
+ * when gespannt meets gespannt, how many cards each player still has laid out, and everything
+ * said at the table (Schub, partner talk, "Schadder?").
  */
 @Serializable
 data class Observation(
@@ -33,6 +34,9 @@ data class Observation(
     val ownLaidOut: Set<Card>,
     val playerToMove: Int?,
     val result: RoundResult?,
+    val schubs: List<SchubCall> = emptyList(),
+    val hints: List<HintCall> = emptyList(),
+    val schadet: SchadetTalk? = null,
 ) {
     val team: Int get() = teamOf(player)
     val abheber: Int get() = abheberOf(dealer)
@@ -70,6 +74,9 @@ data class Observation(
                 ownLaidOut = remainingLaid?.get(player).orEmpty(),
                 playerToMove = state.playerToMove,
                 result = state.result,
+                schubs = state.schubs,
+                hints = state.hints,
+                schadet = state.schadet,
             )
         }
     }

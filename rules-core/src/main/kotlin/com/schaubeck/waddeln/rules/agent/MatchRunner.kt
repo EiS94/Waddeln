@@ -7,7 +7,6 @@ import com.schaubeck.waddeln.rules.PLAYER_COUNT
 import com.schaubeck.waddeln.rules.Phase
 import com.schaubeck.waddeln.rules.Waddeln
 import com.schaubeck.waddeln.rules.nextPlayer
-import com.schaubeck.waddeln.rules.observationFor
 import com.schaubeck.waddeln.rules.teamOf
 import kotlin.random.Random
 
@@ -15,7 +14,8 @@ import kotlin.random.Random
  * Plays complete matches between four agents without any UI (simulation, tests, training).
  *
  * Schub is offered to each agent as part of its own turn (alongside its cards). An open Schub is
- * answered by the player of the asked team who comes next in playing order.
+ * answered by the player of the asked team who comes next in playing order. All agents talk at the
+ * table like bots do ([BotTalk]).
  */
 class MatchRunner(
     private val agents: List<Agent>,
@@ -50,10 +50,9 @@ class MatchRunner(
     /** Lets the agent who has to act next choose and apply one action. */
     fun step(state: GameState): GameState {
         val actor = nextActor(state)
-        val legal = Waddeln.legalActions(state, actor)
-        val action = agents[actor].chooseAction(state.observationFor(actor), legal)
-        val next = Waddeln.apply(state, actor, action)
-        onAction(state, actor, action)
+        val (talked, action) = BotTalk.decide(state, actor, agents[actor])
+        val next = Waddeln.apply(talked, actor, action)
+        onAction(talked, actor, action)
         return next
     }
 

@@ -34,6 +34,10 @@ data class Settings(
     val onlineName: String = "",
     /** WebSocket address of the game server. */
     val serverUrl: String = DEFAULT_SERVER_URL,
+    /** Shuffling, cards and tricks are heard. */
+    val soundEffects: Boolean = true,
+    /** Players say aloud what their speech bubbles show. */
+    val voices: Boolean = true,
 ) {
     fun name(seat: Int): String = names[seat].ifBlank { DEFAULT_NAMES[seat] }
 
@@ -55,6 +59,8 @@ class SettingsStore(context: Context) {
         names = List(PLAYER_COUNT) { prefs.getString("$KEY_NAME$it", null) ?: Settings.DEFAULT_NAMES[it] },
         onlineName = prefs.getString(KEY_ONLINE_NAME, null).orEmpty(),
         serverUrl = prefs.getString(KEY_SERVER_URL, null) ?: Settings.DEFAULT_SERVER_URL,
+        soundEffects = prefs.getBoolean(KEY_SOUND_EFFECTS, true),
+        voices = prefs.getBoolean(KEY_VOICES, true),
     )
 
     /** Random id of this installation; identifies the player on the server (e.g. after a reconnect). */
@@ -68,6 +74,8 @@ class SettingsStore(context: Context) {
             settings.names.forEachIndexed { seat, name -> putString("$KEY_NAME$seat", name) }
             putString(KEY_ONLINE_NAME, settings.onlineName)
             putString(KEY_SERVER_URL, settings.serverUrl)
+            putBoolean(KEY_SOUND_EFFECTS, settings.soundEffects)
+            putBoolean(KEY_VOICES, settings.voices)
         }.apply()
     }
 
@@ -81,5 +89,7 @@ class SettingsStore(context: Context) {
         const val KEY_ONLINE_NAME = "online_name"
         const val KEY_SERVER_URL = "server_url"
         const val KEY_DEVICE_ID = "device_id"
+        const val KEY_SOUND_EFFECTS = "sound_effects"
+        const val KEY_VOICES = "voices"
     }
 }

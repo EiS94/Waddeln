@@ -1,6 +1,6 @@
 """Widens a checkpoint to a feature layout with additional inputs, keeping what it has learned.
 
-    python migrate_checkpoint.py old.pt new.pt --old-state 475 --old-action 49
+    python migrate_checkpoint.py old.pt new.pt --old-state 478 --old-action 51
 
 The first layer's weights are copied to the new positions; weights of the new inputs start at zero,
 so the migrated network computes exactly the same values as before until training uses the new

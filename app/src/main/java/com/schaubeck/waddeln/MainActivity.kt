@@ -1,5 +1,6 @@
 package com.schaubeck.waddeln
 
+import android.media.AudioManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -7,6 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -19,6 +21,8 @@ import com.schaubeck.waddeln.game.GameViewModel
 import com.schaubeck.waddeln.game.StatsMode
 import com.schaubeck.waddeln.game.StatsStore
 import com.schaubeck.waddeln.online.OnlineViewModel
+import com.schaubeck.waddeln.sound.LocalTableSound
+import com.schaubeck.waddeln.sound.TableSound
 import com.schaubeck.waddeln.ui.GameScreen
 import com.schaubeck.waddeln.ui.MainMenu
 import com.schaubeck.waddeln.ui.OnlineScreen
@@ -31,14 +35,20 @@ class MainActivity : ComponentActivity() {
     private val viewModel: GameViewModel by viewModels()
     private val onlineViewModel: OnlineViewModel by viewModels()
     private val statsStore by lazy { StatsStore(applicationContext) }
+    private lateinit var sound: TableSound
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // The volume keys change the game volume, not the ringer.
+        volumeControlStream = AudioManager.STREAM_MUSIC
+        sound = TableSound(this)
         setContent {
-            MaterialTheme {
+            CompositionLocalProvider(LocalTableSound provides sound) { MaterialTheme {
                 val ui by viewModel.ui.collectAsStateWithLifecycle()
                 val online by onlineViewModel.ui.collectAsStateWithLifecycle()
+                sound.effectsOn = ui.settings.soundEffects
+                sound.voicesOn = ui.settings.voices
                 var screen by rememberSaveable { mutableStateOf(Screen.MENU) }
 
                 // Bots only play while the table is visible. Online, the connection stays open while
@@ -114,6 +124,7 @@ class MainActivity : ComponentActivity() {
                                 onAnswerSchadet = onlineViewModel::answerSchadet,
                                 onMenu = { screen = Screen.MENU },
                                 onLeave = onlineViewModel::leave,
+                                soundKey = "online",
                             )
                         } else {
                             val settings = ui.settings
@@ -142,7 +153,17 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
-            }
+            } }
         }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        sound.stop()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        sound.release()
     }
 }
