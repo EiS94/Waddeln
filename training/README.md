@@ -96,7 +96,42 @@ Vor dem Export die Kandidaten genauer vergleichen:
 **Schwierigkeitsstufen:** frühere Checkpoints (`model_<N>k.pt`) sind schwächer; zusätzlich steuert
 `MlAgent(temperature = …)` in der App, wie oft ein Bot schlechtere Züge wählt (0 = stärkste Stufe).
 
+## Tischgespräche
+
+Was am Tisch gesagt wird, hören alle und es gehört zum Spielzustand (`GameState`/`Observation`,
+in Python `State`/`Observation`): jeder Schub mit Spieler und Zeitpunkt, die Partner-Hinweise beim
+Schub und „Schadder?“ samt Antwort. Bots reden überall gleich (`BotTalk.kt` ↔ `waddeln/talk.py`):
+
+- Bevor ein Bot auf einen Schub antwortet, fragt er immer seinen Partner (Hinweis per Faustregel aus
+  `PartnerHint.kt`).
+- Will er im ersten Stich den Haubi anspielen, fragt er vorher „Schadder?“ und entscheidet mit der
+  Antwort neu (bei „Ja“ ohne Haubi). Im Training zählt nur diese zweite Entscheidung.
+
+Das Netz bekommt dazu 39 Merkmale (Zustand 478 → 517): letzter Hinweis je Platz, wer „Schadder?“
+gefragt hat (hat den Haubi) und die Antwort, wer beim Haubi-Anspiel nicht bedient hat (hat keine
+Haubi-Farbe), Schübe je Platz und ob vor der ersten Karte.
+
+**Weitertrainieren statt neu:** Alte Checkpoints werden mit `migrate_checkpoint.py` erweitert; die
+neuen Eingaben starten mit Gewicht 0, das Netz spielt also zunächst genau wie vorher.
+
+```bash
+.venv/bin/python migrate_checkpoint.py checkpoints/pi_run2/model_00189806k.pt \
+    checkpoints/migrated/model_00189806k_v3.pt --old-state 478 --old-action 51
+.venv/bin/python train_dmc.py --resume checkpoints/migrated/model_00189806k_v3.pt \
+    --actors 1 --learner-threads 3 --hours 24 --out checkpoints/pi_run3
+# Gegen das alte Netz vergleichen (alte Checkpoints spielen mit dem alten Eingabe-Layout weiter):
+.venv/bin/python evaluate.py checkpoints/pi_run3/model_*.pt --vs checkpoints/pi_run2/model_00189806k.pt \
+    --matches 2000 --workers 4
+```
+
+Gegen den Regel-Bot gewinnt das Netz schon ~96 %; Fortschritt zeigt erst der direkte Vergleich.
+
+App und Server erkennen an der Eingabegröße des ONNX-Modells, ob es vor den Tischgesprächen trainiert
+wurde, und füttern es dann mit dem alten Layout – das ausgelieferte Modell läuft also weiter, bis ein
+neues exportiert ist.
+
 ## Wichtig bei Änderungen
 
 Die Merkmals-Kodierung (`features.py` / `Encoding.kt`) und die Aktions-Codes sind Teil des
-Modells: Ändert man sie, passen alte Checkpoints nicht mehr – neu trainieren.
+Modells: Ändert man sie, passen alte Checkpoints nicht mehr. Neue Merkmale daher nur **hinten an den
+Zustandsblock anhängen** und alte Checkpoints migrieren (siehe oben); sonst neu trainieren.

@@ -6,12 +6,15 @@ import com.schaubeck.waddeln.rules.GameState
 import com.schaubeck.waddeln.rules.PLAYER_COUNT
 import com.schaubeck.waddeln.rules.Phase
 import com.schaubeck.waddeln.rules.Waddeln
+import com.schaubeck.waddeln.rules.agent.BotTalk
 import com.schaubeck.waddeln.rules.agent.DiscardRule
+import com.schaubeck.waddeln.rules.agent.Schadet
 import com.schaubeck.waddeln.rules.agent.RuleBasedAgent
 import com.schaubeck.waddeln.rules.ml.ActionCodec
 import com.schaubeck.waddeln.rules.ml.FeatureEncoder
 import com.schaubeck.waddeln.rules.nextPlayer
 import com.schaubeck.waddeln.rules.observationFor
+import com.schaubeck.waddeln.rules.partnerOf
 import com.schaubeck.waddeln.rules.teamOf
 import java.io.File
 import kotlin.random.Random
@@ -47,22 +50,34 @@ object ProtocolGenerator {
                 steps = mutableListOf()
                 continue
             }
-            val legal = List(PLAYER_COUNT) { Waddeln.legalActions(state, it) }
+            // Table talk as in BotTalk (seated agents) or around a random action (chaos)
             val (player, action, byBot) = when (mode) {
                 Mode.AGENTS -> {
                     val actor = seatedActor(state)
-                    if (ruleSeats[actor]) {
-                        Triple(actor, bot.chooseAction(state.observationFor(actor), legal[actor]), true)
-                    } else {
-                        Triple(actor, legal[actor].random(random), false)
+                    state = talkHint(state, actor, steps)
+                    val choose = { s: GameState ->
+                        val allowed = Schadet.allowedActions(s, actor, Waddeln.legalActions(s, actor))
+                        if (ruleSeats[actor]) bot.chooseAction(s.observationFor(actor), allowed) else allowed.random(random)
                     }
+                    var chosen = choose(state)
+                    if (BotTalk.asksSchadet(state, actor, chosen)) {
+                        state = talkSchadet(state, actor, steps)
+                        chosen = choose(state)
+                    }
+                    Triple(actor, chosen, ruleSeats[actor])
                 }
                 Mode.CHAOS -> {
-                    val options = (0 until PLAYER_COUNT).flatMap { p -> legal[p].map { p to it } }
-                    val (p, a) = options.random(random)
+                    val options = (0 until PLAYER_COUNT).flatMap { p -> Waddeln.legalActions(state, p).map { p to it } }
+                    var (p, a) = options.random(random)
+                    if (a == Action.Bleiben || a == Action.Gehen) state = talkHint(state, p, steps)
+                    if (BotTalk.asksSchadet(state, p, a)) {
+                        state = talkSchadet(state, p, steps)
+                        a = Schadet.allowedActions(state, p, Waddeln.legalActions(state, p)).random(random)
+                    }
                     Triple(p, a, false)
                 }
             }
+            val legal = List(PLAYER_COUNT) { Waddeln.legalActions(state, it) }
             val next = Waddeln.apply(state, player, action)
             steps += stepJson(state, next, player, action, legal, byBot, withFeatures)
             state = next
@@ -74,6 +89,23 @@ object ProtocolGenerator {
             "finalScores" to Json.ints(state.scores),
             "winner" to Waddeln.matchWinner(state).toString(),
         )
+    }
+
+    /** [BotTalk.hintBeforeAnswer], written as a talk step if a hint was given. */
+    private fun talkHint(state: GameState, actor: Int, steps: MutableList<String>): GameState {
+        val next = BotTalk.hintBeforeAnswer(state, actor)
+        next.hints.drop(state.hints.size).forEach { h ->
+            steps += Json.obj("talk" to Json.str("hint"), "p" to h.player.toString(), "v" to h.hint.ordinal.toString())
+        }
+        return next
+    }
+
+    /** [BotTalk.askAndAnswerSchadet], written as two talk steps. */
+    private fun talkSchadet(state: GameState, actor: Int, steps: MutableList<String>): GameState {
+        val next = BotTalk.askAndAnswerSchadet(state, actor)
+        steps += Json.obj("talk" to Json.str("ask"), "p" to actor.toString())
+        steps += Json.obj("talk" to Json.str("answer"), "p" to partnerOf(actor).toString(), "v" to next.schadet!!.answer!!.ordinal.toString())
+        return next
     }
 
     /** Same actor choice as [com.schaubeck.waddeln.rules.agent.MatchRunner]. */
@@ -137,7 +169,8 @@ object ProtocolGenerator {
         )
         if (action is Action.PlayCard) {
             // What the Abwurf-Regel makes of this card choice (checked against the Python port)
-            val ruled = DiscardRule.apply(before.observationFor(player), legal[player], action)
+            val allowed = Schadet.allowedActions(before, player, legal[player])
+            val ruled = DiscardRule.apply(before.observationFor(player), allowed, action)
             fields += "dr" to ActionCodec.encode(ruled).toString()
         }
         if (withFeatures) {

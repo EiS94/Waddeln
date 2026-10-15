@@ -10,8 +10,15 @@ import com.schaubeck.waddeln.rules.PLAYER_COUNT
  */
 data class SchubNotice(val askingPlayer: Int, val answeringPlayer: Int, val newGameValue: Int)
 
-/** Something [seat] said aloud, shown as a speech bubble for [GameSpeed.speechMs] from [at] (SystemClock.elapsedRealtime). */
+/**
+ * Something [seat] said aloud, shown as a speech bubble for [GameSpeed.speechMs] from [at]
+ * (SystemClock.elapsedRealtime). [at] may lie a little in the future: an answer given right away
+ * is heard and shown only after the question.
+ */
 data class Speech(val seat: Int, val text: String, val at: Long)
+
+/** How long after a question its immediate answer is said. */
+const val ANSWER_DELAY_MS = 1300L
 
 /** True for actions that are said aloud at the table (everything but playing a card). */
 fun Action.isSpoken(): Boolean = this !is Action.PlayCard

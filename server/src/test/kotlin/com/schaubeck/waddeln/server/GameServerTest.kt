@@ -561,6 +561,24 @@ class GameServerTest {
     }
 
     @Test
+    fun `bots ask their partner before answering a Schub, the whole table hears it`() = runTest {
+        val server = newServer(seed = 2)
+        val host = player(server, "host")
+        host.send(ClientMessage.CreateRoom)
+        host.send(ClientMessage.StartMatch)
+        schubBy(host, listOf(host))
+        advanceTimeBy(Timing().speechPauseMs + Timing().botDelayMs + 1)
+        val game = host.table.game!!
+        val asking = assertNotNull(game.partnerQuestion, "a bot of the asked team asked its partner")
+        assertEquals(1, asking % 2)
+        assertEquals((asking + 2) % 4, game.partnerHint?.seat, "its bot partner answered at once")
+        assertEquals(1, game.observation.hints.size)
+        assertNotNull(game.observation.pendingSchub, "the answer to the Schub follows after a pause")
+        advanceUntilIdle()
+        assertNull(host.table.game!!.observation.pendingSchub)
+    }
+
+    @Test
     fun `a human partner answers the question`() = runTest {
         val server = newServer(seed = 2)
         val host = player(server, "host")

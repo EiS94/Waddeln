@@ -9,11 +9,14 @@ import kotlin.math.exp
 import kotlin.random.Random
 
 /**
- * Evaluates network inputs (rows of [FeatureEncoder.INPUT_SIZE] floats) and returns one value per row:
+ * Evaluates network inputs (rows of [inputSize] floats) and returns one value per row:
  * the expected points of the acting team. Implemented with ONNX Runtime by the app/server.
  */
 fun interface QFunction {
     fun evaluate(inputs: Array<FloatArray>): FloatArray
+
+    /** [FeatureEncoder.INPUT_SIZE], or [FeatureEncoder.LEGACY_INPUT_SIZE] for a model trained before the table talk. */
+    val inputSize: Int get() = FeatureEncoder.INPUT_SIZE
 }
 
 /**
@@ -35,7 +38,7 @@ class MlAgent(
         if (legalActions.size == 1 && legalActions.single() != Action.Schub) return legalActions.single()
         val values = try {
             val state = FeatureEncoder.encodeState(observation)
-            q.evaluate(Array(legalActions.size) { state + FeatureEncoder.encodeAction(observation, legalActions[it]) })
+            q.evaluate(Array(legalActions.size) { FeatureEncoder.encodeFor(q.inputSize, state, FeatureEncoder.encodeAction(observation, legalActions[it])) })
         } catch (e: Exception) {
             return fallback.chooseAction(observation, legalActions)
         }

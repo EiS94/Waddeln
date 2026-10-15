@@ -24,7 +24,8 @@ Die verbindlichen Spielregeln stehen in `WADDELN_RULES.md` im Projektroot. Bei U
   regelbasierter Bot (zuerst bauen; Fallback und Trainingsgegner), ML-Bot (ONNX).
 - **Beobachtung statt Gesamtzustand**: Jeder Spieler/Agent bekommt nur, was er wissen darf
   (eigene Hand, gespielte Karten, Anzahl der vom Abheber genommenen Kritten – nicht welche –,
-  offene unterste Deckkarte, bei gespannt gegen gespannt die Anzahl der hingelegten Karten).
+  offene unterste Deckkarte, bei gespannt gegen gespannt die Anzahl der hingelegten Karten,
+  alles am Tisch Gesagte: Schübe, Partner-Hinweise, „Schadder?“ – das ist Teil von `GameState`).
 
 ## Online-Modus
 - Autoritativer Server: Er mischt, verteilt und hält den echten Zustand; Clients sehen nur ihre eigenen Karten.

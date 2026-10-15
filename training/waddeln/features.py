@@ -7,13 +7,16 @@ from __future__ import annotations
 import numpy as np
 
 from .engine import (
-    ACTION_SIZE, CARD_OFFSET, A_SCHUB, FARBE, GESPANNT_POINTS, MATCH_POINTS, NO_TRUMP, PLAYER_COUNT,
-    PLAYING, SCHLAG, Observation, team_of, trick_winner_index,
+    ACTION_SIZE, CARD_OFFSET, A_SCHUB, FARBE, GESPANNT_POINTS, HINT_COUNT, KRITTE_SET, MATCH_POINTS, NO_TRUMP,
+    PLAYER_COUNT, PLAYING, SCHLAG, Observation, haubi_of, suit_of, team_of, trick_winner_index,
 )
 
-STATE_SIZE = 478
+STATE_SIZE = 517
+# Models trained before the table talk features had only the first 478 state features.
+LEGACY_STATE_SIZE = 478
 ACTION_FEATURES = ACTION_SIZE + 4
 INPUT_SIZE = STATE_SIZE + ACTION_FEATURES
+LEGACY_INPUT_SIZE = LEGACY_STATE_SIZE + ACTION_FEATURES
 
 
 def _trump_value(st, c: int) -> float:
@@ -97,7 +100,43 @@ def encode_state(obs: Observation) -> np.ndarray:
         f[475] = 1.0 if team_of(leading[0]) == own else 0.0
         f[476] = 1.0 if team_of(leading[0]) == opp else 0.0
         f[477] = _trump_value(st, leading[1])
+
+    # ---- Table talk (everybody hears it) ----
+    for r in range(PLAYER_COUNT):  # 478: latest hint per seat
+        seat = (me + r) % PLAYER_COUNT
+        latest = [h for p, h, _ in obs.hints if p == seat]
+        if latest:
+            f[478 + r * HINT_COUNT + latest[-1]] = 1.0
+    if obs.schadet is not None:
+        asker, answer = obs.schadet
+        f[498 + rel(asker)] = 1.0  # who asked "Schadder?" (holds the Haubi)
+        if answer is not None:
+            f[502 + answer] = 1.0
+    for p in haubi_farbe_voids(obs):  # 505: known to have no Haubi-Farbe
+        f[505 + rel(p)] = 1.0
+    for p, cards_played in obs.schubs:
+        f[509 + rel(p)] += 0.5  # 509: Schubs said per seat / 2
+        if cards_played == 0:
+            f[513 + rel(p)] = 1.0  # 513: said Schub before the first card
     return f
+
+
+def haubi_farbe_voids(obs: Observation) -> set[int]:
+    """Players who followed the Haubi lead of the first trick with neither Haubi-Farbe nor a Kritte
+    while the Bekennen-Pflicht was in force (FeatureEncoder.haubiFarbeVoids)."""
+    if obs.schlag is None or obs.farbe is None:
+        return set()
+    haubi = haubi_of(obs.schlag, obs.farbe)
+    first = obs.completed_tricks[0][0] if obs.completed_tricks else obs.current_trick
+    if not first or first[0][1] != haubi:
+        return set()
+    voids = set()
+    for p, c in first[1:]:
+        if c in KRITTE_SET:
+            break
+        if not (suit_of(c) == obs.farbe and c != haubi):
+            voids.add(p)
+    return voids
 
 
 def _leading_play(obs: Observation):
@@ -139,6 +178,15 @@ def encode_action(obs: Observation, action: int) -> np.ndarray:
         f[ACTION_SIZE + 2] = 1.0 if _would_win_trick(obs, c) else 0.0
         f[ACTION_SIZE + 3] = 1.0 if _is_unbeatable(obs, c) else 0.0
     return f
+
+
+def for_model(x: np.ndarray, input_size: int) -> np.ndarray:
+    """Rows of encode_actions() for a model with input_size inputs (current or legacy layout)."""
+    if input_size == INPUT_SIZE:
+        return x
+    if input_size == LEGACY_INPUT_SIZE:
+        return np.concatenate([x[:, :LEGACY_STATE_SIZE], x[:, STATE_SIZE:]], axis=1)
+    raise ValueError(f"model has {input_size} inputs, expected {INPUT_SIZE} or {LEGACY_INPUT_SIZE}")
 
 
 def encode_actions(obs: Observation, actions: list[int]) -> np.ndarray:

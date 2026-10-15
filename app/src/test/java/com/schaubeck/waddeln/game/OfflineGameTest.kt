@@ -115,6 +115,11 @@ class OfflineGameTest {
         val answering = game.botToAct()
         assertNotNull(answering)
         assertEquals(1 - teamOf(HUMAN), teamOf(answering!!))
+        // First the bot asks its partner; everybody hears the answer
+        val asked = game.stepBot()
+        assertTrue(asked is BotStep.AskedPartner)
+        assertEquals((answering + 2) % 4, game.state.hints.single().player)
+        assertEquals(game.state.hints.single(), game.state.observationFor(HUMAN).hints.single())
         game.stepBot()
         assertNull(game.state.pendingSchub)
         assertTrue(game.events.any { it is GameEvent.Acted && it.action == Action.Schub })

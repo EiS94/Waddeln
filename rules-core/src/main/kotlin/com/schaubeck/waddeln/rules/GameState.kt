@@ -13,6 +13,7 @@ const val GESPANNT_POINTS = 9
 
 fun teamOf(player: Int): Int = player % TEAM_COUNT
 fun nextPlayer(player: Int): Int = (player + 1) % PLAYER_COUNT
+fun partnerOf(player: Int): Int = (player + 2) % PLAYER_COUNT
 
 /** The Abheber sits before the dealer (counter-clockwise). */
 fun abheberOf(dealer: Int): Int = (dealer + PLAYER_COUNT - 1) % PLAYER_COUNT
@@ -81,6 +82,12 @@ data class GameState(
     /** Team that announced the last Schub in this round; it may not announce the next one. */
     val lastSchubTeam: Int? = null,
     val pendingSchub: PendingSchub? = null,
+    /** Every Schub of this round, in order. */
+    val schubs: List<SchubCall> = emptyList(),
+    /** Partner talk during the Schubs of this round (at most one per Schub). */
+    val hints: List<HintCall> = emptyList(),
+    /** "Schadder?" of this round, if somebody asked. */
+    val schadet: SchadetTalk? = null,
     val result: RoundResult? = null,
 ) {
     val abheber: Int get() = abheberOf(dealer)
@@ -93,6 +100,9 @@ data class GameState(
     val trump: Trump? get() = if (schlag != null && farbe != null) Trump(schlag, farbe) else null
 
     fun isGespannt(team: Int): Boolean = scores[team] >= GESPANNT_POINTS
+
+    /** Cards played in this round so far. */
+    val cardsPlayed: Int get() = completedTricks.size * PLAYER_COUNT + currentTrick.size
 
     val tricksWon: List<Int>
         get() = List(TEAM_COUNT) { team -> completedTricks.count { teamOf(it.winner) == team } }

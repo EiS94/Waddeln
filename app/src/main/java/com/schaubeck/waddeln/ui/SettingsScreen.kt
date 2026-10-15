@@ -19,6 +19,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -61,6 +63,14 @@ fun SettingsScreen(settings: Settings, onChange: (Settings) -> Unit, onBack: () 
                         Choice(d.label, d.description, d == settings.difficulty) { onChange(settings.copy(difficulty = d)) }
                     }
                     Text("Dein Partner spielt immer in voller Stärke.", color = Color.White.copy(alpha = 0.7f), fontSize = 13.sp)
+                }
+                Section("Ton") {
+                    Toggle("Geräusche", "Mischen, Karten und Stiche", settings.soundEffects) {
+                        onChange(settings.copy(soundEffects = it))
+                    }
+                    Toggle("Stimmen", "Die Spieler sprechen ihre Ansagen", settings.voices) {
+                        onChange(settings.copy(voices = it))
+                    }
                 }
                 Section("Namen der Spieler") {
                     val labels = listOf("Dein Name", "Gegner links", "Partner", "Gegner rechts")
@@ -117,6 +127,24 @@ fun Choice(label: String, description: String?, selected: Boolean, onSelect: () 
             Text(label, color = Color.White, fontSize = 16.sp)
             description?.let { Text(it, color = Color.White.copy(alpha = 0.7f), fontSize = 13.sp) }
         }
+    }
+}
+
+@Composable
+fun Toggle(label: String, description: String?, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable { onChange(!checked) }.padding(vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(label, color = Color.White, fontSize = 16.sp)
+            description?.let { Text(it, color = Color.White.copy(alpha = 0.7f), fontSize = 13.sp) }
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onChange,
+            colors = SwitchDefaults.colors(checkedTrackColor = Highlight, checkedThumbColor = Color.White),
+        )
     }
 }
 

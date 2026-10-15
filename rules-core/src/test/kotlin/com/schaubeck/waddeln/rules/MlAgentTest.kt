@@ -3,6 +3,7 @@ package com.schaubeck.waddeln.rules
 import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
+import ai.onnxruntime.TensorInfo
 import com.schaubeck.waddeln.rules.agent.MatchRunner
 import com.schaubeck.waddeln.rules.agent.RuleBasedAgent
 import com.schaubeck.waddeln.rules.ml.FeatureEncoder
@@ -26,12 +27,15 @@ class OrtQFunction(modelBytes: ByteArray) : QFunction, AutoCloseable {
     private val env = OrtEnvironment.getEnvironment()
     private val session: OrtSession = env.createSession(modelBytes)
 
+    /** Input width of the loaded model (it may predate the table talk features). */
+    override val inputSize: Int = (session.inputInfo.getValue("input").info as TensorInfo).shape[1].toInt()
+
     override fun evaluate(inputs: Array<FloatArray>): FloatArray {
         val n = inputs.size
-        val buffer = FloatBuffer.allocate(n * FeatureEncoder.INPUT_SIZE)
+        val buffer = FloatBuffer.allocate(n * inputSize)
         inputs.forEach { buffer.put(it) }
         buffer.rewind()
-        OnnxTensor.createTensor(env, buffer, longArrayOf(n.toLong(), FeatureEncoder.INPUT_SIZE.toLong())).use { tensor ->
+        OnnxTensor.createTensor(env, buffer, longArrayOf(n.toLong(), inputSize.toLong())).use { tensor ->
             session.run(mapOf("input" to tensor)).use { result ->
                 @Suppress("UNCHECKED_CAST")
                 return result[0].value as FloatArray
@@ -66,6 +70,25 @@ class MlAgentTest {
                 val agents = List(PLAYER_COUNT) { if (it % 2 == 0) MlAgent(q, temperature = 0.2, random = Random(i)) else RuleBasedAgent() }
                 MatchRunner(agents, Random(i), onAction = { s, p, a -> assertTrue(Waddeln.isLegal(s, p, a)) }).playMatch()
             }
+        }
+    }
+
+    @Test
+    fun `the bundled app model keeps working whatever feature layout it was trained with`() {
+        val model = java.io.File("../app/src/main/assets/models/waddeln.onnx")
+        if (!model.exists()) return
+        OrtQFunction(model.readBytes()).use { q ->
+            assertTrue(q.inputSize == FeatureEncoder.INPUT_SIZE || q.inputSize == FeatureEncoder.LEGACY_INPUT_SIZE)
+            var failed = false
+            val agents = List(PLAYER_COUNT) { seat ->
+                if (seat % 2 == 0) {
+                    MlAgent(q, fallback = { _, _ -> failed = true; error("the model must not fail") })
+                } else {
+                    RuleBasedAgent()
+                }
+            }
+            MatchRunner(agents, Random(1)).playMatch()
+            assertTrue(!failed)
         }
     }
 

@@ -9,6 +9,7 @@ import com.schaubeck.waddeln.rules.Action
 import com.schaubeck.waddeln.rules.PLAYER_COUNT
 import com.schaubeck.waddeln.rules.Phase
 import com.schaubeck.waddeln.rules.observationFor
+import com.schaubeck.waddeln.rules.partnerOf
 import com.schaubeck.waddeln.rules.agent.Schadet
 import com.schaubeck.waddeln.rules.agent.SchadetAnswer
 import com.schaubeck.waddeln.rules.teamOf
@@ -94,6 +95,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     fun onAskSchadet() {
         if (!game.humanCanAskSchadet()) return
         game.askSchadet()
+        say(OfflineGame.HUMAN, Sayings.schadetQuestion())
         publish()
         runBots()
     }
@@ -110,11 +112,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     /** During a Schub against us: the partner tells roughly how good their cards are. */
     fun onAskPartner() {
         if (partnerHint() != null) return
-        val hint = game.partnerHint() ?: return
+        val hint = game.askPartner() ?: return
         val s = game.state
         val text = Sayings.partnerHint(hint, s.tricksWon[teamOf(OfflineGame.HUMAN)])
         givenHint = s.gameValue to text
-        say(OfflineGame.PARTNER, text)
+        say(OfflineGame.HUMAN, Sayings.partnerQuestion())
+        say(OfflineGame.PARTNER, text, delayMs = ANSWER_DELAY_MS)
         publish()
     }
 
@@ -184,6 +187,13 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                         say(bot, text)
                         true
                     }
+                    is BotStep.AskedPartner -> {
+                        // The opponents talk aloud: question by the bot, answer by its partner right after.
+                        say(bot, Sayings.partnerQuestion())
+                        val partner = partnerOf(bot)
+                        say(partner, Sayings.partnerHint(step.hint, game.state.tricksWon[teamOf(partner)]), delayMs = ANSWER_DELAY_MS)
+                        true
+                    }
                 }
                 speechPause = if (spoken) (settings.speed.speechMs - settings.speed.botDelayMs).coerceAtLeast(0) else 0
                 val s = game.state
@@ -204,8 +214,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         Sayings.speech(action)?.let { say(seat, it) }
     }
 
-    private fun say(seat: Int, text: String) {
-        speech = (speech + Speech(seat, text, SystemClock.elapsedRealtime())).takeLast(MAX_SPEECH)
+    private fun say(seat: Int, text: String, delayMs: Long = 0) {
+        speech = (speech + Speech(seat, text, SystemClock.elapsedRealtime() + delayMs)).takeLast(MAX_SPEECH)
     }
 
     /** The partner's answer if it belongs to the Schub that is open right now. */
@@ -228,7 +238,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             speed = settings.speed,
             notice = notice,
             speech = speech,
-            canAskPartner = notice == null && partnerHint() == null && game.partnerHint() != null,
+            canAskPartner = notice == null && partnerHint() == null && game.canAskPartner(),
             partnerHint = partnerHint(),
             canAskSchadet = notice == null && game.humanCanAskSchadet(),
             waitingForSchadet = game.schadet?.let { it.asker == OfflineGame.HUMAN && it.answer == null } == true,

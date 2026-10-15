@@ -3,6 +3,7 @@ package com.schaubeck.waddeln.ai
 import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
+import ai.onnxruntime.TensorInfo
 import android.content.Context
 import android.util.Log
 import com.schaubeck.waddeln.game.Difficulty
@@ -10,7 +11,6 @@ import com.schaubeck.waddeln.game.OfflineGame
 import com.schaubeck.waddeln.rules.PLAYER_COUNT
 import com.schaubeck.waddeln.rules.agent.Agent
 import com.schaubeck.waddeln.rules.agent.RuleBasedAgent
-import com.schaubeck.waddeln.rules.ml.FeatureEncoder
 import com.schaubeck.waddeln.rules.ml.MlAgent
 import com.schaubeck.waddeln.rules.ml.QFunction
 import com.schaubeck.waddeln.rules.teamOf
@@ -22,12 +22,15 @@ class OnnxQFunction(modelBytes: ByteArray) : QFunction, Closeable {
     private val env = OrtEnvironment.getEnvironment()
     private val session: OrtSession = env.createSession(modelBytes)
 
+    /** Input width of the loaded model (it may predate the table talk features). */
+    override val inputSize: Int = (session.inputInfo.getValue("input").info as TensorInfo).shape[1].toInt()
+
     override fun evaluate(inputs: Array<FloatArray>): FloatArray {
         val n = inputs.size
-        val buffer = FloatBuffer.allocate(n * FeatureEncoder.INPUT_SIZE)
+        val buffer = FloatBuffer.allocate(n * inputSize)
         inputs.forEach { buffer.put(it) }
         buffer.rewind()
-        OnnxTensor.createTensor(env, buffer, longArrayOf(n.toLong(), FeatureEncoder.INPUT_SIZE.toLong())).use { tensor ->
+        OnnxTensor.createTensor(env, buffer, longArrayOf(n.toLong(), inputSize.toLong())).use { tensor ->
             session.run(mapOf("input" to tensor)).use { result ->
                 @Suppress("UNCHECKED_CAST")
                 return result[0].value as FloatArray
