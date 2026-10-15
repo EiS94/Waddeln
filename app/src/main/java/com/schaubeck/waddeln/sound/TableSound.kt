@@ -90,7 +90,8 @@ class TableSound(context: Context) {
 
     fun say(seat: Int, text: String) {
         if (!voicesOn || !ttsReady) return
-        tts.voice = seatVoices[seat] ?: tts.defaultVoice
+        // Some engines have no default voice; setting null would crash, so the current one stays then.
+        (seatVoices[seat] ?: tts.defaultVoice)?.let { tts.voice = it }
         tts.setPitch(SEAT_PITCH[seat])
         tts.setSpeechRate(SEAT_RATE[seat])
         tts.speak(Pronunciation.spoken(text), TextToSpeech.QUEUE_ADD, null, "speech-${SystemClock.elapsedRealtime()}")
