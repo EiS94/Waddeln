@@ -1,12 +1,6 @@
-# Add project specific R8 rules here.
-# AGP will combine all keep rule files in src/main/keepRules to pass to R8
-#
-# For more details, see
-#   https://d.android.com/r/tools/r8/keep-rules
+# Keep rules for R8. AGP combines all keep rule files in src/main/keepRules.
+# kotlinx.serialization and OkHttp bring their own rules.
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# ONNX Runtime ships no rules, but its native library finds and creates the Java classes
+# (sessions, tensors, exceptions) by name through JNI.
+-keep class ai.onnxruntime.** { *; }

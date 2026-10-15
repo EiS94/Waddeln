@@ -24,8 +24,9 @@ android {
 
     buildTypes {
         release {
+            // R8 shrinks the code; keep rules are in src/main/keepRules.
             optimization {
-                enable = false
+                enable = true
             }
         }
     }
