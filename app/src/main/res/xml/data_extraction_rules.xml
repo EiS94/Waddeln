@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Backup for Android 12 and newer: the settings (names, speed, server) are backed up completely. -->
+<!--
+    Backup for Android 12 and newer: settings (names, speed, server) and statistics are backed up.
+    The device id stays on the device: a restored phone needs its own id on the game server.
+-->
 <data-extraction-rules>
-    <cloud-backup />
-    <device-transfer />
+    <cloud-backup>
+        <exclude domain="sharedpref" path="device.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="device.xml" />
+    </device-transfer>
 </data-extraction-rules>

@@ -63,9 +63,21 @@ class SettingsStore(context: Context) {
         voices = prefs.getBoolean(KEY_VOICES, true),
     )
 
+    /**
+     * Not backed up (see the backup rules): a phone restored from this one must get its own id,
+     * or both would push each other off their seat on the server.
+     */
+    private val devicePrefs = context.getSharedPreferences(DEVICE_PREFS, Context.MODE_PRIVATE)
+
     /** Random id of this installation; identifies the player on the server (e.g. after a reconnect). */
-    fun deviceId(): String = prefs.getString(KEY_DEVICE_ID, null)
-        ?: UUID.randomUUID().toString().also { prefs.edit().putString(KEY_DEVICE_ID, it).apply() }
+    fun deviceId(): String {
+        devicePrefs.getString(KEY_DEVICE_ID, null)?.let { return it }
+        // Older versions kept the id with the settings (and so in the backup); it moves over once.
+        val id = prefs.getString(KEY_DEVICE_ID, null) ?: UUID.randomUUID().toString()
+        devicePrefs.edit().putString(KEY_DEVICE_ID, id).apply()
+        prefs.edit().remove(KEY_DEVICE_ID).apply()
+        return id
+    }
 
     fun save(settings: Settings) {
         prefs.edit().apply {
@@ -73,7 +85,12 @@ class SettingsStore(context: Context) {
             putString(KEY_DIFFICULTY, settings.difficulty.name)
             settings.names.forEachIndexed { seat, name -> putString("$KEY_NAME$seat", name) }
             putString(KEY_ONLINE_NAME, settings.onlineName)
-            putString(KEY_SERVER_URL, settings.serverUrl)
+            // Only an address of the user's own is stored, so a later change of the default reaches everyone.
+            if (settings.serverUrl.trim() == Settings.DEFAULT_SERVER_URL) {
+                remove(KEY_SERVER_URL)
+            } else {
+                putString(KEY_SERVER_URL, settings.serverUrl)
+            }
             putBoolean(KEY_SOUND_EFFECTS, settings.soundEffects)
             putBoolean(KEY_VOICES, settings.voices)
         }.apply()
@@ -83,6 +100,7 @@ class SettingsStore(context: Context) {
         enumValues<E>().firstOrNull { it.name == name } ?: default
 
     private companion object {
+        const val DEVICE_PREFS = "device"
         const val KEY_SPEED = "speed"
         const val KEY_DIFFICULTY = "difficulty"
         const val KEY_NAME = "name_"
