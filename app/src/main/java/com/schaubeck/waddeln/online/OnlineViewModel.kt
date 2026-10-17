@@ -160,8 +160,10 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
         game ?: return
         val obs = game.observation
         val last = game.lastAction
-        // Views are also sent for other reasons (e.g. connections); only a new state means a new action.
-        if (last != null && last.action.isSpoken() && old.observation != obs) {
+        // Views are also sent for other reasons (connections, table talk like asking the partner);
+        // only a new last action means a new action. The same seat never says the same thing twice
+        // in a row, since every spoken action is followed by another one or a new round.
+        if (last != null && last.action.isSpoken() && last != old.lastAction) {
             Sayings.speech(last.action)?.let { say(last.seat, it) }
         }
         val asking = game.partnerQuestion
