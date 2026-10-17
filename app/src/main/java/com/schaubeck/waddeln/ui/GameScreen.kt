@@ -275,6 +275,23 @@ private fun SpeechBubble(table: TableUi, seat: Int, from: BubbleFrom, modifier: 
     }
 }
 
+/**
+ * The partner's answer once it is said aloud: an answer given at once still follows the
+ * question, so the panel shows it only together with its speech bubble.
+ */
+@Composable
+private fun saidPartnerHint(table: TableUi): String? {
+    val hint = table.partnerHint ?: return null
+    val speech = table.speech.lastOrNull { it.seat == table.seatAt(2) && it.text == hint }
+    var said by remember(speech) { mutableStateOf(speech == null || startsInMs(speech) <= 0) }
+    LaunchedEffect(speech) {
+        if (speech == null) return@LaunchedEffect
+        delay(startsInMs(speech))
+        said = true
+    }
+    return hint.takeIf { said }
+}
+
 private fun remainingMs(speech: Speech, durationMs: Long) = durationMs - (SystemClock.elapsedRealtime() - speech.at)
 
 private fun startsInMs(speech: Speech) = speech.at - SystemClock.elapsedRealtime()
@@ -545,7 +562,7 @@ private fun ActionArea(
             {
                 PanelTitle("${table.names[s.pendingSchub!!.askingPlayer]} sagt Schub! Geht ihr?")
                 val partner = table.names[table.seatAt(2)]
-                table.partnerHint?.let {
+                saidPartnerHint(table)?.let {
                     Text("$partner: „$it“", color = Highlight, fontSize = 15.sp, modifier = Modifier.padding(bottom = 4.dp))
                 }
                 if (table.canAskPartner) {
