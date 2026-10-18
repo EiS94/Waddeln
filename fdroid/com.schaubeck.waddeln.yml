@@ -2,7 +2,7 @@
 # Description, icon and screenshots come from fastlane/metadata/android in this repo.
 Categories:
   - Games
-License: GPL-3.0-only
+License: GPL-3.0-or-later
 AuthorName: Eike Schaubeck
 SourceCode: https://github.com/EiS94/Waddeln
 IssueTracker: https://github.com/EiS94/Waddeln/issues
