@@ -57,4 +57,4 @@ unter *Einstellungen* ändern.
 
 ## Lizenz
 
-Der Code steht unter der [GNU General Public License v3.0](LICENSE).
+Der Code steht unter der [GNU General Public License v3.0](LICENSE) oder (nach deiner Wahl) jeder späteren Version.
