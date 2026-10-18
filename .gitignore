@@ -23,3 +23,6 @@ keystore.properties
 Thumbs.db
 
 /training.tgz
+
+# Notes for Claude Code (local only)
+CLAUDE.md
