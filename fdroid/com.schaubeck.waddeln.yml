@@ -1,5 +1,3 @@
-# Draft for https://gitlab.com/fdroid/fdroiddata (metadata/com.schaubeck.waddeln.yml).
-# Description, icon and screenshots come from fastlane/metadata/android in this repo.
 Categories:
   - Games
 License: GPL-3.0-or-later
