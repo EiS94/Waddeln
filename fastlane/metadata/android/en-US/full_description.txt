@@ -1,0 +1,26 @@
+<p><b>Waddeln</b> is a traditional card game from Franconia (Germany): four players in two teams, played with the Franconian deck. <i>The app itself is in German.</i></p>
+
+<p><b>Offline</b></p>
+<ul>
+<li>You and three AI opponents, no internet needed</li>
+<li>Three difficulty levels: simple rule-based bots, an AI that sometimes makes mistakes, the AI at full strength</li>
+<li>The AI was trained by self-play (Deep Monte-Carlo) and runs on the device</li>
+</ul>
+
+<p><b>Online</b></p>
+<ul>
+<li>Private rooms with a room code for up to four players</li>
+<li>Bots fill empty seats</li>
+<li>Reconnect after a lost connection – a bot plays for you meanwhile</li>
+<li>No accounts, just a nickname</li>
+<li>The server is open source as well and can be self-hosted</li>
+</ul>
+
+<p><b>At the table</b></p>
+<ul>
+<li>Speech bubbles and text-to-speech for announcements</li>
+<li>Ask your partner how good their cards are</li>
+<li>Statistics about your games</li>
+</ul>
+
+<p>No ads, no tracking. The internet permission is only needed for online play.</p>

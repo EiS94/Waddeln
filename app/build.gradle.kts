@@ -55,6 +55,11 @@ android {
     buildFeatures {
         compose = true
     }
+    // The dependency list is encrypted with a Google key; F-Droid rejects APKs that contain it.
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
+    }
 }
 
 dependencies {
