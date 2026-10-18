@@ -1,0 +1,30 @@
+# Draft for https://gitlab.com/fdroid/fdroiddata (metadata/com.schaubeck.waddeln.yml).
+# Description, icon and screenshots come from fastlane/metadata/android in this repo.
+Categories:
+  - Games
+License: GPL-3.0-only
+AuthorName: Eike Schaubeck
+SourceCode: https://github.com/EiS94/Waddeln
+IssueTracker: https://github.com/EiS94/Waddeln/issues
+
+AutoName: Waddeln
+
+RepoType: git
+Repo: https://github.com/EiS94/Waddeln.git
+
+Builds:
+  - versionName: '1.0'
+    versionCode: 1
+    commit: v1.0
+    subdir: app
+    sudo:
+      - apt-get update
+      - apt-get install -y -t trixie openjdk-21-jdk-headless
+      - update-alternatives --auto java
+    gradle:
+      - yes
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags
+CurrentVersion: '1.0'
+CurrentVersionCode: 1

@@ -6,6 +6,7 @@ Creates the launcher icon: Secher, Bello and Max fanned out (as in the main menu
 - app/src/main/res/mipmap-<dpi>/ic_launcher_monochrome.png   white silhouette (themed icons, Android 13+)
 - app/src/main/res/mipmap-<dpi>/ic_launcher[_round].webp      composed icon for old launchers
 - design/launcher_icon_preview.png                            preview with the usual masks
+- fastlane/metadata/android/<locale>/images/icon.png         512 px store icon (F-Droid)
 
 Usage: python design/make_launcher_icon.py
 """
@@ -127,6 +128,15 @@ def legacy(px_per_dp, round_mask):
     return icon
 
 
+def store_icon(size=512):
+    """Square icon for the store listing (F-Droid): the visible inner 72 dp, unmasked."""
+    s = size / 72
+    full = render_background(s)
+    full.alpha_composite(render_fan(s))
+    off = (full.width - size) // 2
+    return full.crop((off, off, off + size, off + size)).convert("RGB")
+
+
 def preview():
     """Circle, squircle and rounded square as launchers show it, plus the themed variant."""
     s = 4
@@ -162,6 +172,10 @@ def main():
         render_monochrome(s).save(folder / "ic_launcher_monochrome.png", optimize=True)
         legacy(s, round_mask=False).save(folder / "ic_launcher.webp", "WEBP", quality=92)
         legacy(s, round_mask=True).save(folder / "ic_launcher_round.webp", "WEBP", quality=92)
+    for locale in ("de-DE", "en-US"):
+        folder = ROOT / "fastlane" / "metadata" / "android" / locale / "images"
+        folder.mkdir(parents=True, exist_ok=True)
+        store_icon().save(folder / "icon.png", optimize=True)
     preview()
     print(f"Card width {CARD_DP:.1f} dp; icons written for {', '.join(DENSITIES)}")
 

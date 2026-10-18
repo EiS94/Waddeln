@@ -1,0 +1,26 @@
+<p><b>Waddeln</b> ist ein traditionelles Kartenspiel aus Franken: vier Spieler in zwei Teams, gespielt mit dem fränkischen Blatt. Mit Schlag, Farbe, Kritten, Haubi und Schub – so wie am Wirtshaustisch.</p>
+
+<p><b>Offline spielen</b></p>
+<ul>
+<li>Du und drei KI-Gegner, komplett ohne Internet</li>
+<li>Drei Schwierigkeitsstufen: einfache Regel-Bots, KI mit gelegentlichen Fehlern, KI in voller Stärke</li>
+<li>Die KI wurde per Self-Play (Deep Monte-Carlo) trainiert und läuft direkt auf dem Gerät</li>
+</ul>
+
+<p><b>Online spielen</b></p>
+<ul>
+<li>Private Räume mit Raum-Code für bis zu vier Mitspieler</li>
+<li>Freie Plätze übernehmen Bots</li>
+<li>Wiederverbinden nach Verbindungsabbruch – in der Zwischenzeit spielt ein Bot für dich</li>
+<li>Keine Accounts, nur ein Spitzname</li>
+<li>Der Server ist ebenfalls Open Source und lässt sich selbst betreiben</li>
+</ul>
+
+<p><b>Am Tisch</b></p>
+<ul>
+<li>Sprechblasen und Sprachausgabe für Ansagen, Schub und „Schadder?“</li>
+<li>Frag deinen Partner bei einem Schub, wie gut seine Karten sind</li>
+<li>Statistiken über deine Spiele</li>
+</ul>
+
+<p>Keine Werbung, kein Tracking. Die Internet-Berechtigung wird nur für den Online-Modus gebraucht.</p>
