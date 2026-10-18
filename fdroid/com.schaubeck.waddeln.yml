@@ -13,7 +13,7 @@ Repo: https://github.com/EiS94/Waddeln.git
 Builds:
   - versionName: '1.0'
     versionCode: 1
-    commit: v1.0
+    commit: ba294a009ffde222243f71ed6b26ed14cc7c03ac
     subdir: app
     sudo:
       - apt-get update
