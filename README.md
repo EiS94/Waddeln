@@ -58,3 +58,9 @@ unter *Einstellungen* ändern.
 ## Lizenz
 
 Der Code steht unter der [GNU General Public License v3.0](LICENSE) oder (nach deiner Wahl) jeder späteren Version.
+
+## Unterstützen
+
+Gefällt dir die App? Über einen Kaffee freue ich mich:
+
+<a href="https://www.buymeacoffee.com/eis94" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
