@@ -26,6 +26,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -90,6 +91,17 @@ fun SettingsScreen(settings: Settings, onChange: (Settings) -> Unit, onBack: () 
                     ) { onChange(settings.copy(serverUrl = it)) }
                     TextButton(onClick = { onChange(settings.copy(serverUrl = Settings.DEFAULT_SERVER_URL)) }) {
                         Text("Standard wiederherstellen", color = Highlight)
+                    }
+                }
+                Section("Datenschutz") {
+                    Text(
+                        "Gegen den Computer bleibt alles auf dem Gerät. Online werden nur Spitzname und eine zufällige Geräte-ID an den Server übertragen.",
+                        color = Color.White.copy(alpha = 0.7f),
+                        fontSize = 13.sp,
+                    )
+                    val uriHandler = LocalUriHandler.current
+                    TextButton(onClick = { uriHandler.openUri(PRIVACY_POLICY_URL) }) {
+                        Text("Datenschutzerklärung öffnen", color = Highlight)
                     }
                 }
             }
@@ -188,3 +200,5 @@ fun TextSetting(
 }
 
 private const val MAX_NAME_LENGTH = 12
+
+private const val PRIVACY_POLICY_URL = "https://github.com/EiS94/Waddeln/blob/main/PRIVACY.md"
