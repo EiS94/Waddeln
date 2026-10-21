@@ -25,6 +25,12 @@ enum class Difficulty(val label: String, val description: String, val temperatur
     HARD("Schwer", "KI in voller Stärke", 0.0),
 }
 
+/** Wood of the table behind all screens. */
+enum class TableStyle(val label: String) {
+    DARK("Dunkles Holz"),
+    LIGHT("Helles Holz"),
+}
+
 data class Settings(
     val speed: GameSpeed = GameSpeed.NORMAL,
     val difficulty: Difficulty = Difficulty.HARD,
@@ -38,6 +44,7 @@ data class Settings(
     val soundEffects: Boolean = true,
     /** Players say aloud what their speech bubbles show. */
     val voices: Boolean = true,
+    val table: TableStyle = TableStyle.DARK,
 ) {
     fun name(seat: Int): String = names[seat].ifBlank { DEFAULT_NAMES[seat] }
 
@@ -61,6 +68,7 @@ class SettingsStore(context: Context) {
         serverUrl = prefs.getString(KEY_SERVER_URL, null) ?: Settings.DEFAULT_SERVER_URL,
         soundEffects = prefs.getBoolean(KEY_SOUND_EFFECTS, true),
         voices = prefs.getBoolean(KEY_VOICES, true),
+        table = enumOrDefault(prefs.getString(KEY_TABLE, null), TableStyle.DARK),
     )
 
     /**
@@ -93,6 +101,7 @@ class SettingsStore(context: Context) {
             }
             putBoolean(KEY_SOUND_EFFECTS, settings.soundEffects)
             putBoolean(KEY_VOICES, settings.voices)
+            putString(KEY_TABLE, settings.table.name)
         }.apply()
     }
 
@@ -109,5 +118,6 @@ class SettingsStore(context: Context) {
         const val KEY_DEVICE_ID = "device_id"
         const val KEY_SOUND_EFFECTS = "sound_effects"
         const val KEY_VOICES = "voices"
+        const val KEY_TABLE = "table"
     }
 }

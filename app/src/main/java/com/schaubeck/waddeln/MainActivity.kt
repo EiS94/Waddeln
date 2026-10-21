@@ -24,6 +24,7 @@ import com.schaubeck.waddeln.online.OnlineViewModel
 import com.schaubeck.waddeln.sound.LocalTableSound
 import com.schaubeck.waddeln.sound.TableSound
 import com.schaubeck.waddeln.ui.GameScreen
+import com.schaubeck.waddeln.ui.LocalTableStyle
 import com.schaubeck.waddeln.ui.MainMenu
 import com.schaubeck.waddeln.ui.OnlineScreen
 import com.schaubeck.waddeln.ui.SettingsScreen
@@ -63,7 +64,7 @@ class MainActivity : ComponentActivity() {
                 }
                 BackHandler(enabled = screen != Screen.MENU) { screen = Screen.MENU }
 
-                when (screen) {
+                CompositionLocalProvider(LocalTableStyle provides ui.settings.table) { when (screen) {
                     Screen.MENU -> MainMenu(
                         matchInProgress = ui.matchInProgress,
                         onContinue = { screen = Screen.GAME },
@@ -152,7 +153,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                     }
-                }
+                } }
             } }
         }
     }
