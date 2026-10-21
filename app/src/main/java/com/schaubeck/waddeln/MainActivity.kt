@@ -86,6 +86,8 @@ class MainActivity : ComponentActivity() {
                         onAskSchadet = viewModel::onAskSchadet,
                         onAnswerSchadet = viewModel::onAnswerSchadet,
                         onShowLastTrick = viewModel::onShowLastTrick,
+                        onProposeSchlagwechsel = viewModel::onProposeSchlagwechsel,
+                        onAnswerSchlagwechsel = viewModel::onAnswerSchlagwechsel,
                         onMenu = { screen = Screen.MENU },
                     )
 
@@ -125,6 +127,8 @@ class MainActivity : ComponentActivity() {
                                 onAskSchadet = onlineViewModel::askSchadet,
                                 onAnswerSchadet = onlineViewModel::answerSchadet,
                                 onShowLastTrick = onlineViewModel::showLastTrick,
+                                onProposeSchlagwechsel = onlineViewModel::proposeSchlagwechsel,
+                                onAnswerSchlagwechsel = onlineViewModel::answerSchlagwechsel,
                                 onMenu = { screen = Screen.MENU },
                                 onLeave = onlineViewModel::leave,
                                 soundKey = "online",

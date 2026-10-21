@@ -1,8 +1,10 @@
-"""Table talk of bots – mirror of PartnerHint.kt (PartnerHints), Schadet.kt and BotTalk.kt.
+"""Table talk of bots – mirror of PartnerHint.kt (PartnerHints), Schadet.kt, Schlagwechsel.kt and BotTalk.kt.
 
 - Before a bot answers a Schub it always asks its partner, who answers with partner_hint().
 - Before leading the Haubi into the first trick it asks "Schadder?", the partner answers with
   schadet_answer(), and the bot decides again knowing the answer (see allowed_actions()).
+- Before announcing the Schlag the player after the dealer may propose a Schlagwechsel; the dealer
+  answers at once (schlagwechsel_before_turn(), called before the actor is chosen).
 """
 from __future__ import annotations
 
@@ -63,6 +65,8 @@ def schadet_answer(obs: Observation) -> int:
     if obs.schlag is None or obs.farbe is None:
         return E.SCHADET_NO
     haubi = E.haubi_of(obs.schlag, obs.farbe)
+    if haubi in obs.hand:
+        return E.SCHADET_YES  # the asker bluffs; the partner covers it
     farbe = [c for c in obs.hand if E.suit_of(c) == obs.farbe and c != haubi and c not in KRITTE_SET]
     if not farbe or len(farbe) >= 3:
         return E.SCHADET_NO
@@ -72,6 +76,28 @@ def schadet_answer(obs: Observation) -> int:
     if given >= TEN:
         return E.SCHADET_A_LITTLE
     return E.SCHADET_NO
+
+
+def best_rank_count(hand: list[int]) -> int:
+    """Schlagwechsel.bestRankCount: most cards of one rank, Kritten don't count."""
+    return max(sum(1 for c in hand if E.rank_of(c) == r and c not in KRITTE_SET) for r in range(8))
+
+
+def proposes_schlagwechsel(obs: Observation) -> bool:
+    return best_rank_count(obs.hand) < 2
+
+
+def accepts_schlagwechsel(obs: Observation) -> bool:
+    return best_rank_count(obs.hand) >= 2
+
+
+def schlagwechsel_before_turn(state: E.State) -> None:
+    """BotTalk.schlagwechselBeforeTurn (in place)."""
+    proposer = state.forehand
+    if not E.can_propose_schlagwechsel(state, proposer) or not proposes_schlagwechsel(E.observe(state, proposer)):
+        return
+    E.propose_schlagwechsel(state, proposer)
+    E.answer_schlagwechsel(state, state.dealer, accepts_schlagwechsel(E.observe(state, state.dealer)))
 
 
 def leads_haubi(state: E.State, player: int, action: int) -> bool:

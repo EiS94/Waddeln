@@ -64,6 +64,12 @@ object Sayings {
     val SCHADET_A_LITTLE = listOf("Ein bisschen.", "A bissl.", "Geht scho.")
     val SCHADET_NO = listOf("Nein.", "Schadet net.", "Kannst spielen.")
 
+    // ---- Schlagwechsel before the Schlag is announced ---------------------------------------
+
+    val SCHLAGWECHSEL_QUESTION = listOf("Schlagwechsel?", "Tauschen wir?", "Sag du den Schlag an!")
+    val SCHLAGWECHSEL_ACCEPT = listOf("Passt.", "Machen wir.", "Ja, tauschen wir.")
+    val SCHLAGWECHSEL_DECLINE = listOf("Nix da.", "Nein, sag du an.", "Bleibt so.")
+
     // ---- Picking -------------------------------------------------------------------------
 
     /** A random variant for an action said aloud; null for playing a card. */
@@ -86,6 +92,11 @@ object Sayings {
         PartnerHint.TWO_TRICKS -> HINT_TWO_TRICKS
         PartnerHint.ALL_TRICKS -> HINT_ALL_TRICKS.getValue((TRICKS_TO_WIN - tricksWon).coerceIn(1, TRICKS_TO_WIN))
     }.random(random)
+
+    fun schlagwechselQuestion(random: Random = Random.Default): String = SCHLAGWECHSEL_QUESTION.random(random)
+
+    fun schlagwechselAnswer(accept: Boolean, random: Random = Random.Default): String =
+        (if (accept) SCHLAGWECHSEL_ACCEPT else SCHLAGWECHSEL_DECLINE).random(random)
 
     fun schadetQuestion(random: Random = Random.Default): String = SCHADET_QUESTION.random(random)
 

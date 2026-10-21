@@ -49,8 +49,9 @@ class MatchRunner(
 
     /** Lets the agent who has to act next choose and apply one action. */
     fun step(state: GameState): GameState {
-        val actor = nextActor(state)
-        val (talked, action) = BotTalk.decide(state, actor, agents[actor])
+        val swapped = BotTalk.schlagwechselBeforeTurn(state)
+        val actor = nextActor(swapped)
+        val (talked, action) = BotTalk.decide(swapped, actor, agents[actor])
         val next = Waddeln.apply(talked, actor, action)
         onAction(talked, actor, action)
         return next

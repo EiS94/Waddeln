@@ -99,6 +99,13 @@ Ansonsten gilt immer: höherer Rang gewinnt.
 - Zusammen ergibt das den Haubi (z.B. Schlag=Ober + Farbe=Gras → Haubi ist Gras Ober).
 - Ist die resultierende Karte ein Kritte, ist sie zugleich Haubi und Kritte (Sonderfall, s.o.).
 
+### Schlagwechsel
+- Bevor er den Schlag ansagt, darf der Spieler nach dem Geber einen **Schlagwechsel** vorschlagen:
+  Dann sagt der **Geber den Schlag** und der **Spieler nach dem Geber die Farbe** an.
+- Der **Geber** entscheidet, ob er zustimmt. Lehnt er ab, sagt der Spieler nach dem Geber ganz normal den Schlag an.
+- Vorgeschlagen werden darf **einmal pro Spiel**, unabhängig vom Spielstand (auch wenn ein Team gespannt ist).
+- Wer die erste Karte spielt, ändert sich dadurch nicht.
+
 ---
 
 ## Spielablauf
@@ -170,10 +177,15 @@ Das gegnerische Team hört dabei mit.
 - Gefragt werden darf einmal pro Schub.
 
 ### „Schadder?“ (vor dem Haubi-Anspiel im ersten Stich)
-- Wer den ersten Stich eröffnet und den Haubi hat, darf vor dem Ausspielen seinen Partner fragen,
+- Wer den ersten Stich eröffnet, darf vor dem Ausspielen seinen Partner fragen,
   ob er „schadet“: ob ihm die Bekennen-Pflicht eine Karte der Haubi-Farbe kostet, die ihm später fehlt.
+- Fragen darf er auch **ohne den Haubi** (Bluff): Das andere Team soll glauben, er habe ihn – das kann z.B.
+  später beim Schub wichtig sein. Auffallen kann es, wenn ein Gegner selbst den Haubi hat oder der Partner
+  „Nein“ sagt und trotzdem nicht der Haubi kommt. Auch bei gespannt gegen gespannt ist das erlaubt.
+- Hat der **Partner selbst den Haubi**, weiß er, dass geblufft wird, und antwortet *Ja*, damit der Bluff
+  nicht auffliegt.
 - Antworten: *Ja*, *ein bisschen*, *Nein*.
-- Faustregel: Ohne Haubi-Farbe oder mit 3 und mehr Karten davon schadet es nicht. Mit 1–2 Karten entscheidet
+- Faustregel (sonst): Ohne Haubi-Farbe oder mit 3 und mehr Karten davon schadet es nicht. Mit 1–2 Karten entscheidet
   die niedrigste davon (die abgegeben würde): hoch (Ober, König, Ass) → ja, mittel (Unter, 10) → ein bisschen,
   niedrig (7–9) → nein.
 - Gefragt werden darf einmal pro Spiel, nur bevor die erste Karte gespielt ist.
@@ -202,7 +214,8 @@ Das gegnerische Team hört dabei mit.
    muss er sie nehmen (andere sehen nur die Anzahl, nicht welche)
 3. Ausgeben (3 + 2), bis jeder 5 Karten hat; der Abheber bekommt entsprechend weniger;
    12 Karten bleiben im Deck, die unterste ist offen
-4. Spieler nach Geber sagt Schlag an
+4. Spieler nach Geber sagt Schlag an (oder schlägt einen Schlagwechsel vor; stimmt der Geber zu,
+   sagt der Geber den Schlag und der Spieler nach ihm die Farbe an)
 5. Geber sagt Farbe an → Haubi steht fest
 6. Spieler nach Geber eröffnet das Spiel
 7. Reihum Karten spielen (freie Wahl, außer Bekennen-Pflicht im ersten Stich wenn Haubi angespielt wird)

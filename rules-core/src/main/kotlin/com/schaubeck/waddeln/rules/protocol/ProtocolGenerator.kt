@@ -50,6 +50,7 @@ object ProtocolGenerator {
                 steps = mutableListOf()
                 continue
             }
+            state = talkSchlagwechsel(state, steps)
             // Table talk as in BotTalk (seated agents) or around a random action (chaos)
             val (player, action, byBot) = when (mode) {
                 Mode.AGENTS -> {
@@ -96,6 +97,21 @@ object ProtocolGenerator {
         val next = BotTalk.hintBeforeAnswer(state, actor)
         next.hints.drop(state.hints.size).forEach { h ->
             steps += Json.obj("talk" to Json.str("hint"), "p" to h.player.toString(), "v" to h.hint.ordinal.toString())
+        }
+        return next
+    }
+
+    /**
+     * [BotTalk.schlagwechselBeforeTurn], written as a talk step whenever the Schlagwechsel could be
+     * proposed ("v" = 1 if it was) and, if proposed, the dealer's answer.
+     */
+    private fun talkSchlagwechsel(state: GameState, steps: MutableList<String>): GameState {
+        if (!Waddeln.canProposeSchlagwechsel(state, state.forehand)) return state
+        val next = BotTalk.schlagwechselBeforeTurn(state)
+        val answer = next.schlagwechsel?.accepted
+        steps += Json.obj("talk" to Json.str("swap"), "p" to state.forehand.toString(), "v" to (if (answer != null) "1" else "0"))
+        if (answer != null) {
+            steps += Json.obj("talk" to Json.str("swapAnswer"), "p" to state.dealer.toString(), "v" to (if (answer) "1" else "0"))
         }
         return next
     }

@@ -110,6 +110,8 @@ class GameServer(
             is ClientMessage.Act -> room?.act(id, message.action)
             ClientMessage.AskPartner -> room?.askPartner(id)
             is ClientMessage.AnswerPartner -> room?.answerPartner(id, message.hint)
+            ClientMessage.ProposeSchlagwechsel -> room?.proposeSchlagwechsel(id)
+            is ClientMessage.AnswerSchlagwechsel -> room?.answerSchlagwechsel(id, message.accept)
             ClientMessage.AskSchadet -> room?.askSchadet(id)
             is ClientMessage.AnswerSchadet -> room?.answerSchadet(id, message.answer)
             is ClientMessage.ShowLastTrick -> room?.showLastTrick(id, message.show)

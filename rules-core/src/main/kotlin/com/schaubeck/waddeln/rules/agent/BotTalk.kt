@@ -13,6 +13,9 @@ import com.schaubeck.waddeln.rules.partnerOf
  * - Before a bot answers a Schub it always asks its partner, who answers with [PartnerHints].
  * - Before leading the Haubi into the first trick it asks "Schadder?", the partner answers with
  *   [Schadet.answerFor], and the bot decides again knowing the answer (see [Schadet.allowedActions]).
+ * - Before announcing the Schlag the player after the dealer may propose a Schlagwechsel
+ *   ([Schlagwechsel.proposes]); the dealer answers with [Schlagwechsel.accepts]. This is talked
+ *   about before the actor is chosen ([schlagwechselBeforeTurn]), since it changes who announces.
  */
 object BotTalk {
 
@@ -21,6 +24,19 @@ object BotTalk {
         val partner = partnerOf(actor)
         if (!Waddeln.canGiveHint(state, partner)) return state
         return Waddeln.giveHint(state, partner, PartnerHints.hintFor(state.observationFor(partner)))
+    }
+
+    /**
+     * At the start of a round: the player after the dealer proposes a Schlagwechsel if he wants one
+     * and the dealer answers at once. Unchanged if it was talked about already or is not wanted.
+     */
+    fun schlagwechselBeforeTurn(state: GameState): GameState {
+        val proposer = state.forehand
+        if (!Waddeln.canProposeSchlagwechsel(state, proposer) || !Schlagwechsel.proposes(state.observationFor(proposer))) {
+            return state
+        }
+        val proposed = Waddeln.proposeSchlagwechsel(state, proposer)
+        return Waddeln.answerSchlagwechsel(proposed, state.dealer, Schlagwechsel.accepts(proposed.observationFor(state.dealer)))
     }
 
     /** True if [actor] wants to play [action] and should ask "Schadder?" first. */

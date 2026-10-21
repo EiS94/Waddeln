@@ -34,7 +34,7 @@ def replay(match):
     bot = RuleBot()
     state = None
     checked = {"steps": 0, "bot": 0, "features": 0, "discard": 0, "discard_changed": 0,
-               "hints": 0, "schadet": 0}
+               "hints": 0, "schadet": 0, "schlagwechsel": 0}
     for r, rnd in enumerate(match["rounds"]):
         if r == 0:
             state = E.new_match(rnd["dealer"], rnd["deck"], rnd["cut"])
@@ -92,7 +92,7 @@ def replay(match):
 
 
 def replay_talk(state, step, ctx, checked):
-    """Partner hint, "Schadder?" or its answer: the Python heuristics must say the same."""
+    """Partner hint, "Schadder?", Schlagwechsel or their answers: the Python heuristics must say the same."""
     p, kind = step["p"], step["talk"]
     if kind == "hint":
         assert T.partner_hint(E.observe(state, p)) == step["v"], f"{ctx} partner hint"
@@ -104,13 +104,22 @@ def replay_talk(state, step, ctx, checked):
         assert T.schadet_answer(E.observe(state, p)) == step["v"], f"{ctx} Schadder answer"
         E.answer_schadet(state, p, step["v"])
         checked["schadet"] += 1
+    elif kind == "swap":
+        assert E.can_propose_schlagwechsel(state, p), f"{ctx} Schlagwechsel"
+        assert T.proposes_schlagwechsel(E.observe(state, p)) == bool(step["v"]), f"{ctx} Schlagwechsel proposal"
+        if step["v"]:
+            E.propose_schlagwechsel(state, p)
+    elif kind == "swapAnswer":
+        assert T.accepts_schlagwechsel(E.observe(state, p)) == bool(step["v"]), f"{ctx} Schlagwechsel answer"
+        E.answer_schlagwechsel(state, p, bool(step["v"]))
+        checked["schlagwechsel"] += 1
     else:
         raise AssertionError(f"{ctx} unknown talk {kind}")
 
 
 def test_protocols_replay_identically():
     totals = {"steps": 0, "bot": 0, "features": 0, "discard": 0, "discard_changed": 0,
-              "hints": 0, "schadet": 0, "laid_out": 0, "kritte_haubi": 0, "matches": 0}
+              "hints": 0, "schadet": 0, "schlagwechsel": 0, "laid_out": 0, "kritte_haubi": 0, "matches": 0}
     for match in load_matches():
         checked = replay(match)
         for k in checked:
@@ -119,7 +128,7 @@ def test_protocols_replay_identically():
         totals["laid_out"] += sum(1 for r in match["rounds"] for s in r["steps"]
                                   if "after" in s and s["after"]["laidOut"] is not None)
         for r in match["rounds"]:
-            codes = [s["a"] for s in r["steps"][:2] if "a" in s]
+            codes = [s["a"] for s in r["steps"] if "a" in s][:2]
             if len(codes) == 2 and codes[0] < 8 and 8 <= codes[1] < 12:
                 totals["kritte_haubi"] += E.card(codes[1] - 8, codes[0]) in E.KRITTE_SET
     print(totals)
@@ -130,3 +139,4 @@ def test_protocols_replay_identically():
     assert totals["discard_changed"] > 100, "protocols should cover the Abwurf-Regel changing a card"
     assert totals["hints"] > 100, "protocols should cover partner hints"
     assert totals["schadet"] > 20, "protocols should cover Schadder"
+    assert totals["schlagwechsel"] > 50, "protocols should cover the Schlagwechsel"

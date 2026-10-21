@@ -6,7 +6,8 @@ produced by the Kotlin engine (./gradlew :rules-core:generateProtocols) and comp
 Cards are ints 0..31: suit * 8 + rank.
 Suits: SCHELL, HERZ, EICHEL, GRAS. Ranks: 7, 8, 9, 10, UNTER, OBER, KOENIG, ASS.
 Action codes (see ActionCodec.kt): 0..7 Schlag, 8..11 Farbe, 12..43 play card, 44 Schub,
-45 Bleiben, 46 Gehen. Table talk (partner hints, "Schadder?") is no action but part of the state.
+45 Bleiben, 46 Gehen. Table talk (partner hints, "Schadder?", Schlagwechsel) is no action but part of
+the state.
 """
 from __future__ import annotations
 
@@ -191,6 +192,8 @@ class State:
     schubs: list[tuple[int, int]] = field(default_factory=list)  # (player, cards played before)
     hints: list[tuple[int, int, int]] = field(default_factory=list)  # (player, hint, schub index)
     schadet: tuple[int, int | None] | None = None  # (asker, answer)
+    schlagwechsel_proposed: bool = False
+    schlagwechsel_accepted: bool | None = None  # the dealer's answer
     result: tuple[int, int, str] | None = None  # (winning team, points, reason)
 
     @property
@@ -200,6 +203,14 @@ class State:
     @property
     def abheber(self) -> int:
         return abheber_of(self.dealer)
+
+    @property
+    def schlag_announcer(self) -> int:
+        return self.dealer if self.schlagwechsel_accepted else self.forehand
+
+    @property
+    def farbe_announcer(self) -> int:
+        return self.forehand if self.schlagwechsel_accepted else self.dealer
 
     @property
     def visible_bottom_card(self) -> int:
@@ -227,9 +238,9 @@ class State:
     @property
     def player_to_move(self) -> int | None:
         if self.phase == SCHLAG:
-            return self.forehand
+            return self.schlag_announcer
         if self.phase == FARBE:
-            return self.dealer
+            return self.farbe_announcer
         if self.phase == PLAYING:
             return (self.trick_leader + len(self.current_trick)) % PLAYER_COUNT
         return None
@@ -288,9 +299,10 @@ def can_announce_schub(state: State, player: int) -> bool:
 def legal_actions(state: State, player: int) -> list[int]:
     phase = state.phase
     if phase == SCHLAG:
-        return list(range(8)) if player == state.forehand else []
+        ok = player == state.schlag_announcer and schlagwechsel_answerer(state) is None
+        return list(range(8)) if ok else []
     if phase == FARBE:
-        return [FARBE_OFFSET + s for s in range(4)] if player == state.dealer else []
+        return [FARBE_OFFSET + s for s in range(4)] if player == state.farbe_announcer else []
     if phase == PLAYING:
         if state.pending_schub is not None:
             answering = 1 - team_of(state.pending_schub)
@@ -354,14 +366,19 @@ def give_hint(state: State, player: int, hint: int) -> None:
     state.hints.append((player, hint, len(state.schubs) - 1))
 
 
-def leads_first_trick_with_haubi(state: State, player: int) -> bool:
-    return (state.strengths is not None and state.phase == PLAYING and state.pending_schub is None
+def leads_first_trick(state: State, player: int) -> bool:
+    return (state.phase == PLAYING and state.pending_schub is None
             and not state.completed_tricks and not state.current_trick
-            and state.player_to_move == player and state.haubi in state.hands[player])
+            and state.player_to_move == player)
+
+
+def leads_first_trick_with_haubi(state: State, player: int) -> bool:
+    return state.strengths is not None and leads_first_trick(state, player) and state.haubi in state.hands[player]
 
 
 def can_ask_schadet(state: State, player: int) -> bool:
-    return state.schadet is None and leads_first_trick_with_haubi(state, player)
+    """Once per round by the player leading the first trick: with the Haubi or as a bluff."""
+    return state.schadet is None and leads_first_trick(state, player)
 
 
 def ask_schadet(state: State, player: int) -> None:
@@ -374,7 +391,7 @@ def schadet_answerer(state: State) -> int | None:
     if state.schadet is None:
         return None
     asker, answer = state.schadet
-    if answer is not None or not leads_first_trick_with_haubi(state, asker):
+    if answer is not None or not leads_first_trick(state, asker):
         return None
     return partner_of(asker)
 
@@ -383,6 +400,29 @@ def answer_schadet(state: State, player: int, answer: int) -> None:
     if schadet_answerer(state) != player:
         raise IllegalAction(f"player {player} may not answer Schadder now")
     state.schadet = (state.schadet[0], answer)
+
+
+def can_propose_schlagwechsel(state: State, player: int) -> bool:
+    return state.phase == SCHLAG and not state.schlagwechsel_proposed and player == state.forehand
+
+
+def propose_schlagwechsel(state: State, player: int) -> None:
+    if not can_propose_schlagwechsel(state, player):
+        raise IllegalAction(f"player {player} may not propose a Schlagwechsel now")
+    state.schlagwechsel_proposed = True
+
+
+def schlagwechsel_answerer(state: State) -> int | None:
+    """The dealer while a proposed Schlagwechsel waits for the answer."""
+    if state.phase == SCHLAG and state.schlagwechsel_proposed and state.schlagwechsel_accepted is None:
+        return state.dealer
+    return None
+
+
+def answer_schlagwechsel(state: State, player: int, accept: bool) -> None:
+    if schlagwechsel_answerer(state) != player:
+        raise IllegalAction(f"player {player} may not answer the Schlagwechsel now")
+    state.schlagwechsel_accepted = accept
 
 
 def _fix_haubi(state: State, farbe: int) -> None:
@@ -460,6 +500,8 @@ class Observation:
     schubs: list[tuple[int, int]] = field(default_factory=list)
     hints: list[tuple[int, int, int]] = field(default_factory=list)
     schadet: tuple[int, int | None] | None = None
+    schlagwechsel_proposed: bool = False
+    schlagwechsel_accepted: bool | None = None
 
     @property
     def team(self) -> int:
@@ -485,4 +527,5 @@ def observe(state: State, player: int) -> Observation:
         tricks_won=state.tricks_won, game_value=state.game_value,
         last_schub_team=state.last_schub_team, pending_schub=state.pending_schub,
         laid_out_counts=laid, schubs=state.schubs, hints=state.hints, schadet=state.schadet,
+        schlagwechsel_proposed=state.schlagwechsel_proposed, schlagwechsel_accepted=state.schlagwechsel_accepted,
     )

@@ -13,11 +13,12 @@ enum class SchadetAnswer { NO, A_LITTLE, YES }
 
 /**
  * "Schadder?": before leading the Haubi into the first trick, the player may ask the partner whether
- * having to follow with the Haubi-Farbe would hurt them.
+ * having to follow with the Haubi-Farbe would hurt them. Humans may also ask without the Haubi to
+ * bluff; bots only ask when they hold it.
  */
 object Schadet {
 
-    /** True if [player] is about to lead the first trick and holds the Haubi, so asking makes sense. */
+    /** True if [player] is about to lead the first trick and holds the Haubi (not a bluff). */
     fun canAsk(state: GameState, player: Int): Boolean = Waddeln.leadsFirstTrickWithHaubi(state, player)
 
     /** True if [action] leads the Haubi into the first trick (the move "Schadder?" is asked before). */
@@ -42,12 +43,14 @@ object Schadet {
     }
 
     /**
-     * The partner's answer from their hand. Without Haubi-Farbe or with three and more it does not
+     * The partner's answer from their hand. Holding the Haubi themselves they know it is a bluff and
+     * say "yes", so it does not show. Otherwise: without Haubi-Farbe or with three and more it does not
      * hurt. With one or two it depends on the lowest of them (the one they would give): high
      * (Ober and up) hurts, medium (Unter, 10) a little, low (7 to 9) not.
      */
     fun answerFor(obs: Observation): SchadetAnswer {
         val trump = obs.trump ?: return SchadetAnswer.NO
+        if (trump.haubi in obs.hand) return SchadetAnswer.YES
         val farbe = obs.hand.filter { trump.isHaubiFarbe(it) }
         if (farbe.isEmpty() || farbe.size >= 3) return SchadetAnswer.NO
         val given = farbe.minBy { it.rank }

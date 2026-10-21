@@ -6,7 +6,7 @@ import kotlinx.serialization.Serializable
  * What [player] is allowed to know about a [GameState]: their own hand, all played cards,
  * the number (not identity) of Kritten the Abheber took, the open bottom card of the stock and,
  * when gespannt meets gespannt, how many cards each player still has laid out, and everything
- * said at the table (Schub, partner talk, "Schadder?").
+ * said at the table (Schub, partner talk, "Schadder?", Schlagwechsel).
  */
 @Serializable
 data class Observation(
@@ -37,12 +37,17 @@ data class Observation(
     val schubs: List<SchubCall> = emptyList(),
     val hints: List<HintCall> = emptyList(),
     val schadet: SchadetTalk? = null,
+    val schlagwechsel: SchlagwechselTalk? = null,
 ) {
     val team: Int get() = teamOf(player)
     val abheber: Int get() = abheberOf(dealer)
     val trump: Trump? get() = if (schlag != null && farbe != null) Trump(schlag, farbe) else null
 
     fun isGespannt(team: Int): Boolean = scores[team] >= GESPANNT_POINTS
+
+    /** The dealer while a proposed Schlagwechsel waits for the answer (as [Waddeln.schlagwechselAnswerer]). */
+    val schlagwechselAnswerer: Int?
+        get() = dealer.takeIf { phase == Phase.SCHLAG && schlagwechsel != null && schlagwechsel.accepted == null }
 
     /** Winning team of the match, or null while it is still running. */
     val matchWinner: Int? get() = if (phase == Phase.MATCH_OVER) scores.indexOfFirst { it >= MATCH_POINTS } else null
@@ -77,6 +82,7 @@ data class Observation(
                 schubs = state.schubs,
                 hints = state.hints,
                 schadet = state.schadet,
+                schlagwechsel = state.schlagwechsel,
             )
         }
     }

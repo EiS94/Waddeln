@@ -4,6 +4,7 @@ import com.schaubeck.waddeln.rules.agent.Agent
 import com.schaubeck.waddeln.rules.agent.BotTalk
 import com.schaubeck.waddeln.rules.agent.PartnerHint
 import com.schaubeck.waddeln.rules.agent.PartnerHints
+import com.schaubeck.waddeln.rules.agent.Schadet
 import com.schaubeck.waddeln.rules.agent.SchadetAnswer
 import com.schaubeck.waddeln.rules.ml.FeatureEncoder
 import com.schaubeck.waddeln.rules.ml.MlAgent
@@ -60,6 +61,22 @@ class TableTalkTest {
         s = Waddeln.answerSchadet(s, 2, SchadetAnswer.YES)
         assertNull(Waddeln.schadetAnswerer(s))
         assertEquals(SchadetTalk(0, SchadetAnswer.YES), s.observationFor(1).schadet)
+    }
+
+    @Test
+    fun `Schadder may be asked as a bluff without the Haubi`() {
+        val bluff = playingWith(
+            listOf("SA S8 S10 H9 E9", "SK SU H10 HU E10", "GO GA G9 E8 H7", "EA EK H8 S9 SO"),
+            Rank.OBER, Suit.GRAS,
+        )
+        assertTrue(Waddeln.canAskSchadet(bluff, 0))
+        assertFalse(Waddeln.canAskSchadet(bluff, 1), "only the player leading the first trick")
+        var s = Waddeln.askSchadet(bluff, 0)
+        assertEquals(2, Waddeln.schadetAnswerer(s))
+        s = Waddeln.answerSchadet(s, 2, SchadetAnswer.YES)
+        val legal = Waddeln.legalActions(s, 0)
+        assertEquals(legal, Schadet.allowedActions(s, 0, legal), "nothing to drop without the Haubi")
+        assertFalse(BotTalk.asksSchadet(bluff, 0, legal.first()), "bots do not bluff")
     }
 
     @Test

@@ -25,6 +25,7 @@ def play_match(agents, rng: random.Random, record_seats=(), max_rounds: int = 20
     for _ in range(max_rounds):
         pending: list[tuple[int, np.ndarray]] = []
         while state.phase in (E.SCHLAG, E.FARBE, E.PLAYING):
+            T.schlagwechsel_before_turn(state)
             actor = E.seated_actor(state)
             T.hint_before_answer(state, actor)
             legal = T.allowed_actions(state, actor, E.legal_actions(state, actor))
@@ -136,6 +137,7 @@ class BatchedSelfPlay:
                     else:
                         slot.state = E.start_next_round(st, *E.random_deal(self.rng))
                     continue
+                T.schlagwechsel_before_turn(st)
                 actor = E.seated_actor(st)
                 T.hint_before_answer(st, actor)
                 legal = T.allowed_actions(st, actor, E.legal_actions(st, actor))

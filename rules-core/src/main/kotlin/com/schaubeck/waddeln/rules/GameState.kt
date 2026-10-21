@@ -21,10 +21,10 @@ fun abheberOf(dealer: Int): Int = (dealer + PLAYER_COUNT - 1) % PLAYER_COUNT
 fun playersOf(team: Int): List<Int> = (0 until PLAYER_COUNT).filter { teamOf(it) == team }
 
 enum class Phase {
-    /** Player after the dealer announces the Schlag. */
+    /** Player after the dealer announces the Schlag (the dealer after an accepted Schlagwechsel). */
     SCHLAG,
 
-    /** Dealer announces the Farbe. */
+    /** Dealer announces the Farbe (the player after the dealer after an accepted Schlagwechsel). */
     FARBE,
 
     /** Cards are played; Schub may be announced at any time. */
@@ -88,12 +88,22 @@ data class GameState(
     val hints: List<HintCall> = emptyList(),
     /** "Schadder?" of this round, if somebody asked. */
     val schadet: SchadetTalk? = null,
+    /** Schlagwechsel of this round, if the forehand proposed one. */
+    val schlagwechsel: SchlagwechselTalk? = null,
     val result: RoundResult? = null,
 ) {
     val abheber: Int get() = abheberOf(dealer)
 
-    /** Player who announces the Schlag and opens the first trick. */
+    /** Player after the dealer: opens the first trick and announces the Schlag (unless swapped). */
     val forehand: Int get() = nextPlayer(dealer)
+
+    private val swapped: Boolean get() = schlagwechsel?.accepted == true
+
+    /** Announces the Schlag: the forehand, or the dealer after an accepted Schlagwechsel. */
+    val schlagAnnouncer: Int get() = if (swapped) dealer else forehand
+
+    /** Announces the Farbe: the dealer, or the forehand after an accepted Schlagwechsel. */
+    val farbeAnnouncer: Int get() = if (swapped) forehand else dealer
 
     val visibleBottomCard: Card get() = stock.last()
 
@@ -110,12 +120,13 @@ data class GameState(
     /**
      * The player whose turn it is in the normal flow (announcing or playing a card),
      * or null when the round is over. While a Schub is pending, card play is suspended
-     * and any player of [PendingSchub.answeringTeam] may answer.
+     * and any player of [PendingSchub.answeringTeam] may answer. While a proposed Schlagwechsel
+     * waits for the dealer's answer, nobody can announce (see [Waddeln.schlagwechselAnswerer]).
      */
     val playerToMove: Int?
         get() = when (phase) {
-            Phase.SCHLAG -> forehand
-            Phase.FARBE -> dealer
+            Phase.SCHLAG -> schlagAnnouncer
+            Phase.FARBE -> farbeAnnouncer
             Phase.PLAYING -> (trickLeader + currentTrick.size) % PLAYER_COUNT
             Phase.ROUND_OVER, Phase.MATCH_OVER -> null
         }

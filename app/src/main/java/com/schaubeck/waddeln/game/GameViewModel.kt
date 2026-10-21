@@ -11,7 +11,6 @@ import com.schaubeck.waddeln.rules.Phase
 import com.schaubeck.waddeln.rules.Waddeln
 import com.schaubeck.waddeln.rules.observationFor
 import com.schaubeck.waddeln.rules.partnerOf
-import com.schaubeck.waddeln.rules.agent.Schadet
 import com.schaubeck.waddeln.rules.agent.SchadetAnswer
 import com.schaubeck.waddeln.rules.teamOf
 import com.schaubeck.waddeln.ui.Sayings
@@ -102,7 +101,25 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         publish()
     }
 
-    /** Before leading the Haubi: ask the partner "Schadder?"; the partner bot answers in its next step. */
+    /** Before announcing the Schlag: propose a Schlagwechsel; the dealer bot answers in its next step. */
+    fun onProposeSchlagwechsel() {
+        if (!game.humanCanProposeSchlagwechsel()) return
+        game.proposeSchlagwechsel()
+        say(OfflineGame.HUMAN, Sayings.schlagwechselQuestion())
+        publish()
+        runBots()
+    }
+
+    /** Answer as dealer to a bot's Schlagwechsel. */
+    fun onAnswerSchlagwechsel(accept: Boolean) {
+        if (!game.humanMustAnswerSchlagwechsel()) return
+        game.answerSchlagwechsel(accept)
+        say(OfflineGame.HUMAN, Sayings.schlagwechselAnswer(accept))
+        publish()
+        runBots()
+    }
+
+    /** Before leading the first trick: ask the partner "Schadder?"; the partner bot answers in its next step. */
     fun onAskSchadet() {
         if (!game.humanCanAskSchadet()) return
         game.askSchadet()
@@ -198,6 +215,14 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                         say(bot, text)
                         true
                     }
+                    is BotStep.ProposedSchlagwechsel -> {
+                        say(bot, Sayings.schlagwechselQuestion())
+                        true
+                    }
+                    is BotStep.AnsweredSchlagwechsel -> {
+                        say(bot, Sayings.schlagwechselAnswer(step.accept))
+                        true
+                    }
                     is BotStep.AskedPartner -> {
                         // The opponents talk aloud: question by the bot, answer by its partner right after.
                         say(bot, Sayings.partnerQuestion())
@@ -253,8 +278,11 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             partnerHint = partnerHint(),
             canAskSchadet = notice == null && game.humanCanAskSchadet(),
             waitingForSchadet = game.schadet?.let { it.asker == OfflineGame.HUMAN && it.answer == null } == true,
-            schadetAnswer = schadetText?.takeIf { Schadet.canAsk(game.state, OfflineGame.HUMAN) },
+            schadetAnswer = schadetText?.takeIf { Waddeln.leadsFirstTrick(game.state, OfflineGame.HUMAN) },
             partnerAsksSchadet = game.humanMustAnswerSchadet(),
+            canProposeSchlagwechsel = notice == null && game.humanCanProposeSchlagwechsel(),
+            waitingForSchlagwechsel = Waddeln.schlagwechselAnswerer(game.state).let { it != null && it != OfflineGame.HUMAN },
+            schlagwechselAsksUs = game.humanMustAnswerSchlagwechsel(),
             canShowLastTrick = notice == null && Waddeln.canShowLastTrick(game.state, OfflineGame.HUMAN),
             lastTrickShownBy = OfflineGame.HUMAN.takeIf { showingLastTrick && Waddeln.canShowLastTrick(game.state, it) },
         ),

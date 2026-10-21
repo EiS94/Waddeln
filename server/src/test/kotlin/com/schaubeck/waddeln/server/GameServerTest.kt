@@ -65,6 +65,11 @@ class GameServerTest {
 
         val table get() = connection.table
         val seat get() = table.yourSeat
+
+        /** Declines a Schlagwechsel the bots proposed to us as dealer (until then nobody can act). */
+        fun answerSchlagwechsel() {
+            if (table.game?.observation?.schlagwechselAnswerer == seat) send(ClientMessage.AnswerSchlagwechsel(false))
+        }
     }
 
     /** Bots run on the virtual test clock; unlike backgroundScope, advanceUntilIdle() also runs them. */
@@ -220,7 +225,10 @@ class GameServerTest {
         val game = host.table.game!!
         val obs = game.observation
         // Either the human must act or the round is over; bots never wait forever.
-        assertTrue(game.legalActions.isNotEmpty() || obs.phase == Phase.ROUND_OVER || obs.phase == Phase.MATCH_OVER)
+        assertTrue(
+            game.legalActions.isNotEmpty() || obs.schlagwechselAnswerer == 0 ||
+                obs.phase == Phase.ROUND_OVER || obs.phase == Phase.MATCH_OVER,
+        )
         if (obs.pendingSchub == null && obs.phase == Phase.PLAYING) assertEquals(0, obs.playerToMove)
     }
 
@@ -256,6 +264,10 @@ class GameServerTest {
             if (phase == Phase.ROUND_OVER || phase == Phase.MATCH_OVER) {
                 if (phase == Phase.MATCH_OVER) matches++
                 humans.forEach { it.send(ClientMessage.Ready) }
+                continue
+            }
+            if (humans.any { it.table.game!!.observation.schlagwechselAnswerer == it.seat }) {
+                humans.forEach { it.answerSchlagwechsel() }
                 continue
             }
             val actors = humans.filter { games[it]!!.legalActions.isNotEmpty() }
@@ -307,6 +319,7 @@ class GameServerTest {
             val game = host.table.game!!
             val phase = game.observation.phase
             if (phase == Phase.ROUND_OVER || phase == Phase.MATCH_OVER) host.send(ClientMessage.Ready)
+            else if (game.observation.schlagwechselAnswerer == host.seat) host.answerSchlagwechsel()
             else host.send(ClientMessage.Act(game.legalActions.first { it != Action.Schub }))
         }
 
@@ -644,6 +657,35 @@ class GameServerTest {
     }
 
     @Test
+    fun `a Schlagwechsel proposed by the human is answered by the bot dealer`() = runTest {
+        val server = newServer(seed = 2)
+        val host = player(server, "host")
+        host.send(ClientMessage.CreateRoom)
+        host.send(ClientMessage.StartMatch)
+        repeat(10_000) {
+            advanceUntilIdle()
+            val game = host.table.game!!
+            val obs = game.observation
+            when {
+                obs.phase == Phase.ROUND_OVER || obs.phase == Phase.MATCH_OVER -> host.send(ClientMessage.Ready)
+                game.canProposeSchlagwechsel -> {
+                    host.send(ClientMessage.ProposeSchlagwechsel)
+                    assertEquals(obs.dealer, host.table.game!!.observation.schlagwechselAnswerer)
+                    assertTrue(host.table.game!!.legalActions.isEmpty(), "no Schlag until the dealer answered")
+                    advanceUntilIdle()
+                    val after = host.table.game!!.observation
+                    assertNotNull(after.schlagwechsel?.accepted, "the bot dealer answered")
+                    assertFalse(host.table.game!!.canProposeSchlagwechsel, "once per round")
+                    return@runTest
+                }
+                obs.schlagwechselAnswerer == host.seat -> host.answerSchlagwechsel()
+                else -> host.send(ClientMessage.Act(game.legalActions.first { it != Action.Schub }))
+            }
+        }
+        error("the host never announced the Schlag")
+    }
+
+    @Test
     fun `the player to move shows the last trick to the whole table until they act`() = runTest {
         val server = newServer(seed = 5)
         val host = player(server, "host")
@@ -662,8 +704,9 @@ class GameServerTest {
             }
             val shower = humans.firstOrNull { games[it]!!.canShowLastTrick }
             if (shower == null) {
-                val p = humans.first { games[it]!!.legalActions.isNotEmpty() }
-                val legal = games[p]!!.legalActions
+                humans.forEach { it.answerSchlagwechsel() }
+                val p = humans.firstOrNull { it.table.game!!.legalActions.isNotEmpty() } ?: return@repeat
+                val legal = p.table.game!!.legalActions
                 return@repeat p.send(ClientMessage.Act(legal.firstOrNull { it != Action.Schub } ?: legal.first()))
             }
             val other = humans.first { it !== shower }
@@ -691,8 +734,9 @@ class GameServerTest {
             val games = humans.associateWith { it.table.game!! }
             val phase = games.values.first().observation.phase
             if (phase == Phase.ROUND_OVER || phase == Phase.MATCH_OVER) return
-            val p = humans.first { games[it]!!.legalActions.isNotEmpty() }
-            val legal = games[p]!!.legalActions
+            humans.forEach { it.answerSchlagwechsel() }
+            val p = humans.firstOrNull { it.table.game!!.legalActions.isNotEmpty() } ?: return@repeat
+            val legal = p.table.game!!.legalActions
             p.send(ClientMessage.Act(legal.firstOrNull { it != Action.Schub } ?: legal.first()))
         }
         error("Round did not end")

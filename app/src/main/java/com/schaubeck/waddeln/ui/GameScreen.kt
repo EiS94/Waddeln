@@ -70,6 +70,7 @@ import com.schaubeck.waddeln.rules.Suit
 import com.schaubeck.waddeln.rules.Trump
 import com.schaubeck.waddeln.rules.agent.PartnerHint
 import com.schaubeck.waddeln.rules.agent.SchadetAnswer
+import com.schaubeck.waddeln.rules.nextPlayer
 import com.schaubeck.waddeln.rules.teamOf
 import com.schaubeck.waddeln.sound.LocalTableSound
 import kotlinx.coroutines.delay
@@ -79,7 +80,8 @@ import kotlinx.coroutines.delay
  * [onContinue] starts the next round or match after the result; [onAskPartner] asks the partner
  * about their cards during a Schub, [onAnswerPartner] (online only) answers such a question;
  * [onAskSchadet] asks the partner "Schadder?" before leading the Haubi, [onAnswerSchadet] answers it;
- * [onShowLastTrick] shows or hides the last completed trick;
+ * [onShowLastTrick] shows or hides the last completed trick; [onProposeSchlagwechsel] proposes a
+ * Schlagwechsel before the Schlag, [onAnswerSchlagwechsel] answers it as dealer;
  * [onLeave] (online only) leaves the room for good. [soundKey] tells the offline and the online
  * table apart for the sounds.
  */
@@ -95,6 +97,8 @@ fun GameScreen(
     onAskSchadet: () -> Unit = {},
     onAnswerSchadet: (SchadetAnswer) -> Unit = {},
     onShowLastTrick: (Boolean) -> Unit = {},
+    onProposeSchlagwechsel: () -> Unit = {},
+    onAnswerSchlagwechsel: (Boolean) -> Unit = {},
     onLeave: (() -> Unit)? = null,
     soundKey: String = "offline",
 ) {
@@ -107,7 +111,10 @@ fun GameScreen(
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 Table(table, onSchub = { onAction(Action.Schub) }, onShowLastTrick = onShowLastTrick)
             }
-            ActionArea(table, onAction, onNoticeConfirmed, onAskPartner, onAnswerPartner, onAskSchadet, onAnswerSchadet)
+            ActionArea(
+                table, onAction, onNoticeConfirmed, onAskPartner, onAnswerPartner, onAskSchadet, onAnswerSchadet,
+                onProposeSchlagwechsel, onAnswerSchlagwechsel,
+            )
             Hand(table, onAction)
         }
         RoundEndOverlay(table, onContinue, onMenu, onLeave)
@@ -571,6 +578,8 @@ private fun ActionArea(
     onAnswerPartner: (PartnerHint) -> Unit,
     onAskSchadet: () -> Unit,
     onAnswerSchadet: (SchadetAnswer) -> Unit,
+    onProposeSchlagwechsel: () -> Unit,
+    onAnswerSchlagwechsel: (Boolean) -> Unit,
 ) {
     val s = table.obs
     val actions = table.actions
@@ -582,6 +591,21 @@ private fun ActionArea(
                 PanelTitle(Texts.schubNotice(notice.askingPlayer, notice.answeringPlayer, notice.newGameValue, table.names, table.me))
                 Button(onClick = onNoticeConfirmed, colors = woodButton()) { Text("OK") }
             }
+        }
+
+        table.schlagwechselAsksUs -> {
+            {
+                val proposer = table.names[nextPlayer(s.dealer)]
+                PanelTitle("$proposer will einen Schlagwechsel: Du sagst den Schlag an, $proposer die Farbe.")
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Button(onClick = { onAnswerSchlagwechsel(true) }, colors = woodButton()) { Text("Annehmen") }
+                    OutlinedButton(onClick = { onAnswerSchlagwechsel(false) }) { Text("Ablehnen", color = Color.White) }
+                }
+            }
+        }
+
+        table.waitingForSchlagwechsel -> {
+            { Text("Schlagwechsel? – warte auf ${table.names[s.dealer]} …", color = Highlight, fontSize = 14.sp) }
         }
 
         actions.any { it is Action.AnnounceSchlag } -> {
@@ -597,6 +621,11 @@ private fun ActionArea(
                                 modifier = Modifier.weight(1f),
                             ) { Text(Texts.rank(rank), maxLines = 1) }
                         }
+                    }
+                }
+                if (table.canProposeSchlagwechsel) {
+                    TextButton(onClick = onProposeSchlagwechsel) {
+                        Text("Schlagwechsel vorschlagen", color = Highlight)
                     }
                 }
             }

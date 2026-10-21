@@ -41,10 +41,14 @@ object Waddeln {
         require(player in 0 until PLAYER_COUNT)
         return when (state.phase) {
             Phase.SCHLAG ->
-                if (player == state.forehand) Rank.entries.map { Action.AnnounceSchlag(it) } else emptyList()
+                if (player == state.schlagAnnouncer && schlagwechselAnswerer(state) == null) {
+                    Rank.entries.map { Action.AnnounceSchlag(it) }
+                } else {
+                    emptyList()
+                }
 
             Phase.FARBE ->
-                if (player == state.dealer) Suit.entries.map { Action.AnnounceFarbe(it) } else emptyList()
+                if (player == state.farbeAnnouncer) Suit.entries.map { Action.AnnounceFarbe(it) } else emptyList()
 
             Phase.PLAYING -> {
                 val pending = state.pendingSchub
@@ -144,14 +148,20 @@ object Waddeln {
     /** True while [player] is about to lead the first trick holding the Haubi (the moment for "Schadder?"). */
     fun leadsFirstTrickWithHaubi(state: GameState, player: Int): Boolean {
         val trump = state.trump ?: return false
-        return state.phase == Phase.PLAYING && state.pendingSchub == null &&
-            state.completedTricks.isEmpty() && state.currentTrick.isEmpty() &&
-            state.playerToMove == player && trump.haubi in state.hands[player]
+        return leadsFirstTrick(state, player) && trump.haubi in state.hands[player]
     }
 
-    /** "Schadder?" may be asked once per round, by the player leading the first trick with the Haubi. */
+    /** True while [player] is about to lead the first trick (the moment for "Schadder?"). */
+    fun leadsFirstTrick(state: GameState, player: Int): Boolean =
+        state.phase == Phase.PLAYING && state.pendingSchub == null &&
+            state.completedTricks.isEmpty() && state.currentTrick.isEmpty() && state.playerToMove == player
+
+    /**
+     * "Schadder?" may be asked once per round by the player leading the first trick: with the Haubi,
+     * or as a bluff without it.
+     */
     fun canAskSchadet(state: GameState, player: Int): Boolean =
-        state.schadet == null && leadsFirstTrickWithHaubi(state, player)
+        state.schadet == null && leadsFirstTrick(state, player)
 
     fun askSchadet(state: GameState, player: Int): GameState {
         if (!canAskSchadet(state, player)) throw IllegalActionException("Player $player may not ask Schadder now")
@@ -160,12 +170,35 @@ object Waddeln {
 
     /** The partner who still has to answer an open "Schadder?" (none once it became moot by a lead). */
     fun schadetAnswerer(state: GameState): Int? = state.schadet
-        ?.takeIf { it.answer == null && leadsFirstTrickWithHaubi(state, it.asker) }
+        ?.takeIf { it.answer == null && leadsFirstTrick(state, it.asker) }
         ?.let { partnerOf(it.asker) }
 
     fun answerSchadet(state: GameState, player: Int, answer: SchadetAnswer): GameState {
         if (schadetAnswerer(state) != player) throw IllegalActionException("Player $player may not answer Schadder now")
         return state.copy(schadet = state.schadet!!.copy(answer = answer))
+    }
+
+    /** Before announcing the Schlag, the player after the dealer may propose a Schlagwechsel once per round. */
+    fun canProposeSchlagwechsel(state: GameState, player: Int): Boolean =
+        state.phase == Phase.SCHLAG && state.schlagwechsel == null && player == state.forehand
+
+    fun proposeSchlagwechsel(state: GameState, player: Int): GameState {
+        if (!canProposeSchlagwechsel(state, player)) {
+            throw IllegalActionException("Player $player may not propose a Schlagwechsel now")
+        }
+        return state.copy(schlagwechsel = SchlagwechselTalk())
+    }
+
+    /** The dealer while a proposed Schlagwechsel waits for the answer; nobody announces meanwhile. */
+    fun schlagwechselAnswerer(state: GameState): Int? =
+        state.dealer.takeIf { state.phase == Phase.SCHLAG && state.schlagwechsel?.accepted == null && state.schlagwechsel != null }
+
+    /** On [accept] the dealer announces the Schlag and the proposer the Farbe; otherwise nothing changes. */
+    fun answerSchlagwechsel(state: GameState, player: Int, accept: Boolean): GameState {
+        if (schlagwechselAnswerer(state) != player) {
+            throw IllegalActionException("Player $player may not answer the Schlagwechsel now")
+        }
+        return state.copy(schlagwechsel = SchlagwechselTalk(accept))
     }
 
     /**

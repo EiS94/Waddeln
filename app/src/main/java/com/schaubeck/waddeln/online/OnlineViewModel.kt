@@ -90,6 +90,8 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
     fun act(action: Action) = send(ClientMessage.Act(action))
     fun askPartner() = send(ClientMessage.AskPartner)
     fun answerPartner(hint: PartnerHint) = send(ClientMessage.AnswerPartner(hint))
+    fun proposeSchlagwechsel() = send(ClientMessage.ProposeSchlagwechsel)
+    fun answerSchlagwechsel(accept: Boolean) = send(ClientMessage.AnswerSchlagwechsel(accept))
     fun askSchadet() = send(ClientMessage.AskSchadet)
     fun answerSchadet(answer: SchadetAnswer) = send(ClientMessage.AnswerSchadet(answer))
     fun showLastTrick(show: Boolean) = send(ClientMessage.ShowLastTrick(show))
@@ -176,6 +178,11 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
             // A bot partner answers at once; the answer still follows the question.
             say(hint.seat, text, delayMs = if (newQuestion) ANSWER_DELAY_MS else 0)
         }
+        val swap = obs.schlagwechsel
+        val oldSwap = old.observation.schlagwechsel.takeIf { obs.roundNumber == old.observation.roundNumber }
+        if (swap != null && oldSwap == null) say((obs.dealer + 1) % PLAYER_COUNT, Sayings.schlagwechselQuestion())
+        val accepted = swap?.accepted
+        if (accepted != null && oldSwap?.accepted == null) say(obs.dealer, Sayings.schlagwechselAnswer(accepted))
         val schadetAsker = game.schadetQuestion
         if (schadetAsker == null) schadetText = null
         if (schadetAsker != null && old.schadetQuestion == null) say(schadetAsker, Sayings.schadetQuestion())
@@ -216,6 +223,9 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
             waitingForSchadet = game.schadetQuestion == me && game.schadetAnswer == null && beforeFirstLead,
             schadetAnswer = schadetText.takeIf { game.schadetQuestion == me && beforeFirstLead && obs.playerToMove == me },
             partnerAsksSchadet = game.schadetQuestion == (me + 2) % PLAYER_COUNT && game.schadetAnswer == null && beforeFirstLead,
+            canProposeSchlagwechsel = game.canProposeSchlagwechsel,
+            waitingForSchlagwechsel = obs.schlagwechselAnswerer.let { it != null && it != me },
+            schlagwechselAsksUs = obs.schlagwechselAnswerer == me,
             canShowLastTrick = game.canShowLastTrick,
             lastTrickShownBy = game.lastTrickShownBy,
             absent = table.room.seats.indices.filter { table.room.seats[it].isHuman && !table.room.seats[it].connected }.toSet(),
