@@ -13,9 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -131,31 +129,19 @@ fun CardView(
     }
 }
 
-private val BackLine = Color(0xFF8A8A8A)
-
 /**
- * Back side with a grey tartan pattern like in the table draft.
+ * Back side of a card.
  * [landscape] lays the card sideways (for the players on the left and right).
  */
 @Composable
 fun CardBack(modifier: Modifier = Modifier, width: Dp = 40.dp, landscape: Boolean = false) {
-    Box(
+    Image(
+        painter = painterResource(if (landscape) R.drawable.card_back_landscape else R.drawable.card_back),
+        contentDescription = null,
+        contentScale = ContentScale.FillBounds,
         modifier = modifier
             .then(if (landscape) Modifier.size(width * CARD_ASPECT, width) else Modifier.size(width, width * CARD_ASPECT))
             .shadow(2.dp, CardShape)
-            .clip(CardShape)
-            .background(Color(0xFFF2F2F2))
-            .drawBehind {
-                val step = 7.dp.toPx()
-                val stroke = 1.6.dp.toPx()
-                var x = -size.height
-                while (x < size.width + size.height) {
-                    drawLine(BackLine, Offset(x, 0f), Offset(x + size.height, size.height), stroke)
-                    drawLine(BackLine, Offset(x + size.height, 0f), Offset(x, size.height), stroke)
-                    x += step
-                }
-            }
-            .border(2.dp, Color.White, CardShape)
-            .border(0.5.dp, Color.Gray, CardShape),
+            .clip(CardShape),
     )
 }

@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.sp
 import com.schaubeck.waddeln.game.Difficulty
 import com.schaubeck.waddeln.game.GameSpeed
 import com.schaubeck.waddeln.game.Settings
+import com.schaubeck.waddeln.game.TableStyle
 
 /** Settings are applied and stored immediately. */
 @Composable
@@ -64,6 +65,11 @@ fun SettingsScreen(settings: Settings, onChange: (Settings) -> Unit, onBack: () 
                         Choice(d.label, d.description, d == settings.difficulty) { onChange(settings.copy(difficulty = d)) }
                     }
                     Text("Dein Partner spielt immer in voller Stärke.", color = Color.White.copy(alpha = 0.7f), fontSize = 13.sp)
+                }
+                Section("Spieltisch") {
+                    TableStyle.entries.forEach { t ->
+                        Choice(t.label, null, t == settings.table) { onChange(settings.copy(table = t)) }
+                    }
                 }
                 Section("Ton") {
                     Toggle("Geräusche", "Mischen, Karten und Stiche", settings.soundEffects) {
