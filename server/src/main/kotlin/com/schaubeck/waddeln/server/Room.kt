@@ -1,6 +1,8 @@
 package com.schaubeck.waddeln.server
 
 import com.schaubeck.waddeln.protocol.BotStrength
+import com.schaubeck.waddeln.protocol.CutAnimation
+import com.schaubeck.waddeln.protocol.CutView
 import com.schaubeck.waddeln.protocol.GameView
 import com.schaubeck.waddeln.protocol.RoomInfo
 import com.schaubeck.waddeln.protocol.SeatAction
@@ -9,9 +11,11 @@ import com.schaubeck.waddeln.protocol.SeatSchadet
 import com.schaubeck.waddeln.protocol.SeatInfo
 import com.schaubeck.waddeln.protocol.ServerMessage
 import com.schaubeck.waddeln.rules.Action
+import com.schaubeck.waddeln.rules.CutReveal
 import com.schaubeck.waddeln.rules.Deal
 import com.schaubeck.waddeln.rules.GameState
 import com.schaubeck.waddeln.rules.PLAYER_COUNT
+import com.schaubeck.waddeln.rules.PendingRound
 import com.schaubeck.waddeln.rules.Phase
 import com.schaubeck.waddeln.rules.Waddeln
 import com.schaubeck.waddeln.rules.agent.Agent
@@ -44,7 +48,12 @@ data class Timing(
     val speechPauseMs: Long = 1400,
     /** A human who has to decide gets this long; then the bot decides for them. Null = no limit. */
     val turnTimeoutMs: Long? = 60_000,
+    /** Like [turnTimeoutMs] for the Abheber; then a random cut is made for them. */
+    val cutTimeoutMs: Long? = 30_000,
 )
+
+/** How [abheber] cut the deck of the current round. */
+private data class RoomCut(val abheber: Int, val cut: Int, val reveal: CutReveal)
 
 /** A human in a room; [client] is null while disconnected. */
 class Member(val playerId: String, var name: String, var client: Client?)
@@ -87,6 +96,12 @@ class Room(
     private var state: GameState? = null
     private val ready = BooleanArray(PLAYER_COUNT)
     private var lastAction: SeatAction? = null
+
+    /** The next round waits for the Abheber to cut; meanwhile [state] is its preview without cards. */
+    private var pendingRound: PendingRound? = null
+
+    /** The cut of the current round, shown to everybody (the Kritten only to the Abheber). */
+    private var lastCut: RoomCut? = null
 
     /**
      * Seat that asked its partner during the open Schub. The answer and "Schadder?" are part of
@@ -176,9 +191,19 @@ class Room(
     fun start(playerId: String): String? {
         if (playerId != hostId) return "Nur der Gastgeber kann das Spiel starten."
         if (started) return null
-        state = Waddeln.newMatch(random)
+        prepare(Waddeln.prepareMatch(random))
         logMatchStart()
         changed()
+        return null
+    }
+
+    /** The Abheber cuts after [cut] cards; then the round is dealt. */
+    fun cut(playerId: String, cut: Int): String? {
+        val seat = seatOf(playerId) ?: return null
+        val round = pendingRound ?: return null
+        if (seat != round.abheber) return null
+        if (cut !in Deal.CUT_RANGE) return "So kann nicht abgehoben werden."
+        cut(round, cut)
         return null
     }
 
@@ -296,7 +321,7 @@ class Room(
         }
         val legal = Schadet.allowedActions(s, actor, Waddeln.legalActions(s, actor))
         val action = agents[actor].chooseAction(s.observationFor(actor), legal)
-        if (BotTalk.asksSchadet(s, actor, action)) {
+        if (BotTalk.talksSchadet(s, actor, action, random)) {
             state = Waddeln.askSchadet(s, actor)
             changed(timing.speechPauseMs)
             return
@@ -320,7 +345,7 @@ class Room(
     fun ready(playerId: String): String? {
         val seat = seatOf(playerId) ?: return null
         val phase = state?.phase ?: return null
-        if (phase != Phase.ROUND_OVER && phase != Phase.MATCH_OVER) return null
+        if (pendingRound != null || (phase != Phase.ROUND_OVER && phase != Phase.MATCH_OVER)) return null
         ready[seat] = true
         changed()
         return null
@@ -350,17 +375,33 @@ class Room(
     /** Starts the next round or match if everyone connected is ready. */
     private fun advanceIfReady() {
         val s = state ?: return
-        if (s.phase != Phase.ROUND_OVER && s.phase != Phase.MATCH_OVER) return
+        if (pendingRound != null || (s.phase != Phase.ROUND_OVER && s.phase != Phase.MATCH_OVER)) return
         val waiting = humanSeats()
         if (waiting.isEmpty() || waiting.any { !ready[it] }) return
         ready.fill(false)
-        lastAction = null
         if (s.phase == Phase.MATCH_OVER) {
-            state = Waddeln.newMatch(random)
+            prepare(Waddeln.prepareMatch(random))
             logMatchStart()
         } else {
-            state = Waddeln.startNextRound(s, Deal.random(random))
+            prepare(Waddeln.prepareNextRound(s, random))
         }
+    }
+
+    /** The dealer has shuffled; the table waits for the Abheber. */
+    private fun prepare(round: PendingRound) {
+        pendingRound = round
+        state = round.preview
+        lastCut = null
+        lastAction = null
+    }
+
+    /** Cuts the pending [round] after [cut] cards and deals; the bots wait until everybody has seen the cut. */
+    private fun cut(round: PendingRound, cut: Int) {
+        val reveal = round.reveal(cut)
+        state = round.deal(cut)
+        pendingRound = null
+        lastCut = RoomCut(round.abheber, cut, reveal)
+        changed(CutAnimation.durationMs(reveal.kritten.size))
     }
 
     /** After every change: maybe advance, inform everybody, let the bots continue. */
@@ -379,7 +420,18 @@ class Room(
         val s = state ?: return stopTimer()
         val humans = humanSeats()
         // Nobody watching: the game waits for the players to come back.
-        if (humans.isEmpty() || s.playerToMove == null) return stopTimer()
+        if (humans.isEmpty()) return stopTimer()
+        pendingRound?.let { round ->
+            if (round.abheber in humans) return startTimer(s, timing.cutTimeoutMs)
+            stopTimer()
+            botJob = scope.launch {
+                delay(pauseMs + timing.botDelayMs)
+                botJob = null
+                cut(pendingRound ?: return@launch, Deal.randomCut(random))
+            }
+            return
+        }
+        if (s.playerToMove == null) return stopTimer()
         // An open "Schadder?" or Schlagwechsel is answered first.
         val answerer = Waddeln.schadetAnswerer(s) ?: Waddeln.schlagwechselAnswerer(s)
         if (answerer != null) {
@@ -405,8 +457,8 @@ class Room(
     }
 
     /** A human has to decide: after the timeout the bot decides for them (same timer while [s] is unchanged). */
-    private fun startTimer(s: GameState) {
-        val timeout = timing.turnTimeoutMs ?: return stopTimer()
+    private fun startTimer(s: GameState, timeoutMs: Long? = timing.turnTimeoutMs) {
+        val timeout = timeoutMs ?: return stopTimer()
         if (timerState === s && timeoutJob?.isActive == true) return
         stopTimer()
         timerState = s
@@ -415,6 +467,11 @@ class Room(
             delay(timeout)
             val current = state ?: return@launch
             if (current !== s) return@launch
+            pendingRound?.let { round ->
+                timeoutJob = null
+                log.info("Room {}: time is up for {}, the bot cuts", code, seatName(round.abheber))
+                return@launch cut(round, Deal.randomCut(random))
+            }
             (Waddeln.schadetAnswerer(current) ?: Waddeln.schlagwechselAnswerer(current))?.let { seat ->
                 timeoutJob = null
                 log.info("Room {}: time is up for {}, the bot answers", code, seatName(seat))
@@ -509,6 +566,19 @@ class Room(
             schadetAnswer = s.schadet?.let { talk -> talk.answer?.let { SeatSchadet(partnerOf(talk.asker), it) } },
             canShowLastTrick = Waddeln.canShowLastTrick(s, seat),
             lastTrickShownBy = lastTrickShownBy?.takeIf { Waddeln.canShowLastTrick(s, it) },
+            cut = cutView(s, seat),
+        )
+    }
+
+    private fun cutView(s: GameState, seat: Int): CutView? {
+        pendingRound?.let { return CutView(it.abheber) }
+        val c = lastCut?.takeIf { s.phase != Phase.ROUND_OVER && s.phase != Phase.MATCH_OVER } ?: return null
+        return CutView(
+            abheber = c.abheber,
+            cut = c.cut,
+            krittenCount = c.reveal.kritten.size,
+            kritten = if (seat == c.abheber) c.reveal.kritten else emptyList(),
+            bottomCard = c.reveal.bottomCard,
         )
     }
 

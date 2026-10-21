@@ -45,6 +45,8 @@ data class Settings(
     /** Players say aloud what their speech bubbles show. */
     val voices: Boolean = true,
     val table: TableStyle = TableStyle.DARK,
+    /** As Abheber the player chooses where to cut; otherwise the app cuts at random for them. */
+    val selfCut: Boolean = true,
 ) {
     fun name(seat: Int): String = names[seat].ifBlank { DEFAULT_NAMES[seat] }
 
@@ -69,6 +71,7 @@ class SettingsStore(context: Context) {
         soundEffects = prefs.getBoolean(KEY_SOUND_EFFECTS, true),
         voices = prefs.getBoolean(KEY_VOICES, true),
         table = enumOrDefault(prefs.getString(KEY_TABLE, null), TableStyle.DARK),
+        selfCut = prefs.getBoolean(KEY_SELF_CUT, true),
     )
 
     /**
@@ -102,6 +105,7 @@ class SettingsStore(context: Context) {
             putBoolean(KEY_SOUND_EFFECTS, settings.soundEffects)
             putBoolean(KEY_VOICES, settings.voices)
             putString(KEY_TABLE, settings.table.name)
+            putBoolean(KEY_SELF_CUT, settings.selfCut)
         }.apply()
     }
 
@@ -119,5 +123,6 @@ class SettingsStore(context: Context) {
         const val KEY_SOUND_EFFECTS = "sound_effects"
         const val KEY_VOICES = "voices"
         const val KEY_TABLE = "table"
+        const val KEY_SELF_CUT = "self_cut"
     }
 }

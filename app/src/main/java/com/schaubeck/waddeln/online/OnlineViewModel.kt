@@ -5,6 +5,7 @@ import android.os.SystemClock
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.schaubeck.waddeln.game.ANSWER_DELAY_MS
+import com.schaubeck.waddeln.game.CutUi
 import com.schaubeck.waddeln.game.GameSpeed
 import com.schaubeck.waddeln.game.SchubNotice
 import com.schaubeck.waddeln.game.SettingsStore
@@ -16,8 +17,10 @@ import com.schaubeck.waddeln.game.TableUi
 import com.schaubeck.waddeln.game.isSpoken
 import com.schaubeck.waddeln.protocol.BotStrength
 import com.schaubeck.waddeln.protocol.ClientMessage
+import com.schaubeck.waddeln.protocol.CutAnimation
 import com.schaubeck.waddeln.protocol.ServerMessage
 import com.schaubeck.waddeln.rules.Action
+import com.schaubeck.waddeln.rules.Deal
 import com.schaubeck.waddeln.rules.PLAYER_COUNT
 import com.schaubeck.waddeln.rules.Phase
 import com.schaubeck.waddeln.rules.teamOf
@@ -30,6 +33,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlin.random.Random
 
 enum class ConnectionState { OFF, CONNECTING, CONNECTED, LOST }
 
@@ -66,6 +70,22 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
     /** Local time at which the server decides for us (from [com.schaubeck.waddeln.protocol.GameView.timeLeftMs]). */
     private var deadline: Long? = null
     private var noticeJob: Job? = null
+
+    /** The cut being shown after the server dealt; the table appears once it has been seen. */
+    private var cutShown: CutUi? = null
+    private var cutJob: Job? = null
+
+    /** We already cut at random for the round that waits for us (see [selfCut]). */
+    private var autoCutSent = false
+
+    /** As Abheber we choose where to cut; otherwise the app cuts at random for us. */
+    var selfCut = true
+        set(value) {
+            if (field == value) return
+            field = value
+            _ui.value.table?.let { autoCut(it) }
+            refreshGame()
+        }
     private var errorJob: Job? = null
 
     /** Connects (or reconnects) with the current nickname; the server seats us again if we were in a room. */
@@ -95,6 +115,13 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
     fun askSchadet() = send(ClientMessage.AskSchadet)
     fun answerSchadet(answer: SchadetAnswer) = send(ClientMessage.AnswerSchadet(answer))
     fun showLastTrick(show: Boolean) = send(ClientMessage.ShowLastTrick(show))
+    fun cut(cut: Int) = send(ClientMessage.Cut(cut))
+
+    /** We have seen enough of the cut. */
+    fun onCutSeen() {
+        cutJob?.cancel()
+        finishCut()
+    }
     fun ready() = send(ClientMessage.Ready)
     fun leave() = send(ClientMessage.LeaveRoom)
 
@@ -130,7 +157,10 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
             is ServerMessage.Table -> {
                 detectNotice(_ui.value.table, message)
                 detectSpeech(_ui.value.table, message)
-                message.game?.let { statsTracker.observe(it.observation) }
+                detectCut(_ui.value.table, message)
+                autoCut(message)
+                // The table without cards while the Abheber cuts is no round of its own.
+                message.game?.takeIf { it.cut?.cut != null || it.cut == null }?.let { statsTracker.observe(it.observation) }
                 deadline = message.game?.timeLeftMs?.let { SystemClock.elapsedRealtime() + it }
                 update { it.copy(greeted = true, table = message) }
             }
@@ -194,6 +224,45 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    /** The Abheber has just cut: show it like the server lets the bots wait. */
+    private fun detectCut(before: ServerMessage.Table?, now: ServerMessage.Table) {
+        val cut = now.game?.cut ?: return
+        val lifted = cut.cut ?: return
+        if (before?.game?.cut?.let { it.cut == null } != true) return
+        cutShown = CutUi(
+            abheber = cut.abheber,
+            cut = lifted,
+            krittenCount = cut.krittenCount,
+            kritten = cut.kritten,
+            bottomCard = cut.bottomCard,
+        )
+        cutJob?.cancel()
+        cutJob = viewModelScope.launch {
+            delay(CutAnimation.durationMs(cut.krittenCount))
+            finishCut()
+        }
+    }
+
+    /** After the cut the Abheber tells the table how many Kritten they took. */
+    private fun finishCut() {
+        val shown = cutShown ?: return
+        cutShown = null
+        if (shown.krittenCount > 0) say(shown.abheber, Sayings.kritten(shown.krittenCount))
+        refreshGame()
+    }
+
+    /** We are the Abheber but let the app cut at random. */
+    private fun autoCut(table: ServerMessage.Table) {
+        val waiting = table.game?.cut?.takeIf { it.cut == null && it.abheber == table.yourSeat }
+        if (waiting == null) {
+            autoCutSent = false
+            return
+        }
+        if (selfCut || autoCutSent) return
+        autoCutSent = true
+        cut(Deal.randomCut(Random.Default))
+    }
+
     private fun say(seat: Int, text: String, delayMs: Long = 0) {
         speech = (speech + Speech(seat, text, SystemClock.elapsedRealtime() + delayMs)).takeLast(MAX_SPEECH)
     }
@@ -208,7 +277,7 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
         val beforeFirstLead = obs.phase == Phase.PLAYING && obs.completedTricks.isEmpty() && obs.currentTrick.isEmpty()
         return TableUi(
             obs = obs,
-            actions = game.legalActions,
+            actions = if (cutShown != null) emptyList() else game.legalActions,
             names = List(PLAYER_COUNT) { seat -> seatName(table, seat) },
             // The server sets the pace; it matches the slow speed.
             speed = GameSpeed.SLOW,
@@ -232,6 +301,7 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
             bots = table.room.seats.indices.filter { !table.room.seats[it].isHuman }.toSet(),
             waitingForOthers = over && game.ready[me],
             deadline = deadline,
+            cut = cutShown ?: game.cut?.takeIf { it.cut == null }?.let { CutUi(it.abheber, choosing = it.abheber == me && selfCut) },
             connectionProblem = if (connection == ConnectionState.LOST) "Verbindung unterbrochen – verbinde neu …" else null,
         )
     }

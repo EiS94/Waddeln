@@ -4,6 +4,8 @@ package com.schaubeck.waddeln.server
 
 import com.schaubeck.waddeln.protocol.BotStrength
 import com.schaubeck.waddeln.protocol.ClientMessage
+import com.schaubeck.waddeln.protocol.CutAnimation
+import com.schaubeck.waddeln.protocol.CutView
 import com.schaubeck.waddeln.protocol.SeatHint
 import com.schaubeck.waddeln.protocol.ServerMessage
 import com.schaubeck.waddeln.protocol.decodeServerMessage
@@ -12,6 +14,7 @@ import com.schaubeck.waddeln.rules.Action
 import com.schaubeck.waddeln.rules.Phase
 import com.schaubeck.waddeln.rules.agent.PartnerHint
 import com.schaubeck.waddeln.rules.agent.RuleBasedAgent
+import com.schaubeck.waddeln.rules.agent.SchadetAnswer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -66,9 +69,14 @@ class GameServerTest {
         val table get() = connection.table
         val seat get() = table.yourSeat
 
-        /** Declines a Schlagwechsel the bots proposed to us as dealer (until then nobody can act). */
-        fun answerSchlagwechsel() {
-            if (table.game?.observation?.schlagwechselAnswerer == seat) send(ClientMessage.AnswerSchlagwechsel(false))
+        /**
+         * Answers what the bots asked us (until then nobody can act): declines a Schlagwechsel as
+         * dealer and says "no" to the partner's "Schadder?".
+         */
+        fun answerTalk() {
+            val game = table.game ?: return
+            if (game.observation.schlagwechselAnswerer == seat) send(ClientMessage.AnswerSchlagwechsel(false))
+            if (game.schadetQuestion == (seat + 2) % 4 && game.schadetAnswer == null) send(ClientMessage.AnswerSchadet(SchadetAnswer.NO))
         }
     }
 
@@ -205,6 +213,11 @@ class GameServerTest {
         val guest = player(server, "guest")
         guest.send(ClientMessage.JoinRoom(host.table.room.code))
         host.send(ClientMessage.StartMatch)
+        // Nobody holds cards while the Abheber cuts.
+        assertEquals(0, host.table.game!!.observation.hand.size)
+        val abheber = host.table.game!!.cut!!.abheber
+        listOf(host, guest).firstOrNull { it.seat == abheber }?.send(ClientMessage.Cut(10))
+        advanceTimeBy(Timing().botDelayMs + 1)
 
         val a = host.table.game!!.observation
         val b = guest.table.game!!.observation
@@ -213,6 +226,58 @@ class GameServerTest {
         assertTrue(a.hand.none { it in b.hand })
         // Player ids are secret: they never appear in what others receive.
         assertFalse("host" in guest.table.encode().replace("\"host\":", "").replace("\"name\":\"host\"", ""))
+    }
+
+    /** A server whose first Abheber is seat 0 (where the host sits). */
+    private fun TestScope.serverWithHostAsAbheber(timing: Timing = Timing(turnTimeoutMs = null)): Pair<GameServer, Player> {
+        for (seed in 1..50) {
+            val server = newServer(seed, timing)
+            val host = player(server, "host")
+            host.send(ClientMessage.CreateRoom)
+            host.send(ClientMessage.StartMatch)
+            if (host.table.game!!.cut!!.abheber == 0) return server to host
+        }
+        error("no seed found")
+    }
+
+    @Test
+    fun `the human Abheber cuts, everybody sees how many Kritten but only they see which`() = runTest {
+        val (server, host) = serverWithHostAsAbheber()
+        val guest = player(server, "guest")
+        guest.send(ClientMessage.JoinRoom(host.table.room.code))
+        assertEquals(CutView(abheber = 0), guest.table.game!!.cut)
+        assertEquals(emptyList(), host.table.game!!.legalActions)
+
+        guest.send(ClientMessage.Cut(10))
+        assertNull(host.table.game!!.cut!!.cut, "only the Abheber cuts")
+        host.send(ClientMessage.Cut(2))
+        assertIs<ServerMessage.Error>(host.connection.last)
+
+        host.send(ClientMessage.Cut(12))
+        val mine = host.table.game!!.cut!!
+        val theirs = guest.table.game!!.cut!!
+        assertEquals(12, mine.cut)
+        assertEquals(mine.krittenCount, mine.kritten.size)
+        assertTrue(host.table.game!!.observation.hand.containsAll(mine.kritten))
+        assertEquals(mine.copy(kritten = emptyList()), theirs)
+        assertEquals(host.table.game!!.observation.visibleBottomCard, mine.bottomCard)
+        assertEquals(mine.krittenCount, host.table.game!!.observation.abheberKritten)
+
+        // The bots wait until the cut has been shown.
+        val before = host.table.game!!.observation
+        advanceTimeBy(CutAnimation.durationMs(mine.krittenCount))
+        assertEquals(before, host.table.game!!.observation)
+    }
+
+    @Test
+    fun `after 30 seconds the cut is made for the Abheber`() = runTest {
+        val (_, host) = serverWithHostAsAbheber(Timing(turnTimeoutMs = 60_000))
+        assertNotNull(host.table.game!!.timeLeftMs)
+        advanceTimeBy(29_000)
+        assertNull(host.table.game!!.cut!!.cut)
+        advanceTimeBy(1_001)
+        assertNotNull(host.table.game!!.cut!!.cut)
+        assertEquals(5, host.table.game!!.observation.hand.size)
     }
 
     @Test
@@ -266,8 +331,8 @@ class GameServerTest {
                 humans.forEach { it.send(ClientMessage.Ready) }
                 continue
             }
-            if (humans.any { it.table.game!!.observation.schlagwechselAnswerer == it.seat }) {
-                humans.forEach { it.answerSchlagwechsel() }
+            if (humans.none { it.table.game!!.legalActions.isNotEmpty() }) {
+                humans.forEach { it.answerTalk() }
                 continue
             }
             val actors = humans.filter { games[it]!!.legalActions.isNotEmpty() }
@@ -319,7 +384,7 @@ class GameServerTest {
             val game = host.table.game!!
             val phase = game.observation.phase
             if (phase == Phase.ROUND_OVER || phase == Phase.MATCH_OVER) host.send(ClientMessage.Ready)
-            else if (game.observation.schlagwechselAnswerer == host.seat) host.answerSchlagwechsel()
+            else if (game.legalActions.none { it != Action.Schub }) host.answerTalk()
             else host.send(ClientMessage.Act(game.legalActions.first { it != Action.Schub }))
         }
 
@@ -678,7 +743,7 @@ class GameServerTest {
                     assertFalse(host.table.game!!.canProposeSchlagwechsel, "once per round")
                     return@runTest
                 }
-                obs.schlagwechselAnswerer == host.seat -> host.answerSchlagwechsel()
+                obs.schlagwechselAnswerer == host.seat -> host.answerTalk()
                 else -> host.send(ClientMessage.Act(game.legalActions.first { it != Action.Schub }))
             }
         }
@@ -704,7 +769,7 @@ class GameServerTest {
             }
             val shower = humans.firstOrNull { games[it]!!.canShowLastTrick }
             if (shower == null) {
-                humans.forEach { it.answerSchlagwechsel() }
+                humans.forEach { it.answerTalk() }
                 val p = humans.firstOrNull { it.table.game!!.legalActions.isNotEmpty() } ?: return@repeat
                 val legal = p.table.game!!.legalActions
                 return@repeat p.send(ClientMessage.Act(legal.firstOrNull { it != Action.Schub } ?: legal.first()))
@@ -734,7 +799,7 @@ class GameServerTest {
             val games = humans.associateWith { it.table.game!! }
             val phase = games.values.first().observation.phase
             if (phase == Phase.ROUND_OVER || phase == Phase.MATCH_OVER) return
-            humans.forEach { it.answerSchlagwechsel() }
+            humans.forEach { it.answerTalk() }
             val p = humans.firstOrNull { it.table.game!!.legalActions.isNotEmpty() } ?: return@repeat
             val legal = p.table.game!!.legalActions
             p.send(ClientMessage.Act(legal.firstOrNull { it != Action.Schub } ?: legal.first()))

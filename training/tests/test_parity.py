@@ -34,7 +34,7 @@ def replay(match):
     bot = RuleBot()
     state = None
     checked = {"steps": 0, "bot": 0, "features": 0, "discard": 0, "discard_changed": 0,
-               "hints": 0, "schadet": 0, "schlagwechsel": 0}
+               "hints": 0, "schadet": 0, "schlagwechsel": 0, "bluffs": 0}
     for r, rnd in enumerate(match["rounds"]):
         if r == 0:
             state = E.new_match(rnd["dealer"], rnd["deck"], rnd["cut"])
@@ -99,6 +99,9 @@ def replay_talk(state, step, ctx, checked):
         E.give_hint(state, p, step["v"])
         checked["hints"] += 1
     elif kind == "ask":
+        if state.haubi not in state.hands[p]:
+            assert T.can_bluff(state, p), f"{ctx} bluff"
+            checked["bluffs"] += 1
         E.ask_schadet(state, p)
     elif kind == "answer":
         assert T.schadet_answer(E.observe(state, p)) == step["v"], f"{ctx} Schadder answer"
@@ -119,7 +122,7 @@ def replay_talk(state, step, ctx, checked):
 
 def test_protocols_replay_identically():
     totals = {"steps": 0, "bot": 0, "features": 0, "discard": 0, "discard_changed": 0,
-              "hints": 0, "schadet": 0, "schlagwechsel": 0, "laid_out": 0, "kritte_haubi": 0, "matches": 0}
+              "hints": 0, "schadet": 0, "schlagwechsel": 0, "bluffs": 0, "laid_out": 0, "kritte_haubi": 0, "matches": 0}
     for match in load_matches():
         checked = replay(match)
         for k in checked:
@@ -140,3 +143,4 @@ def test_protocols_replay_identically():
     assert totals["hints"] > 100, "protocols should cover partner hints"
     assert totals["schadet"] > 20, "protocols should cover Schadder"
     assert totals["schlagwechsel"] > 50, "protocols should cover the Schlagwechsel"
+    assert totals["bluffs"] > 5, "protocols should cover bluffing with Schadder"

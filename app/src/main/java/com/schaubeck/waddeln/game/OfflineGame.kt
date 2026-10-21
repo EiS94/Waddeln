@@ -1,9 +1,11 @@
 package com.schaubeck.waddeln.game
 
 import com.schaubeck.waddeln.rules.Action
+import com.schaubeck.waddeln.rules.CutReveal
 import com.schaubeck.waddeln.rules.Deal
 import com.schaubeck.waddeln.rules.GameState
 import com.schaubeck.waddeln.rules.PLAYER_COUNT
+import com.schaubeck.waddeln.rules.PendingRound
 import com.schaubeck.waddeln.rules.Phase
 import com.schaubeck.waddeln.rules.RoundResult
 import com.schaubeck.waddeln.rules.SchadetTalk
@@ -26,6 +28,9 @@ import kotlin.random.Random
 /** What a bot did in one step. */
 sealed interface BotStep {
     val bot: Int
+
+    /** As Abheber the bot cut after [cut] cards; the round is dealt. */
+    data class Cut(override val bot: Int, val cut: Int, val reveal: CutReveal) : BotStep
 
     data class Acted(override val bot: Int, val action: Action) : BotStep
 
@@ -59,8 +64,16 @@ class OfflineGame(
     /** The bot players per seat; may be replaced, e.g. once the ML model has been loaded. */
     var bots: List<Agent> = List(PLAYER_COUNT) { RuleBasedAgent() },
 ) {
-    var state: GameState = Waddeln.newMatch(random)
+    /** The next round waits for the Abheber to cut; meanwhile [state] is its preview without cards. */
+    private var pending: PendingRound? = Waddeln.prepareMatch(random)
+
+    var state: GameState = pending!!.preview
         private set
+
+    /** The Abheber who still has to cut, or null once the round is dealt. */
+    val abheberToCut: Int? get() = pending?.abheber
+
+    fun humanMustCut(): Boolean = abheberToCut == HUMAN
 
     /** "Schadder?" of the current round, if somebody asked. */
     val schadet: SchadetTalk? get() = state.schadet
@@ -78,6 +91,7 @@ class OfflineGame(
      * "Schadder?" or Schlagwechsel is answered by the asked player first.
      */
     fun botToAct(): Int? {
+        abheberToCut?.let { return it.takeIf { it != HUMAN } }
         (Waddeln.schadetAnswerer(state) ?: Waddeln.schlagwechselAnswerer(state))?.let { return it.takeIf { it != HUMAN } }
         val toMove = state.playerToMove ?: return null
         val pending = state.pendingSchub
@@ -97,6 +111,10 @@ class OfflineGame(
      */
     fun stepBot(): BotStep {
         val bot = checkNotNull(botToAct()) { "No bot to act" }
+        if (pending != null) {
+            val cut = Deal.randomCut(random)
+            return BotStep.Cut(bot, cut, cut(cut))
+        }
         if (Waddeln.schadetAnswerer(state) == bot) {
             val answer = Schadet.answerFor(state.observationFor(bot))
             state = Waddeln.answerSchadet(state, bot, answer)
@@ -120,7 +138,7 @@ class OfflineGame(
         }
         val legal = Schadet.allowedActions(state, bot, Waddeln.legalActions(state, bot))
         val action = bots[bot].chooseAction(state.observationFor(bot), legal)
-        if (BotTalk.asksSchadet(state, bot, action)) {
+        if (BotTalk.talksSchadet(state, bot, action, random)) {
             state = Waddeln.askSchadet(state, bot)
             return BotStep.AskedSchadet(bot)
         }
@@ -171,13 +189,29 @@ class OfflineGame(
         return hint
     }
 
-    fun nextRound() {
-        state = Waddeln.startNextRound(state, Deal.random(random))
-        _events.clear()
+    /**
+     * The human (or a bot in [stepBot]) as Abheber cuts after [cut] cards; the round is dealt.
+     * Returns what the Abheber saw.
+     */
+    fun cut(cut: Int): CutReveal {
+        val round = checkNotNull(pending) { "Nothing to cut" }
+        val reveal = round.reveal(cut)
+        state = round.deal(cut)
+        pending = null
+        return reveal
     }
 
-    fun newMatch() {
-        state = Waddeln.newMatch(random)
+    /** The dealer of the next round shuffles; it is dealt once the Abheber has cut. */
+    fun nextRound() {
+        if (pending != null) return
+        prepare(Waddeln.prepareNextRound(state, random))
+    }
+
+    fun newMatch() = prepare(Waddeln.prepareMatch(random))
+
+    private fun prepare(round: PendingRound) {
+        pending = round
+        state = round.preview
         _events.clear()
     }
 

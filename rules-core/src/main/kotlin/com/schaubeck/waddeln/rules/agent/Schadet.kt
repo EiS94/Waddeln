@@ -13,13 +13,31 @@ enum class SchadetAnswer { NO, A_LITTLE, YES }
 
 /**
  * "Schadder?": before leading the Haubi into the first trick, the player may ask the partner whether
- * having to follow with the Haubi-Farbe would hurt them. Humans may also ask without the Haubi to
- * bluff; bots only ask when they hold it.
+ * having to follow with the Haubi-Farbe would hurt them. It may also be asked without the Haubi to
+ * bluff: bots do so now and then with a decent hand ([canBluff], [BLUFF_CHANCE]), so the opponents
+ * believe they hold the Haubi.
  */
 object Schadet {
 
+    /** How often a bot that [canBluff] asks "Schadder?" without the Haubi. */
+    const val BLUFF_CHANCE = 0.2
+
+    /** Trumps (Kritten included) a bot needs besides the missing Haubi to consider a bluff. */
+    const val BLUFF_MIN_TRUMPS = 2
+
     /** True if [player] is about to lead the first trick and holds the Haubi (not a bluff). */
     fun canAsk(state: GameState, player: Int): Boolean = Waddeln.leadsFirstTrickWithHaubi(state, player)
+
+    /**
+     * True if [player] leads the first trick without the Haubi but with at least [BLUFF_MIN_TRUMPS]
+     * trumps, may still ask "Schadder?" and so could bluff (a strong hand pays off later at a Schub).
+     */
+    fun canBluff(state: GameState, player: Int): Boolean {
+        val trump = state.trump ?: return false
+        val hand = state.hands[player]
+        return Waddeln.canAskSchadet(state, player) && trump.haubi !in hand &&
+            hand.count { trump.isTrump(it) } >= BLUFF_MIN_TRUMPS
+    }
 
     /** True if [action] leads the Haubi into the first trick (the move "Schadder?" is asked before). */
     fun leadsHaubi(state: GameState, player: Int, action: Action): Boolean =

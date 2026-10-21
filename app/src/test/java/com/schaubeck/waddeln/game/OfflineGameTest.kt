@@ -36,6 +36,8 @@ class OfflineGameTest {
         while (game.state.phase != Phase.MATCH_OVER) {
             check(steps++ < 10_000) { "Match does not terminate" }
             when {
+                game.humanMustCut() -> game.cut(Random.nextInt(4, 29))
+                game.botToAct() != null && game.abheberToCut != null -> game.stepBot()
                 game.state.phase == Phase.ROUND_OVER -> game.nextRound()
                 game.humanMustAnswerSchadet() -> game.answerSchadet(SchadetAnswer.entries.random())
                 game.humanMustAnswerSchlagwechsel() -> game.answerSchlagwechsel(Random.nextBoolean())
@@ -52,9 +54,38 @@ class OfflineGameTest {
     /** One step towards the card play: the human declines a Schlagwechsel and otherwise takes the first action. */
     private fun step(game: OfflineGame) {
         when {
+            game.humanMustCut() -> game.cut(16)
             game.humanMustAnswerSchlagwechsel() -> game.answerSchlagwechsel(false)
             game.botToAct() != null -> game.stepBot()
             else -> game.applyHuman(game.humanActions().first())
+        }
+    }
+
+    /** Lets the Abheber cut the first round, so the game starts with the deal. */
+    private fun dealt(game: OfflineGame): OfflineGame {
+        while (game.abheberToCut != null) if (game.humanMustCut()) game.cut(16) else game.stepBot()
+        return game
+    }
+
+    @Test
+    fun `the round is dealt once the Abheber has cut`() {
+        repeat(40) { seed ->
+            val game = OfflineGame(Random(seed))
+            val abheber = game.abheberToCut!!
+            assertTrue(game.state.observationFor(HUMAN).hand.isEmpty())
+            assertTrue(game.humanActions().isEmpty())
+            if (abheber == HUMAN) {
+                assertNull(game.botToAct())
+                val reveal = game.cut(9)
+                assertTrue(game.state.hands[HUMAN].containsAll(reveal.kritten))
+            } else {
+                assertEquals(abheber, game.botToAct())
+                val step = game.stepBot() as BotStep.Cut
+                assertEquals(step.reveal.kritten.size, game.state.abheberKritten)
+                assertEquals(step.reveal.bottomCard, game.state.visibleBottomCard)
+            }
+            assertNull(game.abheberToCut)
+            assertEquals(Phase.SCHLAG, game.state.phase)
         }
     }
 
@@ -67,7 +98,7 @@ class OfflineGameTest {
     fun `a bot leading the Haubi asks Schadder and plays another card on yes`() {
         var asked = 0
         repeat(300) { seed ->
-            val game = OfflineGame(Random(seed), bots = List(4) { HaubiLeader() })
+            val game = dealt(OfflineGame(Random(seed), bots = List(4) { HaubiLeader() }))
             while (game.state.completedTricks.isEmpty() && game.state.playerToMove != null) {
                 if (game.humanMustAnswerSchadet()) {
                     asked++
@@ -90,7 +121,7 @@ class OfflineGameTest {
     @Test
     fun `the partner bot answers the human's Schadder`() {
         repeat(300) { seed ->
-            val game = OfflineGame(Random(seed))
+            val game = dealt(OfflineGame(Random(seed)))
             while (game.state.phase != Phase.PLAYING) {
                 step(game)
             }
@@ -108,7 +139,7 @@ class OfflineGameTest {
     @Test
     fun `the dealer bot answers the human's Schlagwechsel`() {
         repeat(100) { seed ->
-            val game = OfflineGame(Random(seed))
+            val game = dealt(OfflineGame(Random(seed)))
             while (game.state.phase == Phase.SCHLAG && !game.humanCanProposeSchlagwechsel()) step(game)
             if (!game.humanCanProposeSchlagwechsel()) return@repeat
             game.proposeSchlagwechsel()
@@ -125,7 +156,7 @@ class OfflineGameTest {
 
     @Test
     fun `human answers a Schub against their team`() {
-        val game = OfflineGame(Random(7))
+        val game = dealt(OfflineGame(Random(7)))
         // Advance until a bot (opponent) may announce Schub on its turn
         while (game.state.phase != Phase.PLAYING) {
             step(game)
@@ -138,7 +169,7 @@ class OfflineGameTest {
 
     @Test
     fun `human may announce Schub out of turn and a bot answers`() {
-        val game = OfflineGame(Random(3))
+        val game = dealt(OfflineGame(Random(3)))
         while (game.state.phase != Phase.PLAYING) {
             step(game)
         }

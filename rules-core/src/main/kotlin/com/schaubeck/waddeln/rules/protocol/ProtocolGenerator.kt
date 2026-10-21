@@ -61,7 +61,7 @@ object ProtocolGenerator {
                         if (ruleSeats[actor]) bot.chooseAction(s.observationFor(actor), allowed) else allowed.random(random)
                     }
                     var chosen = choose(state)
-                    if (BotTalk.asksSchadet(state, actor, chosen)) {
+                    if (BotTalk.talksSchadet(state, actor, chosen, random)) {
                         state = talkSchadet(state, actor, steps)
                         chosen = choose(state)
                     }
@@ -71,7 +71,7 @@ object ProtocolGenerator {
                     val options = (0 until PLAYER_COUNT).flatMap { p -> Waddeln.legalActions(state, p).map { p to it } }
                     var (p, a) = options.random(random)
                     if (a == Action.Bleiben || a == Action.Gehen) state = talkHint(state, p, steps)
-                    if (BotTalk.asksSchadet(state, p, a)) {
+                    if (BotTalk.talksSchadet(state, p, a, random)) {
                         state = talkSchadet(state, p, steps)
                         a = Schadet.allowedActions(state, p, Waddeln.legalActions(state, p)).random(random)
                     }

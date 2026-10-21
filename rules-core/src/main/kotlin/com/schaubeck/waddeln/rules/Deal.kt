@@ -10,7 +10,7 @@ import kotlin.random.Random
 data class Deal(val deck: List<Card>, val cut: Int) {
     init {
         require(deck.size == 32 && deck.toSet().size == 32) { "Deck must contain all 32 cards exactly once" }
-        require(cut in MIN_CUT..32 - MIN_CUT) { "Cut must be in $MIN_CUT..${32 - MIN_CUT}, was $cut" }
+        require(cut in CUT_RANGE) { "Cut must be in $CUT_RANGE, was $cut" }
     }
 
     companion object {
@@ -20,9 +20,27 @@ data class Deal(val deck: List<Card>, val cut: Int) {
          */
         const val MIN_CUT = 4
 
-        fun random(random: Random): Deal =
-            Deal(Card.ALL.shuffled(random), random.nextInt(MIN_CUT, 32 - MIN_CUT + 1))
+        /** Where the Abheber may cut: the number of cards lifted off the top. */
+        val CUT_RANGE: IntRange = MIN_CUT..32 - MIN_CUT
+
+        fun random(random: Random): Deal = Deal(Card.ALL.shuffled(random), randomCut(random))
+
+        fun randomCut(random: Random): Int = random.nextInt(CUT_RANGE.first, CUT_RANGE.last + 1)
     }
+}
+
+/**
+ * What the Abheber sees while cutting: the [kritten] taken from the bottom of the lifted stack,
+ * in the order taken, and the first other card, which stays as open [bottomCard].
+ */
+data class CutReveal(val kritten: List<Card>, val bottomCard: Card)
+
+/** Cutting [deck] after [cut] cards (see [dealCards]). */
+fun cutReveal(deck: List<Card>, cut: Int): CutReveal {
+    require(cut in Deal.CUT_RANGE) { "Cut must be in ${Deal.CUT_RANGE}, was $cut" }
+    val lifted = deck.subList(0, cut)
+    val kritten = lifted.asReversed().takeWhile { it.isKritte }
+    return CutReveal(kritten, lifted[lifted.size - 1 - kritten.size])
 }
 
 /** Result of cutting and dealing. */

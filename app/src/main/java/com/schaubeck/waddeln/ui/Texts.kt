@@ -29,6 +29,9 @@ object Texts {
 
     fun card(card: Card) = "${suit(card.suit)} ${rank(card.rank)}"
 
+    /** "1 Kritte", "2 Kritten", ... */
+    fun kritten(count: Int) = if (count == 1) "1 Kritte" else "$count Kritten"
+
     fun kritteName(card: Card): String? = when (card) {
         Card.MAX -> "Max"
         Card.BELLO -> "Bello"
