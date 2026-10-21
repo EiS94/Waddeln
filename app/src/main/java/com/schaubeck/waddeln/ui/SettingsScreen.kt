@@ -70,6 +70,9 @@ fun SettingsScreen(settings: Settings, onChange: (Settings) -> Unit, onBack: () 
                     TableStyle.entries.forEach { t ->
                         Choice(t.label, null, t == settings.table) { onChange(settings.copy(table = t)) }
                     }
+                    Toggle("Selbst abheben", "Aus: Die App hebt für dich zufällig ab", settings.selfCut) {
+                        onChange(settings.copy(selfCut = it))
+                    }
                 }
                 Section("Ton") {
                     Toggle("Geräusche", "Mischen, Karten und Stiche", settings.soundEffects) {

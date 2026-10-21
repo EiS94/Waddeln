@@ -3,10 +3,13 @@
 - Before a bot answers a Schub it always asks its partner, who answers with partner_hint().
 - Before leading the Haubi into the first trick it asks "Schadder?", the partner answers with
   schadet_answer(), and the bot decides again knowing the answer (see allowed_actions()).
+  Without the Haubi it sometimes asks as a bluff (bluffs_schadet()).
 - Before announcing the Schlag the player after the dealer may propose a Schlagwechsel; the dealer
   answers at once (schlagwechsel_before_turn(), called before the actor is chosen).
 """
 from __future__ import annotations
+
+import random as _random
 
 from . import engine as E
 from .engine import ASS, CARD_OFFSET, A_SCHUB, KOENIG, KRITTE_SET, NO_TRUMP, OBER, TEN, TRICKS_TO_WIN, Observation
@@ -83,8 +86,13 @@ def best_rank_count(hand: list[int]) -> int:
     return max(sum(1 for c in hand if E.rank_of(c) == r and c not in KRITTE_SET) for r in range(8))
 
 
+def longest_suit(hand: list[int]) -> int:
+    """Schlagwechsel.longestSuit: most cards of one suit, Kritten don't count."""
+    return max(sum(1 for c in hand if E.suit_of(c) == s and c not in KRITTE_SET) for s in range(4))
+
+
 def proposes_schlagwechsel(obs: Observation) -> bool:
-    return best_rank_count(obs.hand) < 2
+    return best_rank_count(obs.hand) < 2 and longest_suit(obs.hand) >= 3
 
 
 def accepts_schlagwechsel(obs: Observation) -> bool:
@@ -102,6 +110,25 @@ def schlagwechsel_before_turn(state: E.State) -> None:
 
 def leads_haubi(state: E.State, player: int, action: int) -> bool:
     return E.leads_first_trick_with_haubi(state, player) and action == CARD_OFFSET + state.haubi
+
+
+# Schadet.BLUFF_CHANCE / BLUFF_MIN_TRUMPS
+BLUFF_CHANCE = 0.2
+BLUFF_MIN_TRUMPS = 2
+
+
+def can_bluff(state: E.State, player: int) -> bool:
+    """Schadet.canBluff: leads the first trick without the Haubi but with two trumps or more."""
+    st = state.strengths
+    if st is None or not E.can_ask_schadet(state, player):
+        return False
+    hand = state.hands[player]
+    return state.haubi not in hand and sum(1 for c in hand if st[c] != NO_TRUMP) >= BLUFF_MIN_TRUMPS
+
+
+def bluffs_schadet(state: E.State, actor: int, action: int, rng: _random.Random) -> bool:
+    """BotTalk.bluffsSchadet: about to lead a card without the Haubi and bluffs with "Schadder?"."""
+    return CARD_OFFSET <= action < A_SCHUB and can_bluff(state, actor) and rng.random() < BLUFF_CHANCE
 
 
 def actions_after(answer: int, state: E.State, player: int, legal: list[int]) -> list[int]:
@@ -129,6 +156,11 @@ def hint_before_answer(state: E.State, actor: int) -> None:
 
 def asks_schadet(state: E.State, actor: int, action: int) -> bool:
     return leads_haubi(state, actor, action) and E.can_ask_schadet(state, actor)
+
+
+def talks_schadet(state: E.State, actor: int, action: int, rng: _random.Random) -> bool:
+    """BotTalk.talksSchadet: "Schadder?" before leading the Haubi, or as a bluff."""
+    return asks_schadet(state, actor, action) or bluffs_schadet(state, actor, action, rng)
 
 
 def ask_and_answer_schadet(state: E.State, actor: int) -> None:

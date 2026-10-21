@@ -100,15 +100,19 @@ Vor dem Export die Kandidaten genauer vergleichen:
 
 Was am Tisch gesagt wird, hören alle und es gehört zum Spielzustand (`GameState`/`Observation`,
 in Python `State`/`Observation`): jeder Schub mit Spieler und Zeitpunkt, die Partner-Hinweise beim
-Schub und „Schadder?“ samt Antwort. Bots reden überall gleich (`BotTalk.kt` ↔ `waddeln/talk.py`):
+Schub, „Schadder?“ samt Antwort und der Schlagwechsel. Bots reden überall gleich (`BotTalk.kt` ↔ `waddeln/talk.py`):
 
 - Bevor ein Bot auf einen Schub antwortet, fragt er immer seinen Partner (Hinweis per Faustregel aus
   `PartnerHint.kt`).
 - Will er im ersten Stich den Haubi anspielen, fragt er vorher „Schadder?“ und entscheidet mit der
   Antwort neu (bei „Ja“ ohne Haubi). Im Training zählt nur diese zweite Entscheidung.
+- Ohne Haubi, aber mit mindestens 2 Trümpfen blufft er in 20 % der Fälle mit „Schadder?“
+  (`Schadet.canBluff`, `BLUFF_CHANCE`). Hat der Partner den Haubi selbst, antwortet er „Ja“.
+- Vor dem Schlag schlägt der Spieler nach dem Geber einen Schlagwechsel vor, wenn er kein Paar, aber
+  mindestens 3 Karten einer Farbe hat (Kritten zählen nicht); der Geber nimmt mit einem Paar an.
 
 Das Netz bekommt dazu 39 Merkmale (Zustand 478 → 517): letzter Hinweis je Platz, wer „Schadder?“
-gefragt hat (hat den Haubi) und die Antwort, wer beim Haubi-Anspiel nicht bedient hat (hat keine
+gefragt hat (hat den Haubi oder blufft) und die Antwort, wer beim Haubi-Anspiel nicht bedient hat (hat keine
 Haubi-Farbe), Schübe je Platz und ob vor der ersten Karte.
 
 **Weitertrainieren statt neu:** Alte Checkpoints werden mit `migrate_checkpoint.py` erweitert; die

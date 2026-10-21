@@ -1,6 +1,7 @@
 package com.schaubeck.waddeln.protocol
 
 import com.schaubeck.waddeln.rules.Action
+import com.schaubeck.waddeln.rules.Card
 import com.schaubeck.waddeln.rules.Observation
 import com.schaubeck.waddeln.rules.PLAYER_COUNT
 import com.schaubeck.waddeln.rules.agent.PartnerHint
@@ -16,7 +17,7 @@ import kotlinx.serialization.json.Json
  * [ServerMessage.Table] if the player still has a seat in a room, otherwise with [ServerMessage.NoRoom].
  * From then on the server sends a fresh [ServerMessage.Table] after every change.
  */
-const val PROTOCOL_VERSION = 1
+const val PROTOCOL_VERSION = 2
 
 /** Path of the WebSocket endpoint. */
 const val WS_PATH = "/ws"
@@ -71,6 +72,10 @@ sealed interface ClientMessage {
 
     @Serializable @SerialName("act")
     data class Act(val action: Action) : ClientMessage
+
+    /** The Abheber cuts after [cut] cards (see [com.schaubeck.waddeln.rules.Deal.CUT_RANGE]); then the round is dealt. */
+    @Serializable @SerialName("cut")
+    data class Cut(val cut: Int) : ClientMessage
 
     /**
      * During a Schub against the own team: ask the partner how good their cards are. A bot answers
@@ -179,7 +184,39 @@ data class GameView(
     val canShowLastTrick: Boolean = false,
     /** Seat that shows the last completed trick to the table right now, or null. */
     val lastTrickShownBy: Int? = null,
+    /**
+     * The cutting before the deal: while the Abheber chooses, [observation] only shows the table
+     * without cards; after the cut it stays for the rest of the round (the app shows the cut once).
+     */
+    val cut: CutView? = null,
 )
+
+/** The Abheber cuts the deck before the deal. */
+@Serializable
+data class CutView(
+    val abheber: Int,
+    /** Cards lifted off the top; null while the Abheber still chooses ([ClientMessage.Cut]). */
+    val cut: Int? = null,
+    /** Kritten the Abheber had to take. */
+    val krittenCount: Int = 0,
+    /** Which Kritten: only in the Abheber's own view. */
+    val kritten: List<Card> = emptyList(),
+    /** The open bottom card of the lifted stack; null before the cut. */
+    val bottomCard: Card? = null,
+)
+
+/**
+ * How long the cut is shown: the stacks part, every Kritte is taken, the bottom card is turned
+ * over and then stays a moment. The app animates it so; the server lets the bots wait that long.
+ */
+object CutAnimation {
+    const val SPLIT_MS = 900L
+    const val KRITTE_MS = 1100L
+    const val BOTTOM_MS = 700L
+    const val HOLD_MS = 1800L
+
+    fun durationMs(kritten: Int): Long = SPLIT_MS + kritten * KRITTE_MS + BOTTOM_MS + HOLD_MS
+}
 
 @Serializable
 data class SeatAction(val seat: Int, val action: Action)

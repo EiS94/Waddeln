@@ -108,6 +108,7 @@ class GameServer(
             is ClientMessage.SetBotName -> room?.setBotName(id, message.seat, message.name)
             ClientMessage.StartMatch -> room?.start(id)
             is ClientMessage.Act -> room?.act(id, message.action)
+            is ClientMessage.Cut -> room?.cut(id, message.cut)
             ClientMessage.AskPartner -> room?.askPartner(id)
             is ClientMessage.AnswerPartner -> room?.answerPartner(id, message.hint)
             ClientMessage.ProposeSchlagwechsel -> room?.proposeSchlagwechsel(id)

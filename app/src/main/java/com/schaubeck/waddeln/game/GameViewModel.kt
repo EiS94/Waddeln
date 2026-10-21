@@ -5,7 +5,10 @@ import android.os.SystemClock
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.schaubeck.waddeln.ai.BotFactory
+import com.schaubeck.waddeln.protocol.CutAnimation
 import com.schaubeck.waddeln.rules.Action
+import com.schaubeck.waddeln.rules.CutReveal
+import com.schaubeck.waddeln.rules.Deal
 import com.schaubeck.waddeln.rules.PLAYER_COUNT
 import com.schaubeck.waddeln.rules.Phase
 import com.schaubeck.waddeln.rules.Waddeln
@@ -22,6 +25,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.random.Random
 
 /**
  * Snapshot rendered by the UI. A [SchubNotice] that bots answered while the human only watched
@@ -57,6 +61,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     private var botJob: Job? = null
 
+    /** The cut being shown; the game goes on once it has been seen ([cutJob] or [onCutSeen]). */
+    private var cutShown: CutUi? = null
+    private var cutJob: Job? = null
+
     /** Paused while the game screen is not shown (e.g. in the menu). */
     private var paused = true
 
@@ -84,8 +92,21 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         botJob?.cancel()
     }
 
+    /** As Abheber: cut after [cut] cards; the round is dealt and the cut shown. */
+    fun onCut(cut: Int) {
+        if (!game.humanMustCut() || cutShown != null || cut !in Deal.CUT_RANGE) return
+        showCut(OfflineGame.HUMAN, cut, game.cut(cut))
+    }
+
+    /** The human has seen enough of the cut. */
+    fun onCutSeen() {
+        if (cutShown == null) return
+        cutJob?.cancel()
+        finishCut()
+    }
+
     fun onHumanAction(action: Action) {
-        if (notice != null || action !in game.humanActions()) return
+        if (cutShown != null || notice != null || action !in game.humanActions()) return
         val tricksBefore = game.state.completedTricks.size
         showingLastTrick = false
         game.applyHuman(action)
@@ -161,6 +182,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         store.save(newSettings)
         botFactory?.takeIf { difficultyChanged }?.let { game.bots = it.createBots(newSettings.difficulty) }
         publish()
+        // The human may have switched off cutting themselves while it is their turn to cut.
+        runBots()
     }
 
     /** "Nächstes Spiel" or, after the match, "Neues Match". */
@@ -169,6 +192,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun onNextRound() {
+        resetCut()
         speech = emptyList()
         givenHint = null
         schadetText = null
@@ -179,6 +203,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     fun onNewMatch() {
         botJob?.cancel()
+        resetCut()
         notice = null
         speech = emptyList()
         givenHint = null
@@ -190,17 +215,27 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     /** Lets bots act one after another with pauses until the human is needed. */
     private fun runBots(initialPauseMs: Long = 0) {
-        if (paused || botFactory == null || notice != null || botJob?.isActive == true) return
+        if (paused || botFactory == null || notice != null || cutShown != null || botJob?.isActive == true) return
         botJob = viewModelScope.launch {
             if (initialPauseMs > 0) delay(initialPauseMs)
             // Something said aloud stays readable before the next bot acts.
             var speechPause = 0L
-            while (game.botToAct() != null && notice == null) {
+            while ((game.botToAct() != null || cutsForHuman()) && notice == null) {
                 delay(settings.speed.botDelayMs + speechPause)
+                if (cutsForHuman()) {
+                    val cut = Deal.randomCut(Random.Default)
+                    showCut(OfflineGame.HUMAN, cut, game.cut(cut))
+                    break
+                }
                 val bot = game.botToAct() ?: break // the human acted (e.g. Schub) in the meantime
                 val tricksBefore = game.state.completedTricks.size
                 val schubBefore = game.state.pendingSchub
                 val spoken = when (val step = game.stepBot()) {
+                    is BotStep.Cut -> {
+                        // The game goes on once the cut has been shown.
+                        showCut(bot, step.cut, step.reveal)
+                        break
+                    }
                     is BotStep.Acted -> {
                         say(bot, step.action)
                         step.action.isSpoken()
@@ -242,6 +277,40 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /** The human is the Abheber but lets the app cut for them. */
+    private fun cutsForHuman(): Boolean = game.humanMustCut() && !settings.selfCut
+
+    /** Shows how [abheber] cut; the Kritten only if the human took them. */
+    private fun showCut(abheber: Int, cut: Int, reveal: CutReveal) {
+        cutShown = CutUi(
+            abheber = abheber,
+            cut = cut,
+            krittenCount = reveal.kritten.size,
+            kritten = reveal.kritten.takeIf { abheber == OfflineGame.HUMAN }.orEmpty(),
+            bottomCard = reveal.bottomCard,
+        )
+        publish()
+        cutJob?.cancel()
+        cutJob = viewModelScope.launch {
+            delay(CutAnimation.durationMs(reveal.kritten.size))
+            finishCut()
+        }
+    }
+
+    /** After the cut: the Abheber tells the table how many Kritten they took, then the game goes on. */
+    private fun finishCut() {
+        val shown = cutShown ?: return
+        cutShown = null
+        if (shown.krittenCount > 0) say(shown.abheber, Sayings.kritten(shown.krittenCount))
+        publish()
+        runBots()
+    }
+
+    private fun resetCut() {
+        cutJob?.cancel()
+        cutShown = null
+    }
+
     override fun onCleared() {
         botFactory?.close()
     }
@@ -262,14 +331,15 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun publish() {
-        statsTracker.observe(game.state.observationFor(OfflineGame.HUMAN))
+        // The preview while the Abheber cuts is no round of its own.
+        if (game.abheberToCut == null) statsTracker.observe(game.state.observationFor(OfflineGame.HUMAN))
         _ui.value = snapshot()
     }
 
     private fun snapshot() = GameUiState(
         table = TableUi(
             obs = game.state.observationFor(OfflineGame.HUMAN),
-            actions = if (notice != null) emptyList() else game.humanActions(),
+            actions = if (notice != null || cutShown != null) emptyList() else game.humanActions(),
             names = List(PLAYER_COUNT) { settings.name(it) },
             speed = settings.speed,
             notice = notice,
@@ -285,6 +355,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             schlagwechselAsksUs = game.humanMustAnswerSchlagwechsel(),
             canShowLastTrick = notice == null && Waddeln.canShowLastTrick(game.state, OfflineGame.HUMAN),
             lastTrickShownBy = OfflineGame.HUMAN.takeIf { showingLastTrick && Waddeln.canShowLastTrick(game.state, it) },
+            cut = cutShown ?: game.abheberToCut?.let { CutUi(it, choosing = it == OfflineGame.HUMAN && settings.selfCut) },
         ),
         settings = settings,
         matchInProgress = matchStarted && game.state.phase != Phase.MATCH_OVER,

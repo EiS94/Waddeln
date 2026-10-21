@@ -36,7 +36,7 @@ def play_match(agents, rng: random.Random, record_seats=(), max_rounds: int = 20
                 action, row = agent.choose_with_input(obs, legal)
             else:
                 action = agent.choose(obs, legal)
-            if T.asks_schadet(state, actor, action):
+            if T.talks_schadet(state, actor, action, rng):
                 T.ask_and_answer_schadet(state, actor)
                 continue
             if row is not None:
@@ -145,7 +145,7 @@ class BatchedSelfPlay:
                 agent = slot.agents[actor]
                 if agent is not MODEL:
                     a = agent.choose(obs, legal)
-                    if T.asks_schadet(st, actor, a):
+                    if T.talks_schadet(st, actor, a, self.rng):
                         T.ask_and_answer_schadet(st, actor)  # decides again with the answer
                     else:
                         E.apply(st, actor, a, check=False)
@@ -155,7 +155,7 @@ class BatchedSelfPlay:
                     continue
                 if self.rng.random() < self.epsilon:
                     a = apply_discard_rule(obs, legal, legal[self.rng.randrange(len(legal))])
-                    if T.asks_schadet(st, actor, a):
+                    if T.talks_schadet(st, actor, a, self.rng):
                         T.ask_and_answer_schadet(st, actor)
                         continue
                     self._record(slot, actor, encode_actions(obs, [a])[0])
@@ -175,7 +175,7 @@ class BatchedSelfPlay:
             k = int(q[offset:offset + len(legal)].argmax())
             offset += len(legal)
             k = legal.index(apply_discard_rule(obs, legal, legal[k]))
-            if T.asks_schadet(slot.state, actor, legal[k]):
+            if T.talks_schadet(slot.state, actor, legal[k], self.rng):
                 # Not recorded: the actor decides again in the next step, knowing the answer.
                 T.ask_and_answer_schadet(slot.state, actor)
                 continue

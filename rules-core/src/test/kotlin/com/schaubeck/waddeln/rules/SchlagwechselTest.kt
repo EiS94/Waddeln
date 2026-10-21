@@ -12,9 +12,16 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class SchlagwechselTest {
-    /** Dealer 3, so player 0 announces the Schlag. Player 0 has no two cards of one rank, the dealer two Unter. */
-    private fun round(scores: List<Int> = listOf(0, 0), dealerHand: String = "EA EK H8 SU GU") = roundWith(
-        listOf("SA S8 S10 H9 EO", "SK EU H10 HU E10", "GO GA G9 E8 H7", dealerHand),
+    /**
+     * Dealer 3, so player 0 announces the Schlag. Player 0 has no two cards of one rank but three Schell,
+     * the dealer two Unter.
+     */
+    private fun round(
+        scores: List<Int> = listOf(0, 0),
+        dealerHand: String = "EA EK H8 SU GU",
+        forehandHand: String = "SA S8 S10 H9 EO",
+    ) = roundWith(
+        listOf(forehandHand, "SK EU H10 HU E10", "GO GA G9 E8 H7", dealerHand),
         scores = scores,
     )
 
@@ -72,13 +79,15 @@ class SchlagwechselTest {
     }
 
     @Test
-    fun `bots propose without a pair and the dealer accepts with one`() {
+    fun `bots propose without a pair but with three of one suit, the dealer accepts with a pair`() {
         val accepted = BotTalk.schlagwechselBeforeTurn(round())
         assertEquals(SchlagwechselTalk(true), accepted.schlagwechsel)
         val declined = BotTalk.schlagwechselBeforeTurn(round(dealerHand = "EA EK H8 SU G10"))
         assertEquals(SchlagwechselTalk(false), declined.schlagwechsel)
         val withPair = roundWith(listOf("SA SU S10 H9 E9", "SK EU H10 HU E10", "GO GA G9 E8 H7", "EA EK H8 S9 GU"))
         assertNull(BotTalk.schlagwechselBeforeTurn(withPair).schlagwechsel, "an Unter pair: no proposal")
+        val short = round(forehandHand = "SA S8 HO G7 GK")
+        assertNull(BotTalk.schlagwechselBeforeTurn(short).schlagwechsel, "no three of one suit: no proposal")
     }
 
     @Test

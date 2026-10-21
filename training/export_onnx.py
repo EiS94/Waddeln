@@ -55,7 +55,7 @@ def sample_inputs(count: int, seed: int = 7) -> list[np.ndarray]:
             if len(legal) > 1:
                 out.append(encode_actions(obs, legal))
             action = bot.choose(obs, legal)
-            if T.asks_schadet(state, actor, action):
+            if T.talks_schadet(state, actor, action, rng):
                 T.ask_and_answer_schadet(state, actor)
                 continue
             E.apply(state, actor, action)

@@ -22,7 +22,17 @@ object Waddeln {
         return startRound(state.scores, nextPlayer(state.dealer), state.roundNumber + 1, deal)
     }
 
-    private fun startRound(scores: List<Int>, dealer: Int, roundNumber: Int, deal: Deal): GameState {
+    /** Like [newMatch], but the Abheber cuts later: [PendingRound.deal] starts the first round. */
+    fun prepareMatch(random: Random): PendingRound =
+        PendingRound(listOf(0, 0), dealer = random.nextInt(PLAYER_COUNT), roundNumber = 1, deck = Card.ALL.shuffled(random))
+
+    /** Like [startNextRound], but the Abheber cuts later: [PendingRound.deal] starts the round. */
+    fun prepareNextRound(state: GameState, random: Random): PendingRound {
+        require(state.phase == Phase.ROUND_OVER) { "Round is not over (phase ${state.phase})" }
+        return PendingRound(state.scores, nextPlayer(state.dealer), state.roundNumber + 1, Card.ALL.shuffled(random))
+    }
+
+    internal fun startRound(scores: List<Int>, dealer: Int, roundNumber: Int, deal: Deal): GameState {
         val dealt = dealCards(dealer, deal)
         return GameState(
             scores = scores,

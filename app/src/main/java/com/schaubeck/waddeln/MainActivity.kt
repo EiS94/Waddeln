@@ -50,6 +50,7 @@ class MainActivity : ComponentActivity() {
                 val online by onlineViewModel.ui.collectAsStateWithLifecycle()
                 sound.effectsOn = ui.settings.soundEffects
                 sound.voicesOn = ui.settings.voices
+                onlineViewModel.selfCut = ui.settings.selfCut
                 var screen by rememberSaveable { mutableStateOf(Screen.MENU) }
 
                 // Bots only play while the table is visible. Online, the connection stays open while
@@ -88,6 +89,8 @@ class MainActivity : ComponentActivity() {
                         onShowLastTrick = viewModel::onShowLastTrick,
                         onProposeSchlagwechsel = viewModel::onProposeSchlagwechsel,
                         onAnswerSchlagwechsel = viewModel::onAnswerSchlagwechsel,
+                        onCut = viewModel::onCut,
+                        onCutSeen = viewModel::onCutSeen,
                         onMenu = { screen = Screen.MENU },
                     )
 
@@ -129,6 +132,8 @@ class MainActivity : ComponentActivity() {
                                 onShowLastTrick = onlineViewModel::showLastTrick,
                                 onProposeSchlagwechsel = onlineViewModel::proposeSchlagwechsel,
                                 onAnswerSchlagwechsel = onlineViewModel::answerSchlagwechsel,
+                                onCut = onlineViewModel::cut,
+                                onCutSeen = onlineViewModel::onCutSeen,
                                 onMenu = { screen = Screen.MENU },
                                 onLeave = onlineViewModel::leave,
                                 soundKey = "online",

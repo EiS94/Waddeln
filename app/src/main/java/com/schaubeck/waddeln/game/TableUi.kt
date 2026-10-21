@@ -1,6 +1,7 @@
 package com.schaubeck.waddeln.game
 
 import com.schaubeck.waddeln.rules.Action
+import com.schaubeck.waddeln.rules.Card
 import com.schaubeck.waddeln.rules.Observation
 import com.schaubeck.waddeln.rules.PLAYER_COUNT
 
@@ -16,6 +17,24 @@ data class SchubNotice(val askingPlayer: Int, val answeringPlayer: Int, val newG
  * is heard and shown only after the question.
  */
 data class Speech(val seat: Int, val text: String, val at: Long)
+
+/**
+ * The Abheber cuts before the deal; shown instead of the table until the cut has been seen
+ * (timing like [com.schaubeck.waddeln.protocol.CutAnimation]).
+ */
+data class CutUi(
+    val abheber: Int,
+    /** We are the Abheber and choose where to cut. */
+    val choosing: Boolean = false,
+    /** Cards lifted; null while the Abheber still chooses. */
+    val cut: Int? = null,
+    /** Number of Kritten the Abheber took. */
+    val krittenCount: Int = 0,
+    /** Which Kritten, if we may see them (we are the Abheber); otherwise empty. */
+    val kritten: List<Card> = emptyList(),
+    /** The open bottom card of the lifted stack, once cut. */
+    val bottomCard: Card? = null,
+)
 
 /** How long after a question its immediate answer is said. */
 const val ANSWER_DELAY_MS = 1300L
@@ -72,6 +91,8 @@ data class TableUi(
     val connectionProblem: String? = null,
     /** Online: when (SystemClock.elapsedRealtime) a bot decides for us if we don't act; null = no limit. */
     val deadline: Long? = null,
+    /** The cut before the deal, while it is shown (then the table is hidden). */
+    val cut: CutUi? = null,
 ) {
     val me: Int get() = obs.player
 

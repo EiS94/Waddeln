@@ -51,7 +51,7 @@ class MatchRunner(
     fun step(state: GameState): GameState {
         val swapped = BotTalk.schlagwechselBeforeTurn(state)
         val actor = nextActor(swapped)
-        val (talked, action) = BotTalk.decide(swapped, actor, agents[actor])
+        val (talked, action) = BotTalk.decide(swapped, actor, agents[actor], random)
         val next = Waddeln.apply(talked, actor, action)
         onAction(talked, actor, action)
         return next

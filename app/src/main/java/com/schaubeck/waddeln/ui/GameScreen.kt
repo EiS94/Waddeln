@@ -82,6 +82,7 @@ import kotlinx.coroutines.delay
  * [onAskSchadet] asks the partner "Schadder?" before leading the Haubi, [onAnswerSchadet] answers it;
  * [onShowLastTrick] shows or hides the last completed trick; [onProposeSchlagwechsel] proposes a
  * Schlagwechsel before the Schlag, [onAnswerSchlagwechsel] answers it as dealer;
+ * [onCut] cuts as Abheber before the deal, [onCutSeen] skips the rest of the cut animation;
  * [onLeave] (online only) leaves the room for good. [soundKey] tells the offline and the online
  * table apart for the sounds.
  */
@@ -99,6 +100,8 @@ fun GameScreen(
     onShowLastTrick: (Boolean) -> Unit = {},
     onProposeSchlagwechsel: () -> Unit = {},
     onAnswerSchlagwechsel: (Boolean) -> Unit = {},
+    onCut: (Int) -> Unit = {},
+    onCutSeen: () -> Unit = {},
     onLeave: (() -> Unit)? = null,
     soundKey: String = "offline",
 ) {
@@ -108,16 +111,25 @@ fun GameScreen(
         Column(Modifier.fillMaxSize()) {
             TopBar(table.obs)
             table.connectionProblem?.let { ConnectionBanner(it) }
-            Box(Modifier.weight(1f).fillMaxWidth()) {
-                Table(table, onSchub = { onAction(Action.Schub) }, onShowLastTrick = onShowLastTrick)
+            val cut = table.cut
+            if (cut != null) {
+                // Before the deal: the seats around the table and the cut in the middle.
+                Box(Modifier.weight(1f).fillMaxWidth().navigationBarsPadding()) {
+                    Seats(table)
+                    CutScene(table, cut, onCut, onCutSeen, Modifier.align(Alignment.Center).padding(horizontal = 12.dp).zIndex(2f))
+                }
+            } else {
+                Box(Modifier.weight(1f).fillMaxWidth()) {
+                    Table(table, onSchub = { onAction(Action.Schub) }, onShowLastTrick = onShowLastTrick)
+                }
+                ActionArea(
+                    table, onAction, onNoticeConfirmed, onAskPartner, onAnswerPartner, onAskSchadet, onAnswerSchadet,
+                    onProposeSchlagwechsel, onAnswerSchlagwechsel,
+                )
+                Hand(table, onAction)
             }
-            ActionArea(
-                table, onAction, onNoticeConfirmed, onAskPartner, onAnswerPartner, onAskSchadet, onAnswerSchadet,
-                onProposeSchlagwechsel, onAnswerSchlagwechsel,
-            )
-            Hand(table, onAction)
         }
-        RoundEndOverlay(table, onContinue, onMenu, onLeave)
+        if (table.cut == null) RoundEndOverlay(table, onContinue, onMenu, onLeave)
     }
 }
 
@@ -179,9 +191,7 @@ private fun Table(table: TableUi, onSchub: () -> Unit, onShowLastTrick: (Boolean
         // Below the Haubi so they never overlap
         val sideSeatTop = haubiWidth * CARD_ASPECT + 48.dp
         // Above the trick so speech bubbles stay readable
-        PartnerSeat(table, Modifier.align(Alignment.TopCenter).zIndex(1f))
-        SideSeat(table, table.seatAt(1), left = true, modifier = Modifier.align(Alignment.TopStart).padding(top = sideSeatTop).zIndex(1f))
-        SideSeat(table, table.seatAt(3), left = false, modifier = Modifier.align(Alignment.TopEnd).padding(top = sideSeatTop).zIndex(1f))
+        Seats(table, sideSeatTop)
         HaubiCorner(s, haubiWidth, Modifier.align(Alignment.TopStart).padding(8.dp))
         BottomCardCorner(s, Modifier.align(Alignment.TopEnd).padding(8.dp))
         TrickArea(table, Modifier.align(Alignment.Center))
@@ -210,6 +220,19 @@ private fun Table(table: TableUi, onSchub: () -> Unit, onShowLastTrick: (Boolean
         }
     }
 }
+
+/** The three other players around the table; [sideSeatTop] keeps the side seats below the Haubi. */
+@Composable
+private fun Seats(table: TableUi, sideSeatTop: Dp = 48.dp) {
+    Box(Modifier.fillMaxSize().zIndex(1f)) {
+        PartnerSeat(table, Modifier.align(Alignment.TopCenter).zIndex(1f))
+        SideSeat(table, table.seatAt(1), left = true, modifier = Modifier.align(Alignment.TopStart).padding(top = sideSeatTop).zIndex(1f))
+        SideSeat(table, table.seatAt(3), left = false, modifier = Modifier.align(Alignment.TopEnd).padding(top = sideSeatTop).zIndex(1f))
+    }
+}
+
+/** Cards in the hand of [seat] as the others see them; none until the cut has been shown. */
+private fun handSize(table: TableUi, seat: Int): Int = if (table.cut != null) 0 else table.obs.handSizes[seat]
 
 /**
  * The last completed trick as it lay on the table, the winning card framed. Shown by [shownBy];
@@ -259,7 +282,7 @@ private fun PartnerSeat(table: TableUi, modifier: Modifier) {
     val seat = table.seatAt(2)
     Column(modifier.padding(top = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Row(horizontalArrangement = Arrangement.spacedBy((-22).dp)) {
-            repeat(table.obs.handSizes[seat]) { CardBack(width = 40.dp) }
+            repeat(handSize(table, seat)) { CardBack(width = 40.dp) }
         }
         Spacer(Modifier.height(4.dp))
         SeatChip(table, seat)
@@ -271,23 +294,25 @@ private fun PartnerSeat(table: TableUi, modifier: Modifier) {
 @Composable
 private fun SideSeat(table: TableUi, seat: Int, left: Boolean, modifier: Modifier) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        // The name moves over the cards sticking out of the screen; without cards it stays inside.
+        val shift = if (handSize(table, seat) > 0) 18.dp else (-4).dp
         val backs = @Composable {
             Column(
                 modifier = Modifier.offset(x = if (left) (-22).dp else 22.dp),
                 verticalArrangement = Arrangement.spacedBy((-14).dp),
             ) {
-                repeat(table.obs.handSizes[seat]) { CardBack(width = 34.dp, landscape = true) }
+                repeat(handSize(table, seat)) { CardBack(width = 34.dp, landscape = true) }
             }
         }
         if (left) {
             backs()
             Column {
-                SeatChip(table, seat, Modifier.offset(x = (-18).dp))
+                SeatChip(table, seat, Modifier.offset(x = -shift))
                 SpeechBubble(table, seat, BubbleFrom.LEFT, Modifier.padding(top = 4.dp))
             }
         } else {
             Column(horizontalAlignment = Alignment.End) {
-                SeatChip(table, seat, Modifier.offset(x = 18.dp))
+                SeatChip(table, seat, Modifier.offset(x = shift))
                 SpeechBubble(table, seat, BubbleFrom.RIGHT, Modifier.padding(top = 4.dp))
             }
             backs()
@@ -370,13 +395,16 @@ private fun startsInMs(speech: Speech) = speech.at - SystemClock.elapsedRealtime
 @Composable
 private fun SeatChip(table: TableUi, seat: Int, modifier: Modifier = Modifier) {
     val s = table.obs
-    val toMove = s.phase in setOf(Phase.SCHLAG, Phase.FARBE, Phase.PLAYING) &&
-        s.pendingSchub == null && s.playerToMove == seat
+    val cut = table.cut
+    val toMove = if (cut != null) {
+        cut.cut == null && cut.abheber == seat
+    } else {
+        s.phase in setOf(Phase.SCHLAG, Phase.FARBE, Phase.PLAYING) && s.pendingSchub == null && s.playerToMove == seat
+    }
     val badges = buildList {
         if (seat == s.dealer) add("Geber")
-        if (seat == s.abheber && s.abheberKritten > 0) {
-            add(if (s.abheberKritten == 1) "1 Kritte abgehoben" else "${s.abheberKritten} Kritten abgehoben")
-        }
+        if (cut != null && seat == cut.abheber) add("Abheber")
+        if (cut == null && seat == s.abheber && s.abheberKritten > 0) add("${Texts.kritten(s.abheberKritten)} abgehoben")
         s.laidOutCounts?.get(seat)?.takeIf { it > 0 }?.let { add("$it hingelegt") }
         if (seat in table.absent) add("offline – KI spielt")
         if (seat in table.bots) add("KI")
@@ -553,7 +581,7 @@ private const val COUNTDOWN_FROM_S = 30L
 
 /** Whole seconds until [deadline] (SystemClock.elapsedRealtime), updated every second; null without deadline. */
 @Composable
-private fun secondsUntil(deadline: Long?): Long? {
+internal fun secondsUntil(deadline: Long?): Long? {
     if (deadline == null) return null
     val left by produceState(initialValue = remainingSeconds(deadline), deadline) {
         while (value > 0) {

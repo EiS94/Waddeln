@@ -9,6 +9,7 @@ import com.schaubeck.waddeln.rules.agent.SchadetAnswer
 import com.schaubeck.waddeln.rules.ml.FeatureEncoder
 import com.schaubeck.waddeln.rules.ml.MlAgent
 import com.schaubeck.waddeln.rules.ml.QFunction
+import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -76,7 +77,29 @@ class TableTalkTest {
         s = Waddeln.answerSchadet(s, 2, SchadetAnswer.YES)
         val legal = Waddeln.legalActions(s, 0)
         assertEquals(legal, Schadet.allowedActions(s, 0, legal), "nothing to drop without the Haubi")
-        assertFalse(BotTalk.asksSchadet(bluff, 0, legal.first()), "bots do not bluff")
+        assertFalse(BotTalk.asksSchadet(bluff, 0, legal.first()), "only the Haubi lead")
+        assertFalse(Schadet.canBluff(bluff, 0), "too weak a hand for a bot to bluff")
+    }
+
+    /** Draws 0.0 (always below the bluff chance) or nearly 1.0 (never). */
+    private fun fixedRandom(low: Boolean) = object : Random() {
+        override fun nextBits(bitCount: Int) = if (low) 0 else (1 shl bitCount) - 1
+    }
+
+    @Test
+    fun `a bot with two trumps but without the Haubi sometimes bluffs with Schadder`() {
+        // Haubi Gras Ober; player 0 holds Schell Ober (Haubi-Schlag) and Gras 8, the partner the Haubi.
+        val s = playingWith(
+            listOf("SA SO G8 H9 E9", "SK SU H10 HU E10", "GO GA G9 E8 H7", "EA EK H8 S9 S10"),
+            Rank.OBER, Suit.GRAS,
+        )
+        assertTrue(Schadet.canBluff(s, 0))
+        val lead = Agent { _, legal -> legal.first { it is Action.PlayCard } }
+        val (bluffed, action) = BotTalk.decide(s, 0, lead, fixedRandom(low = true))
+        assertEquals(SchadetTalk(0, SchadetAnswer.YES), bluffed.schadet, "the partner holds the Haubi and covers the bluff")
+        assertTrue(action is Action.PlayCard)
+        val (honest, _) = BotTalk.decide(s, 0, lead, fixedRandom(low = false))
+        assertNull(honest.schadet)
     }
 
     @Test
@@ -139,7 +162,7 @@ class TableTalkTest {
     @Test
     fun `a bot asks its partner before answering a Schub`() {
         val s = state().act(1, Action.Schub)
-        val (talked, action) = BotTalk.decide(s, 0) { _, legal -> legal.first() }
+        val (talked, action) = BotTalk.decide(s, 0, Agent { _, legal -> legal.first() })
         assertEquals(listOf(HintCall(2, PartnerHints.hintFor(s.observationFor(2)), 0)), talked.hints)
         assertEquals(Action.Bleiben, action)
     }

@@ -70,6 +70,15 @@ object Sayings {
     val SCHLAGWECHSEL_ACCEPT = listOf("Passt.", "Machen wir.", "Ja, tauschen wir.")
     val SCHLAGWECHSEL_DECLINE = listOf("Nix da.", "Nein, sag du an.", "Bleibt so.")
 
+    // ---- Kritten taken while cutting --------------------------------------------------------
+
+    /** By the number of Kritten the Abheber had to take (1 to 3). */
+    val KRITTEN: Map<Int, List<String>> = mapOf(
+        1 to listOf("A Kritte!", "Eine Kritte hab ich.", "Kritte!"),
+        2 to listOf("Zwei Kritten!", "Zwei Kritten hab ich."),
+        3 to listOf("Alle drei Kritten!", "Drei Kritten!"),
+    )
+
     // ---- Picking -------------------------------------------------------------------------
 
     /** A random variant for an action said aloud; null for playing a card. */
@@ -81,6 +90,9 @@ object Sayings {
         Action.Gehen -> GEHEN.random(random)
         is Action.PlayCard -> null
     }
+
+    /** What the Abheber says after taking [count] Kritten (1 to 3). */
+    fun kritten(count: Int, random: Random = Random.Default): String = KRITTEN.getValue(count).random(random)
 
     fun partnerQuestion(random: Random = Random.Default): String = PARTNER_QUESTION.random(random)
 

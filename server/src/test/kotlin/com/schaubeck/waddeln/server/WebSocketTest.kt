@@ -20,6 +20,7 @@ import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 
 class WebSocketTest {
 
@@ -47,7 +48,12 @@ class WebSocketTest {
 
             send(Frame.Text(ClientMessage.StartMatch.encode()))
             val started = assertIs<ServerMessage.Table>(receive())
-            assertEquals(5, started.game!!.observation.hand.size)
+            val cut = assertNotNull(started.game!!.cut)
+            assertEquals(0, started.game!!.observation.hand.size)
+            // We cut ourselves, or a bot does after a moment.
+            if (cut.abheber == started.yourSeat) send(Frame.Text(ClientMessage.Cut(16).encode()))
+            val dealt = assertIs<ServerMessage.Table>(receive())
+            assertEquals(5, dealt.game!!.observation.hand.size)
         }
     }
 }
