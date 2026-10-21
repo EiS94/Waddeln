@@ -47,6 +47,7 @@ def sample_inputs(count: int, seed: int = 7) -> list[np.ndarray]:
     while len(out) < count:
         state = E.new_random_match(rng)
         while state.phase in (E.SCHLAG, E.FARBE, E.PLAYING) and len(out) < count:
+            T.schlagwechsel_before_turn(state)
             actor = E.seated_actor(state)
             T.hint_before_answer(state, actor)
             legal = T.allowed_actions(state, actor, E.legal_actions(state, actor))

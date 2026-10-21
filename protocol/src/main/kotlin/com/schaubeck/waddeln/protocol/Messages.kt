@@ -83,7 +83,15 @@ sealed interface ClientMessage {
     @Serializable @SerialName("answer_partner")
     data class AnswerPartner(val hint: PartnerHint) : ClientMessage
 
-    /** Before leading the Haubi into the first trick: ask the partner "Schadder?". */
+    /** Before announcing the Schlag: propose a Schlagwechsel to the dealer. */
+    @Serializable @SerialName("propose_schlagwechsel")
+    data object ProposeSchlagwechsel : ClientMessage
+
+    /** The dealer's answer to [ProposeSchlagwechsel]. */
+    @Serializable @SerialName("answer_schlagwechsel")
+    data class AnswerSchlagwechsel(val accept: Boolean) : ClientMessage
+
+    /** Before leading the first trick (with the Haubi or as a bluff): ask the partner "Schadder?". */
     @Serializable @SerialName("ask_schadet")
     data object AskSchadet : ClientMessage
 
@@ -159,12 +167,14 @@ data class GameView(
     val partnerQuestion: Int? = null,
     /** The partner's answer during the open Schub, or null. */
     val partnerHint: SeatHint? = null,
-    /** True if we lead the first trick with the Haubi and may ask "Schadder?" ([ClientMessage.AskSchadet]). */
+    /** True if we lead the first trick and may ask "Schadder?" ([ClientMessage.AskSchadet]). */
     val canAskSchadet: Boolean = false,
     /** Seat that asked "Schadder?" in this round, or null. */
     val schadetQuestion: Int? = null,
     /** The partner's answer to it, or null. */
     val schadetAnswer: SeatSchadet? = null,
+    /** True if we may propose a Schlagwechsel ([ClientMessage.ProposeSchlagwechsel]); the talk itself is in the observation. */
+    val canProposeSchlagwechsel: Boolean = false,
     /** True if we may show the last completed trick ([ClientMessage.ShowLastTrick]) now. */
     val canShowLastTrick: Boolean = false,
     /** Seat that shows the last completed trick to the table right now, or null. */

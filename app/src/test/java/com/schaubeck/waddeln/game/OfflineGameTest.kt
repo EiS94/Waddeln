@@ -38,6 +38,7 @@ class OfflineGameTest {
             when {
                 game.state.phase == Phase.ROUND_OVER -> game.nextRound()
                 game.humanMustAnswerSchadet() -> game.answerSchadet(SchadetAnswer.entries.random())
+                game.humanMustAnswerSchlagwechsel() -> game.answerSchlagwechsel(Random.nextBoolean())
                 game.botToAct() != null -> game.stepBot()
                 else -> {
                     val actions = game.humanActions()
@@ -45,6 +46,15 @@ class OfflineGameTest {
                     game.applyHuman(human.chooseAction(game.state.observationFor(HUMAN), actions))
                 }
             }
+        }
+    }
+
+    /** One step towards the card play: the human declines a Schlagwechsel and otherwise takes the first action. */
+    private fun step(game: OfflineGame) {
+        when {
+            game.humanMustAnswerSchlagwechsel() -> game.answerSchlagwechsel(false)
+            game.botToAct() != null -> game.stepBot()
+            else -> game.applyHuman(game.humanActions().first())
         }
     }
 
@@ -67,7 +77,11 @@ class OfflineGameTest {
                     assertTrue(step is BotStep.Acted && step.action != Action.PlayCard(haubi))
                     return@repeat
                 }
-                if (game.botToAct() != null) game.stepBot() else game.applyHuman(game.humanActions().first { it != Action.Schub })
+                when {
+                    game.humanMustAnswerSchlagwechsel() -> game.answerSchlagwechsel(false)
+                    game.botToAct() != null -> game.stepBot()
+                    else -> game.applyHuman(game.humanActions().first { it != Action.Schub })
+                }
             }
         }
         assertTrue("some partner bot asked within 300 rounds", asked > 0)
@@ -78,7 +92,7 @@ class OfflineGameTest {
         repeat(300) { seed ->
             val game = OfflineGame(Random(seed))
             while (game.state.phase != Phase.PLAYING) {
-                if (game.botToAct() != null) game.stepBot() else game.applyHuman(game.humanActions().first())
+                step(game)
             }
             if (!game.humanCanAskSchadet()) return@repeat
             game.askSchadet()
@@ -92,11 +106,29 @@ class OfflineGameTest {
     }
 
     @Test
+    fun `the dealer bot answers the human's Schlagwechsel`() {
+        repeat(100) { seed ->
+            val game = OfflineGame(Random(seed))
+            while (game.state.phase == Phase.SCHLAG && !game.humanCanProposeSchlagwechsel()) step(game)
+            if (!game.humanCanProposeSchlagwechsel()) return@repeat
+            game.proposeSchlagwechsel()
+            assertTrue("no Schlag before the answer", game.humanActions().isEmpty())
+            assertEquals(game.state.dealer, game.botToAct())
+            val answer = game.stepBot()
+            assertTrue(answer is BotStep.AnsweredSchlagwechsel)
+            val announcer = if ((answer as BotStep.AnsweredSchlagwechsel).accept) game.state.dealer else HUMAN
+            assertEquals(announcer, game.state.playerToMove)
+            return
+        }
+        error("the human never announced the Schlag")
+    }
+
+    @Test
     fun `human answers a Schub against their team`() {
         val game = OfflineGame(Random(7))
         // Advance until a bot (opponent) may announce Schub on its turn
         while (game.state.phase != Phase.PLAYING) {
-            if (game.botToAct() != null) game.stepBot() else game.applyHuman(game.humanActions().first())
+            step(game)
         }
         val opponent = (0..3).first { teamOf(it) != teamOf(HUMAN) }
         val state = Waddeln.apply(game.state, opponent, Action.Schub)
@@ -108,7 +140,7 @@ class OfflineGameTest {
     fun `human may announce Schub out of turn and a bot answers`() {
         val game = OfflineGame(Random(3))
         while (game.state.phase != Phase.PLAYING) {
-            if (game.botToAct() != null) game.stepBot() else game.applyHuman(game.humanActions().first())
+            step(game)
         }
         assertTrue(Action.Schub in game.humanActions())
         game.applyHuman(Action.Schub)

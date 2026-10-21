@@ -109,7 +109,7 @@ def encode_state(obs: Observation) -> np.ndarray:
             f[478 + r * HINT_COUNT + latest[-1]] = 1.0
     if obs.schadet is not None:
         asker, answer = obs.schadet
-        f[498 + rel(asker)] = 1.0  # who asked "Schadder?" (holds the Haubi)
+        f[498 + rel(asker)] = 1.0  # who asked "Schadder?" (has the Haubi or bluffs)
         if answer is not None:
             f[502 + answer] = 1.0
     for p in haubi_farbe_voids(obs):  # 505: known to have no Haubi-Farbe

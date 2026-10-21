@@ -44,7 +44,7 @@ data class TableUi(
     val waitingForPartner: Boolean = false,
     /** Online: our partner asked us how good our cards are; we answer with a [com.schaubeck.waddeln.rules.agent.PartnerHint]. */
     val partnerAsksUs: Boolean = false,
-    /** We lead the first trick with the Haubi and may ask the partner "Schadder?". */
+    /** We lead the first trick and may ask the partner "Schadder?" (without the Haubi it is a bluff). */
     val canAskSchadet: Boolean = false,
     /** We asked "Schadder?" and wait for the partner's answer. */
     val waitingForSchadet: Boolean = false,
@@ -52,6 +52,12 @@ data class TableUi(
     val schadetAnswer: String? = null,
     /** The partner asked us "Schadder?"; we answer with a [com.schaubeck.waddeln.rules.agent.SchadetAnswer]. */
     val partnerAsksSchadet: Boolean = false,
+    /** We announce the Schlag and may propose a Schlagwechsel first. */
+    val canProposeSchlagwechsel: Boolean = false,
+    /** A Schlagwechsel waits for the dealer's answer (we proposed it or just watch). */
+    val waitingForSchlagwechsel: Boolean = false,
+    /** We are the dealer and answer the Schlagwechsel proposed to us. */
+    val schlagwechselAsksUs: Boolean = false,
     /** We are to play a card and may show the last completed trick. */
     val canShowLastTrick: Boolean = false,
     /** Seat that shows the last completed trick right now (online to the whole table), or null. */

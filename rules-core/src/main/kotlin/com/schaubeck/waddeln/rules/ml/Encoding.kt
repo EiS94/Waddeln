@@ -159,7 +159,7 @@ object FeatureEncoder {
             oneHot(obs.hints.lastOrNull { it.player == seat }?.hint?.ordinal ?: -1, PartnerHint.entries.size)
         }
         val schadet = obs.schadet
-        oneHot(schadet?.let { rel(obs, it.asker) } ?: -1, 4)                  // 498: who asked "Schadder?" (holds the Haubi)
+        oneHot(schadet?.let { rel(obs, it.asker) } ?: -1, 4)                  // 498: who asked "Schadder?" (has the Haubi or bluffs)
         oneHot(schadet?.answer?.ordinal ?: -1, SchadetAnswer.entries.size)    // 502: the partner's answer
         val voids = haubiFarbeVoids(obs)
         for (r in 0 until PLAYER_COUNT) {                                     // 505: known to have no Haubi-Farbe

@@ -36,6 +36,15 @@ class SchadetTest {
     }
 
     @Test
+    fun `a partner holding the Haubi says yes so the bluff does not show`() {
+        val s = playingWith(
+            listOf("SA S8 S10 H9 E9", "SK SU H10 HU E10", "GO GA G9 E8 H7", "EA EK H8 S9 SO"),
+            Rank.OBER, Suit.GRAS,
+        )
+        assertEquals(SchadetAnswer.YES, Schadet.answerFor(s.observationFor(2)), "three of the Farbe would not hurt otherwise")
+    }
+
+    @Test
     fun `only the player leading the first trick with the Haubi may ask`() {
         val s = state("E7 SO HO E8 H7")
         assertTrue(Schadet.canAsk(s, 0))

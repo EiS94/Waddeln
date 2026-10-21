@@ -15,6 +15,7 @@ import com.schaubeck.waddeln.rules.agent.PartnerHint
 import com.schaubeck.waddeln.rules.agent.PartnerHints
 import com.schaubeck.waddeln.rules.agent.Schadet
 import com.schaubeck.waddeln.rules.agent.SchadetAnswer
+import com.schaubeck.waddeln.rules.agent.Schlagwechsel
 import com.schaubeck.waddeln.rules.agent.RuleBasedAgent
 import com.schaubeck.waddeln.rules.nextPlayer
 import com.schaubeck.waddeln.rules.observationFor
@@ -32,6 +33,11 @@ sealed interface BotStep {
     data class AskedSchadet(override val bot: Int) : BotStep
 
     data class AnsweredSchadet(override val bot: Int, val answer: SchadetAnswer) : BotStep
+
+    /** Before announcing the Schlag the bot proposes a Schlagwechsel to the dealer. */
+    data class ProposedSchlagwechsel(override val bot: Int) : BotStep
+
+    data class AnsweredSchlagwechsel(override val bot: Int, val accept: Boolean) : BotStep
 
     /** Before answering a Schub the bot asked its partner, who answered with [hint] at once. */
     data class AskedPartner(override val bot: Int, val hint: PartnerHint) : BotStep
@@ -69,10 +75,10 @@ class OfflineGame(
     /**
      * The bot that has to act next, or null if the game waits for the human (or a new round).
      * An open Schub against the human's team is always answered by the human; an open
-     * "Schadder?" is answered by the asked partner first.
+     * "Schadder?" or Schlagwechsel is answered by the asked player first.
      */
     fun botToAct(): Int? {
-        Waddeln.schadetAnswerer(state)?.let { return it.takeIf { it != HUMAN } }
+        (Waddeln.schadetAnswerer(state) ?: Waddeln.schlagwechselAnswerer(state))?.let { return it.takeIf { it != HUMAN } }
         val toMove = state.playerToMove ?: return null
         val pending = state.pendingSchub
         val actor = if (pending == null) {
@@ -85,9 +91,9 @@ class OfflineGame(
     }
 
     /**
-     * Lets the next bot act and returns what it did. The bots talk like [BotTalk]: before answering
-     * a Schub a bot asks its partner, before leading the Haubi it asks "Schadder?" and then decides
-     * knowing the answer.
+     * Lets the next bot act and returns what it did. The bots talk like [BotTalk]: before announcing
+     * the Schlag a bot may propose a Schlagwechsel, before answering a Schub it asks its partner,
+     * before leading the Haubi it asks "Schadder?" and then decides knowing the answer.
      */
     fun stepBot(): BotStep {
         val bot = checkNotNull(botToAct()) { "No bot to act" }
@@ -95,6 +101,15 @@ class OfflineGame(
             val answer = Schadet.answerFor(state.observationFor(bot))
             state = Waddeln.answerSchadet(state, bot, answer)
             return BotStep.AnsweredSchadet(bot, answer)
+        }
+        if (Waddeln.schlagwechselAnswerer(state) == bot) {
+            val accept = Schlagwechsel.accepts(state.observationFor(bot))
+            state = Waddeln.answerSchlagwechsel(state, bot, accept)
+            return BotStep.AnsweredSchlagwechsel(bot, accept)
+        }
+        if (Waddeln.canProposeSchlagwechsel(state, bot) && Schlagwechsel.proposes(state.observationFor(bot))) {
+            state = Waddeln.proposeSchlagwechsel(state, bot)
+            return BotStep.ProposedSchlagwechsel(bot)
         }
         // Only the opponents' bots answer a Schub (the human answers for their team), so the partner is a bot.
         val partner = partnerOf(bot)
@@ -113,7 +128,21 @@ class OfflineGame(
         return BotStep.Acted(bot, action)
     }
 
-    /** The human leads the first trick with the Haubi and may ask the partner "Schadder?". */
+    /** The human may propose a Schlagwechsel before announcing the Schlag; the dealer bot answers in its next step. */
+    fun humanCanProposeSchlagwechsel(): Boolean = Waddeln.canProposeSchlagwechsel(state, HUMAN)
+
+    fun proposeSchlagwechsel() {
+        if (humanCanProposeSchlagwechsel()) state = Waddeln.proposeSchlagwechsel(state, HUMAN)
+    }
+
+    /** True while the human as dealer has to answer the Schlagwechsel a bot proposed. */
+    fun humanMustAnswerSchlagwechsel(): Boolean = Waddeln.schlagwechselAnswerer(state) == HUMAN
+
+    fun answerSchlagwechsel(accept: Boolean) {
+        if (humanMustAnswerSchlagwechsel()) state = Waddeln.answerSchlagwechsel(state, HUMAN, accept)
+    }
+
+    /** The human leads the first trick and may ask the partner "Schadder?" (with the Haubi or as a bluff). */
     fun humanCanAskSchadet(): Boolean = Waddeln.canAskSchadet(state, HUMAN)
 
     /** The human asks; the partner bot answers in its next step. */
