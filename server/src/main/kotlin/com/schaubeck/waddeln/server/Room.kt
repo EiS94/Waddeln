@@ -92,6 +92,9 @@ class Room(
      * the game state (everybody hears them, the bots take them into account).
      */
     private var question: Int? = null
+
+    /** Seat that shows the last completed trick to the table; hidden again with the next action. */
+    private var lastTrickShownBy: Int? = null
     private var botJob: Job? = null
 
     /** Runs out when a human takes too long; [timerState] is the state it was started for. */
@@ -270,6 +273,18 @@ class Room(
         apply(actor, action)
     }
 
+    /** The player to move shows ([show]) or hides the last completed trick; everybody sees it. */
+    fun showLastTrick(playerId: String, show: Boolean): String? {
+        val seat = seatOf(playerId) ?: return null
+        val s = state ?: return null
+        if (!Waddeln.canShowLastTrick(s, seat)) return null
+        val shownBy = if (show) seat else null
+        if (shownBy == lastTrickShownBy) return null
+        lastTrickShownBy = shownBy
+        broadcast()
+        return null
+    }
+
     /** Confirms the end of a round or match; the next one starts once all connected humans confirmed. */
     fun ready(playerId: String): String? {
         val seat = seatOf(playerId) ?: return null
@@ -289,6 +304,7 @@ class Room(
         val after = Waddeln.apply(before, seat, action)
         state = after
         lastAction = SeatAction(seat, action)
+        lastTrickShownBy = null
         if (after.pendingSchub == null) question = null
         if (before.result == null) after.result?.let { logRoundEnd(after) }
         val pause = when {
@@ -451,6 +467,8 @@ class Room(
             canAskSchadet = Waddeln.canAskSchadet(s, seat),
             schadetQuestion = s.schadet?.asker,
             schadetAnswer = s.schadet?.let { talk -> talk.answer?.let { SeatSchadet(partnerOf(talk.asker), it) } },
+            canShowLastTrick = Waddeln.canShowLastTrick(s, seat),
+            lastTrickShownBy = lastTrickShownBy?.takeIf { Waddeln.canShowLastTrick(s, it) },
         )
     }
 

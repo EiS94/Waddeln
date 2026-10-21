@@ -69,6 +69,20 @@ class TableTalkTest {
     }
 
     @Test
+    fun `the player to move may show the last trick until the next one is complete`() {
+        assertFalse((0 until PLAYER_COUNT).any { Waddeln.canShowLastTrick(state(), it) }, "no trick yet")
+        var s = state().play("S8", "SK", "E7", "S9")
+        val leader = s.playerToMove!!
+        assertTrue(Waddeln.canShowLastTrick(s, leader))
+        assertFalse(Waddeln.canShowLastTrick(s, nextPlayer(leader)), "only the player to move")
+        s = s.act(nextPlayer(leader), Action.Schub)
+        assertFalse(Waddeln.canShowLastTrick(s, leader), "not while a Schub is open")
+        s = s.act(leader, Action.Bleiben)
+        repeat(3) { s = Waddeln.apply(s, s.playerToMove!!, Waddeln.legalActions(s, s.playerToMove!!).first { it is Action.PlayCard }) }
+        assertTrue(Waddeln.canShowLastTrick(s, s.playerToMove!!), "still while the last card of the next trick is due")
+    }
+
+    @Test
     fun `not following the Haubi lead reveals a missing Haubi-Farbe until a Kritte lifts the duty`() {
         // Player 1 plays Schell (no Gras), player 2 the Secher: player 3 is free after that.
         val s = state().play("GO", "SK", "E7", "S9")

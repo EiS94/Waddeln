@@ -92,6 +92,7 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
     fun answerPartner(hint: PartnerHint) = send(ClientMessage.AnswerPartner(hint))
     fun askSchadet() = send(ClientMessage.AskSchadet)
     fun answerSchadet(answer: SchadetAnswer) = send(ClientMessage.AnswerSchadet(answer))
+    fun showLastTrick(show: Boolean) = send(ClientMessage.ShowLastTrick(show))
     fun ready() = send(ClientMessage.Ready)
     fun leave() = send(ClientMessage.LeaveRoom)
 
@@ -215,6 +216,8 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
             waitingForSchadet = game.schadetQuestion == me && game.schadetAnswer == null && beforeFirstLead,
             schadetAnswer = schadetText.takeIf { game.schadetQuestion == me && beforeFirstLead && obs.playerToMove == me },
             partnerAsksSchadet = game.schadetQuestion == (me + 2) % PLAYER_COUNT && game.schadetAnswer == null && beforeFirstLead,
+            canShowLastTrick = game.canShowLastTrick,
+            lastTrickShownBy = game.lastTrickShownBy,
             absent = table.room.seats.indices.filter { table.room.seats[it].isHuman && !table.room.seats[it].connected }.toSet(),
             bots = table.room.seats.indices.filter { !table.room.seats[it].isHuman }.toSet(),
             waitingForOthers = over && game.ready[me],
