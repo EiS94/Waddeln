@@ -168,6 +168,14 @@ object Waddeln {
         return state.copy(schadet = state.schadet!!.copy(answer = answer))
     }
 
+    /**
+     * The last completed trick may be looked at until the next one is complete. To keep it simple
+     * only the player who is to play a card may show it (online it is shown to the whole table).
+     */
+    fun canShowLastTrick(state: GameState, player: Int): Boolean =
+        state.phase == Phase.PLAYING && state.pendingSchub == null &&
+            state.completedTricks.isNotEmpty() && state.playerToMove == player
+
     private fun fixHaubi(state: GameState, farbe: Suit): GameState {
         val withTrump = state.copy(farbe = farbe, phase = Phase.PLAYING)
         val bothGespannt = (0 until TEAM_COUNT).all { state.isGespannt(it) }

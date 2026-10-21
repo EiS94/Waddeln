@@ -91,6 +91,10 @@ sealed interface ClientMessage {
     @Serializable @SerialName("answer_schadet")
     data class AnswerSchadet(val answer: SchadetAnswer) : ClientMessage
 
+    /** Shows ([show] = true) or hides the last completed trick for the whole table; only allowed for the player to move. */
+    @Serializable @SerialName("show_last_trick")
+    data class ShowLastTrick(val show: Boolean) : ClientMessage
+
     /** After a round or match: ready for the next one. It starts once all connected players are ready. */
     @Serializable @SerialName("ready")
     data object Ready : ClientMessage
@@ -161,6 +165,10 @@ data class GameView(
     val schadetQuestion: Int? = null,
     /** The partner's answer to it, or null. */
     val schadetAnswer: SeatSchadet? = null,
+    /** True if we may show the last completed trick ([ClientMessage.ShowLastTrick]) now. */
+    val canShowLastTrick: Boolean = false,
+    /** Seat that shows the last completed trick to the table right now, or null. */
+    val lastTrickShownBy: Int? = null,
 )
 
 @Serializable

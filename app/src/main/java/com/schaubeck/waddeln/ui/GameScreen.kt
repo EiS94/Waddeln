@@ -12,6 +12,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -78,6 +79,7 @@ import kotlinx.coroutines.delay
  * [onContinue] starts the next round or match after the result; [onAskPartner] asks the partner
  * about their cards during a Schub, [onAnswerPartner] (online only) answers such a question;
  * [onAskSchadet] asks the partner "Schadder?" before leading the Haubi, [onAnswerSchadet] answers it;
+ * [onShowLastTrick] shows or hides the last completed trick;
  * [onLeave] (online only) leaves the room for good. [soundKey] tells the offline and the online
  * table apart for the sounds.
  */
@@ -92,6 +94,7 @@ fun GameScreen(
     onAnswerPartner: (PartnerHint) -> Unit = {},
     onAskSchadet: () -> Unit = {},
     onAnswerSchadet: (SchadetAnswer) -> Unit = {},
+    onShowLastTrick: (Boolean) -> Unit = {},
     onLeave: (() -> Unit)? = null,
     soundKey: String = "offline",
 ) {
@@ -102,7 +105,7 @@ fun GameScreen(
             TopBar(table.obs)
             table.connectionProblem?.let { ConnectionBanner(it) }
             Box(Modifier.weight(1f).fillMaxWidth()) {
-                Table(table, onSchub = { onAction(Action.Schub) })
+                Table(table, onSchub = { onAction(Action.Schub) }, onShowLastTrick = onShowLastTrick)
             }
             ActionArea(table, onAction, onNoticeConfirmed, onAskPartner, onAnswerPartner, onAskSchadet, onAnswerSchadet)
             Hand(table, onAction)
@@ -161,7 +164,7 @@ private fun BarText(text: String, size: Int = 14, bold: Boolean = false, color: 
 // ---- Table -----------------------------------------------------------------------------------
 
 @Composable
-private fun Table(table: TableUi, onSchub: () -> Unit) {
+private fun Table(table: TableUi, onSchub: () -> Unit, onShowLastTrick: (Boolean) -> Unit) {
     val s = table.obs
     BoxWithConstraints(Modifier.fillMaxSize()) {
         // The Haubi has the size of the own cards; the table is as wide as the hand.
@@ -184,6 +187,63 @@ private fun Table(table: TableUi, onSchub: () -> Unit) {
                 modifier = Modifier.align(Alignment.BottomEnd).padding(end = 8.dp, bottom = 4.dp),
             ) { Text("Schub!", fontWeight = FontWeight.Bold) }
         }
+        if (table.canShowLastTrick && table.lastTrickShownBy == null) {
+            OutlinedButton(
+                onClick = { onShowLastTrick(true) },
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                modifier = Modifier.align(Alignment.BottomStart).padding(start = 8.dp, bottom = 4.dp),
+            ) { Text("Letzter Stich", color = Color.White, fontSize = 13.sp) }
+        }
+        table.lastTrickShownBy?.let { shownBy ->
+            LastTrickOverlay(
+                table, shownBy,
+                onClose = if (shownBy == table.me) ({ onShowLastTrick(false) }) else null,
+                modifier = Modifier.align(Alignment.Center).zIndex(2f),
+            )
+        }
+    }
+}
+
+/**
+ * The last completed trick as it lay on the table, the winning card framed. Shown by [shownBy];
+ * only they can close it ([onClose]), playing a card closes it too.
+ */
+@Composable
+private fun LastTrickOverlay(table: TableUi, shownBy: Int, onClose: (() -> Unit)?, modifier: Modifier) {
+    val trick = table.obs.completedTricks.lastOrNull() ?: return
+    val shape = RoundedCornerShape(16.dp)
+    Column(
+        modifier = modifier
+            .background(Color(0xF22B1F14), shape)
+            .border(2.dp, Highlight, shape)
+            .then(if (onClose != null) Modifier.clickable(onClick = onClose) else Modifier)
+            .padding(12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text("Letzter Stich", color = Highlight, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        Text(
+            "Gewonnen von ${table.names[trick.winner]}",
+            color = Color.White, fontSize = 13.sp,
+        )
+        Box(Modifier.size(200.dp, 210.dp)) {
+            trick.plays.forEachIndexed { i, play ->
+                val (spot, angle) = trickSpot(table.relative(play.player))
+                CardView(
+                    card = play.card,
+                    width = 64.dp,
+                    highlight = play.player == trick.winner,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .offset(spot.x, spot.y)
+                        .rotate(angle)
+                        .zIndex(i.toFloat()),
+                )
+            }
+        }
+        Text(
+            if (onClose != null) "Tippen zum Schließen" else "${table.names[shownBy]} schaut den letzten Stich an",
+            color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp,
+        )
     }
 }
 

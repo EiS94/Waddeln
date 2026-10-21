@@ -8,6 +8,7 @@ import com.schaubeck.waddeln.ai.BotFactory
 import com.schaubeck.waddeln.rules.Action
 import com.schaubeck.waddeln.rules.PLAYER_COUNT
 import com.schaubeck.waddeln.rules.Phase
+import com.schaubeck.waddeln.rules.Waddeln
 import com.schaubeck.waddeln.rules.observationFor
 import com.schaubeck.waddeln.rules.partnerOf
 import com.schaubeck.waddeln.rules.agent.Schadet
@@ -49,6 +50,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     /** The variant picked for the partner bot's answer to the human's "Schadder?". */
     private var schadetText: String? = null
     private var matchStarted = false
+
+    /** The human looks at the last completed trick (until they act). */
+    private var showingLastTrick = false
     private val _ui = MutableStateFlow(snapshot())
     val ui: StateFlow<GameUiState> = _ui.asStateFlow()
 
@@ -84,11 +88,18 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     fun onHumanAction(action: Action) {
         if (notice != null || action !in game.humanActions()) return
         val tricksBefore = game.state.completedTricks.size
+        showingLastTrick = false
         game.applyHuman(action)
         say(OfflineGame.HUMAN, action)
         publish()
         // Give a trick finished by the human time to be shown and collected before bots go on.
         runBots(initialPauseMs = if (game.state.completedTricks.size > tricksBefore) settings.speed.trickPauseMs else 0)
+    }
+
+    /** Shows or hides the last completed trick (only while the human is to play a card). */
+    fun onShowLastTrick(show: Boolean) {
+        showingLastTrick = show && Waddeln.canShowLastTrick(game.state, OfflineGame.HUMAN)
+        publish()
     }
 
     /** Before leading the Haubi: ask the partner "Schadder?"; the partner bot answers in its next step. */
@@ -244,6 +255,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             waitingForSchadet = game.schadet?.let { it.asker == OfflineGame.HUMAN && it.answer == null } == true,
             schadetAnswer = schadetText?.takeIf { Schadet.canAsk(game.state, OfflineGame.HUMAN) },
             partnerAsksSchadet = game.humanMustAnswerSchadet(),
+            canShowLastTrick = notice == null && Waddeln.canShowLastTrick(game.state, OfflineGame.HUMAN),
+            lastTrickShownBy = OfflineGame.HUMAN.takeIf { showingLastTrick && Waddeln.canShowLastTrick(game.state, it) },
         ),
         settings = settings,
         matchInProgress = matchStarted && game.state.phase != Phase.MATCH_OVER,

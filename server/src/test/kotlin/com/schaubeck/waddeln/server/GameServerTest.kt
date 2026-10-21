@@ -643,6 +643,48 @@ class GameServerTest {
         error("the host never led the first trick with the Haubi")
     }
 
+    @Test
+    fun `the player to move shows the last trick to the whole table until they act`() = runTest {
+        val server = newServer(seed = 5)
+        val host = player(server, "host")
+        host.send(ClientMessage.CreateRoom)
+        val guest = player(server, "guest")
+        guest.send(ClientMessage.JoinRoom(host.table.room.code))
+        host.send(ClientMessage.StartMatch)
+        val humans = listOf(host, guest)
+        repeat(10_000) {
+            advanceUntilIdle()
+            val games = humans.associateWith { it.table.game!! }
+            val phase = games.values.first().observation.phase
+            if (phase == Phase.ROUND_OVER || phase == Phase.MATCH_OVER) {
+                humans.forEach { it.send(ClientMessage.Ready) }
+                return@repeat
+            }
+            val shower = humans.firstOrNull { games[it]!!.canShowLastTrick }
+            if (shower == null) {
+                val p = humans.first { games[it]!!.legalActions.isNotEmpty() }
+                val legal = games[p]!!.legalActions
+                return@repeat p.send(ClientMessage.Act(legal.firstOrNull { it != Action.Schub } ?: legal.first()))
+            }
+            val other = humans.first { it !== shower }
+            assertFalse(other.table.game!!.canShowLastTrick, "only the player to move")
+            other.send(ClientMessage.ShowLastTrick(true))
+            assertNull(host.table.game!!.lastTrickShownBy)
+
+            shower.send(ClientMessage.ShowLastTrick(true))
+            humans.forEach { assertEquals(shower.seat, it.table.game!!.lastTrickShownBy, "everybody sees it") }
+            shower.send(ClientMessage.ShowLastTrick(false))
+            humans.forEach { assertNull(it.table.game!!.lastTrickShownBy) }
+
+            shower.send(ClientMessage.ShowLastTrick(true))
+            val card = shower.table.game!!.legalActions.first { it is Action.PlayCard }
+            shower.send(ClientMessage.Act(card))
+            humans.forEach { assertNull(it.table.game!!.lastTrickShownBy, "hidden once the card is played") }
+            return@runTest
+        }
+        error("no human could show the last trick")
+    }
+
     private fun TestScope.playUntilRoundOver(humans: List<Player>) {
         repeat(10_000) {
             advanceUntilIdle()

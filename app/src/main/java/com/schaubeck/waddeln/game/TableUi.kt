@@ -52,6 +52,10 @@ data class TableUi(
     val schadetAnswer: String? = null,
     /** The partner asked us "Schadder?"; we answer with a [com.schaubeck.waddeln.rules.agent.SchadetAnswer]. */
     val partnerAsksSchadet: Boolean = false,
+    /** We are to play a card and may show the last completed trick. */
+    val canShowLastTrick: Boolean = false,
+    /** Seat that shows the last completed trick right now (online to the whole table), or null. */
+    val lastTrickShownBy: Int? = null,
     /** Seats whose human lost the connection; a bot plays for them meanwhile. */
     val absent: Set<Int> = emptySet(),
     /** Online: seats played by a bot (marked, since bots have names like humans). */
