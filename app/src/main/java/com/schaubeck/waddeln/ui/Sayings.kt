@@ -39,7 +39,7 @@ object Sayings {
 
     val SCHUB = listOf("Schub!", "Geht ihr?", "Gehen?", "Ab mit euch")
     val BLEIBEN = listOf("Wir bleiben!", "Bleiben!", "Nix da, wir bleiben.")
-    val GEHEN = listOf("Wir gehen.", "Gehen.", "Müss ma gehen.", "Da müss ma gehen.")
+    val GEHEN = listOf("Wir gehen.", "Gehen.", "Müss ma gehen.", "Da müss ma gehen.", "Hilft nix, wir gehen.")
 
     // ---- Asking the partner during a Schub ----------------------------------------------
 
@@ -66,17 +66,17 @@ object Sayings {
 
     // ---- Schlagwechsel before the Schlag is announced ---------------------------------------
 
-    val SCHLAGWECHSEL_QUESTION = listOf("Schlagwechsel?", "Tauschen wir?", "Sag du den Schlag an!")
-    val SCHLAGWECHSEL_ACCEPT = listOf("Passt.", "Machen wir.", "Ja, tauschen wir.")
-    val SCHLAGWECHSEL_DECLINE = listOf("Nix da.", "Nein, sag du an.", "Bleibt so.")
+    val SCHLAGWECHSEL_QUESTION = listOf("Schlagwechsel?")
+    val SCHLAGWECHSEL_ACCEPT = listOf("Können wir machen.", "Machen wir.", "Ja")
+    val SCHLAGWECHSEL_DECLINE = listOf("Neee.", "Nein, sag du an.", "Abgelehnt.")
 
     // ---- Kritten taken while cutting --------------------------------------------------------
 
     /** By the number of Kritten the Abheber had to take (1 to 3). */
     val KRITTEN: Map<Int, List<String>> = mapOf(
-        1 to listOf("A Kritte!", "Eine Kritte hab ich.", "Kritte!"),
-        2 to listOf("Zwei Kritten!", "Zwei Kritten hab ich."),
-        3 to listOf("Alle drei Kritten!", "Drei Kritten!"),
+        1 to listOf("Ha!", "Jawohl!"),
+        2 to listOf("Zwei direkt!", "Gleich zwei abgehoben."),
+        3 to listOf("Drei Kritten, könnt direkt gehen!", "Drei Kritten!"),
     )
 
     // ---- Picking -------------------------------------------------------------------------
