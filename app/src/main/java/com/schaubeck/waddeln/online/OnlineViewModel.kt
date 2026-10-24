@@ -47,6 +47,8 @@ data class OnlineUi(
     val game: TableUi? = null,
     /** Last error of the server or the connection, shown briefly. */
     val error: String? = null,
+    /** Room code from an invitation link that we have not joined yet. */
+    val invite: String? = null,
 )
 
 /** Online play: talks to the server and turns its messages into what the screens show. */
@@ -88,21 +90,56 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
         }
     private var errorJob: Job? = null
 
+    /** The nickname of the last [connect]; without one we cannot join a room from an invitation. */
+    private var name = ""
+
     /** Connects (or reconnects) with the current nickname; the server seats us again if we were in a room. */
     fun connect(serverUrl: String, name: String) {
+        this.name = name.trim()
         if (_ui.value.connection == ConnectionState.OFF) update { it.copy(connection = ConnectionState.CONNECTING) }
-        client.start(serverUrl.trim(), ClientMessage.Hello(deviceId, name.trim()))
+        client.start(serverUrl.trim(), ClientMessage.Hello(deviceId, this.name))
     }
 
     /** Closes the connection unless we sit in a room (then the game goes on in the background). */
     fun disconnectIfIdle() {
         if (_ui.value.table != null) return
         client.stop()
-        _ui.value = OnlineUi()
+        _ui.value = OnlineUi(invite = _ui.value.invite)
     }
 
-    fun createRoom() = send(ClientMessage.CreateRoom)
-    fun joinRoom(code: String) = send(ClientMessage.JoinRoom(code.trim().uppercase()))
+    /**
+     * An invitation link was opened: join that room as soon as we are connected. Without a nickname
+     * the code waits in the join field; if we sit in another room, the player is asked first.
+     */
+    fun openInvite(code: String) {
+        update { it.copy(invite = code) }
+        joinInvite()
+    }
+
+    /** Leave the current room for the one of the invitation. */
+    fun switchToInvite() = leave() // the server answers with NoRoom, then we join
+
+    fun dismissInvite() = update { it.copy(invite = null) }
+
+    fun createRoom() {
+        dismissInvite()
+        send(ClientMessage.CreateRoom)
+    }
+
+    fun joinRoom(code: String) {
+        update { it.copy(invite = null) }
+        send(ClientMessage.JoinRoom(code.trim().uppercase()))
+    }
+
+    private fun joinInvite() {
+        val ui = _ui.value
+        val code = ui.invite ?: return
+        when {
+            !ui.greeted || ui.connection != ConnectionState.CONNECTED -> return
+            ui.table?.room?.code == code -> dismissInvite()
+            ui.table == null && name.isNotEmpty() -> joinRoom(code)
+        }
+    }
     fun takeSeat(seat: Int) = send(ClientMessage.TakeSeat(seat))
     fun setBotStrength(strength: BotStrength) = send(ClientMessage.SetBotStrength(strength))
     fun setBotName(seat: Int, name: String) = send(ClientMessage.SetBotName(seat, name.trim()))
@@ -167,6 +204,7 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
 
             is ServerMessage.Error -> showError(message.message)
         }
+        joinInvite()
     }
 
     /** Someone else answered a Schub with "Bleiben": show it for a few seconds (the game goes on). */

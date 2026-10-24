@@ -1,5 +1,6 @@
 package com.schaubeck.waddeln
 
+import android.content.Intent
 import android.media.AudioManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -21,6 +22,9 @@ import com.schaubeck.waddeln.game.GameViewModel
 import com.schaubeck.waddeln.game.StatsMode
 import com.schaubeck.waddeln.game.StatsStore
 import com.schaubeck.waddeln.online.OnlineViewModel
+import com.schaubeck.waddeln.protocol.INVITE_HOST
+import com.schaubeck.waddeln.protocol.INVITE_PATH
+import com.schaubeck.waddeln.protocol.parseRoomCode
 import com.schaubeck.waddeln.sound.LocalTableSound
 import com.schaubeck.waddeln.sound.TableSound
 import com.schaubeck.waddeln.ui.GameScreen
@@ -28,6 +32,7 @@ import com.schaubeck.waddeln.ui.LocalTableStyle
 import com.schaubeck.waddeln.ui.MainMenu
 import com.schaubeck.waddeln.ui.OnlineScreen
 import com.schaubeck.waddeln.ui.SettingsScreen
+import com.schaubeck.waddeln.ui.SwitchRoomDialog
 import com.schaubeck.waddeln.ui.StatsScreen
 
 private enum class Screen { MENU, GAME, SETTINGS, STATS, ONLINE }
@@ -38,12 +43,17 @@ class MainActivity : ComponentActivity() {
     private val statsStore by lazy { StatsStore(applicationContext) }
     private lateinit var sound: TableSound
 
+    /** Room code of an invitation link the app was opened with, until the online screen takes it. */
+    private var invite by mutableStateOf<String?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         // The volume keys change the game volume, not the ringer.
         volumeControlStream = AudioManager.STREAM_MUSIC
         sound = TableSound(this)
+        // After a restart (e.g. a configuration change) the link has already been handled.
+        if (savedInstanceState == null) invite = inviteCode(intent)
         setContent {
             CompositionLocalProvider(LocalTableSound provides sound) { MaterialTheme {
                 val ui by viewModel.ui.collectAsStateWithLifecycle()
@@ -62,6 +72,13 @@ class MainActivity : ComponentActivity() {
                     } else {
                         onlineViewModel.disconnectIfIdle()
                     }
+                }
+                // An invitation link opens the online screen and joins the room there.
+                LaunchedEffect(invite) {
+                    val code = invite ?: return@LaunchedEffect
+                    invite = null
+                    screen = Screen.ONLINE
+                    onlineViewModel.openInvite(code)
                 }
                 BackHandler(enabled = screen != Screen.MENU) { screen = Screen.MENU }
 
@@ -119,6 +136,17 @@ class MainActivity : ComponentActivity() {
 
                     Screen.ONLINE -> {
                         val game = online.game
+                        val current = online.table?.room?.code
+                        val switchTo = online.invite
+                        if (current != null && switchTo != null && switchTo != current) {
+                            SwitchRoomDialog(
+                                current = current,
+                                invite = switchTo,
+                                inGame = game != null,
+                                onSwitch = onlineViewModel::switchToInvite,
+                                onStay = onlineViewModel::dismissInvite,
+                            )
+                        }
                         if (game != null) {
                             GameScreen(
                                 table = game,
@@ -167,6 +195,20 @@ class MainActivity : ComponentActivity() {
                 } }
             } }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        inviteCode(intent)?.let { invite = it }
+    }
+
+    /** The room code of an invitation link (`https://waddeln.schaumler.de/r/<code>`), or null. */
+    private fun inviteCode(intent: Intent?): String? {
+        val uri = intent?.takeIf { it.action == Intent.ACTION_VIEW }?.data ?: return null
+        if (uri.host != INVITE_HOST) return null
+        val segments = uri.pathSegments
+        if (segments.size != 2 || "/" + segments[0] != INVITE_PATH) return null
+        return parseRoomCode(segments[1])
     }
 
     override fun onStop() {

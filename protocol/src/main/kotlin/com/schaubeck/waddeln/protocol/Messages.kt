@@ -28,6 +28,19 @@ const val ROOM_CODE_LENGTH = 5
 /** Without easily confused characters (0/O, 1/I). */
 const val ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
+/**
+ * Host and path of invitation links: `https://waddeln.schaumler.de/r/<code>` opens the room in the app
+ * (Android App Link, verified by the server's assetlinks.json; the host is also in the app's manifest).
+ */
+const val INVITE_HOST = "waddeln.schaumler.de"
+const val INVITE_PATH = "/r"
+
+fun inviteLink(code: String) = "https://$INVITE_HOST$INVITE_PATH/$code"
+
+/** [raw] as a room code (upper case), or null if it cannot be one. */
+fun parseRoomCode(raw: String): String? =
+    raw.trim().uppercase().takeIf { code -> code.length == ROOM_CODE_LENGTH && code.all { it in ROOM_CODE_ALPHABET } }
+
 /** Strength of the server bots, chosen by the host. */
 @Serializable
 enum class BotStrength(

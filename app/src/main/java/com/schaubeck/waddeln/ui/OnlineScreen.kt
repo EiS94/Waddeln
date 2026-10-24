@@ -1,5 +1,11 @@
 package com.schaubeck.waddeln.ui
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
+import android.os.Build
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -23,6 +29,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -30,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -42,6 +50,7 @@ import com.schaubeck.waddeln.protocol.BotStrength
 import com.schaubeck.waddeln.protocol.MAX_NAME_LENGTH
 import com.schaubeck.waddeln.protocol.ROOM_CODE_LENGTH
 import com.schaubeck.waddeln.protocol.ServerMessage
+import com.schaubeck.waddeln.protocol.inviteLink
 import com.schaubeck.waddeln.rules.teamOf
 
 /** Before the match: enter a nickname and create or join a room; then the lobby of the room. */
@@ -125,10 +134,15 @@ private fun Home(
     onJoin: (String) -> Unit,
 ) {
     var code by rememberSaveable { mutableStateOf("") }
+    // A code from an invitation link waits here until the player has a nickname.
+    LaunchedEffect(ui.invite) { ui.invite?.let { code = it } }
     val ready = ui.connection == ConnectionState.CONNECTED && ui.greeted && name.isNotBlank()
     Section("Dein Spitzname") {
         NameField("Spitzname", name, "z. B. Schorsch", onNameChange)
-        if (name.isBlank()) Text("Den sehen deine Mitspieler.", color = Color.White.copy(alpha = 0.7f), fontSize = 13.sp)
+        if (name.isBlank()) {
+            val hint = if (ui.invite != null) "Du bist eingeladen: Gib deinen Spitznamen ein und tippe unten auf „Beitreten“." else "Den sehen deine Mitspieler."
+            Text(hint, color = if (ui.invite != null) Highlight else Color.White.copy(alpha = 0.7f), fontSize = 13.sp)
+        }
     }
     Section("Neuer Raum") {
         Text(
@@ -181,9 +195,26 @@ private fun Lobby(
         modifier = Modifier.fillMaxWidth().background(Panel, RoundedCornerShape(14.dp)).padding(14.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        val context = LocalContext.current
         Text("Raum-Code", color = Color.White, fontSize = 14.sp)
-        Text(room.code, color = Highlight, fontSize = 44.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-        Text("Gib den Code deinen Mitspielern.", color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp)
+        Text(
+            room.code,
+            color = Highlight,
+            fontSize = 44.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = FontFamily.Monospace,
+            modifier = Modifier.clickable { copyRoomCode(context, room.code) },
+        )
+        Text("Gib den Code deinen Mitspielern oder schick ihnen eine Einladung.", color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(8.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = { copyRoomCode(context, room.code) }, modifier = Modifier.weight(1f)) {
+                Text("Kopieren", color = Color.White)
+            }
+            Button(onClick = { shareInvite(context, room.code) }, colors = woodButton(), modifier = Modifier.weight(1f)) {
+                Text("Einladen")
+            }
+        }
     }
     Section("Plätze") {
         Text(
@@ -270,6 +301,26 @@ private fun SeatBox(
     }
 }
 
+/** An invitation to [invite] arrived while we sit in room [current]. */
+@Composable
+fun SwitchRoomDialog(current: String, invite: String, inGame: Boolean, onSwitch: () -> Unit, onStay: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onStay,
+        containerColor = Color(0xFF2B1F14),
+        title = { Text("Einladung in Raum $invite", color = Highlight) },
+        text = {
+            Text(
+                "Du sitzt gerade in Raum $current." +
+                    (if (inGame) " Wenn du gehst, spielt dort die KI für dich weiter." else "") +
+                    " Möchtest du in Raum $invite wechseln?",
+                color = Color.White,
+            )
+        },
+        confirmButton = { TextButton(onClick = onSwitch) { Text("Wechseln", color = Highlight) } },
+        dismissButton = { TextButton(onClick = onStay) { Text("Bleiben", color = Color.White) } },
+    )
+}
+
 /** Asks the host for a new bot name; [onDone] gets null when cancelled. */
 @Composable
 private fun BotNameDialog(current: String, onDone: (String?) -> Unit) {
@@ -286,6 +337,25 @@ private fun BotNameDialog(current: String, onDone: (String?) -> Unit) {
             TextButton(onClick = { onDone(null) }) { Text("Abbrechen", color = Color.White) }
         },
     )
+}
+
+private fun copyRoomCode(context: Context, code: String) {
+    val clipboard = context.getSystemService(ClipboardManager::class.java)
+    clipboard.setPrimaryClip(ClipData.newPlainText("Raum-Code", code))
+    // From Android 13 on, the system confirms the copy itself.
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+        Toast.makeText(context, "Raum-Code kopiert", Toast.LENGTH_SHORT).show()
+    }
+}
+
+/** Opens the share sheet with a link that opens the room in the app. */
+private fun shareInvite(context: Context, code: String) {
+    val text = "Spiel mit mir Waddeln! Tipp auf den Link oder gib in der App bei „Raum beitreten“ den Code $code ein: ${inviteLink(code)}"
+    val send = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_TEXT, text)
+    }
+    context.startActivity(Intent.createChooser(send, "Zu Waddeln einladen"))
 }
 
 private fun strengthLabel(strength: BotStrength) = when (strength) {

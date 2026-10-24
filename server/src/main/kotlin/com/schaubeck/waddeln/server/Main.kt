@@ -58,7 +58,7 @@ fun main() {
     embeddedServer(CIO, port = port) { waddeln(server, gameThread) }.start(wait = true)
 }
 
-/** Installs the WebSocket endpoint [WS_PATH] and a health check at `/health`. */
+/** Installs the WebSocket endpoint [WS_PATH], a health check at `/health` and the [invites]. */
 fun Application.waddeln(server: GameServer, gameThread: CoroutineDispatcher) {
     install(WebSockets) {
         pingPeriod = 20.seconds
@@ -67,6 +67,7 @@ fun Application.waddeln(server: GameServer, gameThread: CoroutineDispatcher) {
     }
     routing {
         get("/health") { call.respondText("ok") }
+        invites()
 
         webSocket(WS_PATH) {
             val outgoing = Channel<ServerMessage>(Channel.UNLIMITED)
