@@ -391,7 +391,7 @@ private fun remainingMs(speech: Speech, durationMs: Long) = durationMs - (System
 private fun startsInMs(speech: Speech) = speech.at - SystemClock.elapsedRealtime()
 
 /**
- * Name of a seat with badges (dealer, Kritten taken while cutting, who leads the first trick, laid out
+ * Name of a seat with badges (dealer, Kritten taken while cutting, who leads the next trick, laid out
  * cards, lost connection); glows when to move.
  */
 @Composable
@@ -403,8 +403,8 @@ private fun SeatChip(table: TableUi, seat: Int, modifier: Modifier = Modifier) {
     } else {
         s.phase in setOf(Phase.SCHLAG, Phase.FARBE, Phase.PLAYING) && s.pendingSchub == null && s.playerToMove == seat
     }
-    // Before the first card everyone sees who leads, also while a Schub waits for the answer.
-    val leads = cut == null && s.phase == Phase.PLAYING && s.completedTricks.isEmpty() && s.currentTrick.isEmpty() &&
+    // Before each trick everyone sees who leads, also while a Schub waits for the answer.
+    val leads = cut == null && s.phase == Phase.PLAYING && s.currentTrick.isEmpty() &&
         s.trickLeader == seat
     val badges = buildList {
         if (seat == s.dealer) add("Geber")
@@ -588,9 +588,9 @@ private fun TableInfo(table: TableUi, modifier: Modifier) {
         s.playerToMove == table.me -> "Du bist am Zug"
         else -> null // the glowing name shows who is to move
     }
-    // We have no name badge, so our lead in the first trick is said here (e.g. while a Schub is open).
-    val beforeFirstLead = table.cut == null && s.phase == Phase.PLAYING && s.completedTricks.isEmpty() && s.currentTrick.isEmpty()
-    val lead = "Du kommst raus".takeIf { beforeFirstLead && s.trickLeader == table.me && s.playerToMove != table.me }
+    // We have no name badge, so our lead of the next trick is said here (e.g. while a Schub is open).
+    val beforeLead = table.cut == null && s.phase == Phase.PLAYING && s.currentTrick.isEmpty()
+    val lead = "Du kommst raus".takeIf { beforeLead && s.trickLeader == table.me && s.playerToMove != table.me }
     val myDecision = table.actions.any { it != Action.Schub }
     val secondsLeft = secondsUntil(table.deadline.takeIf { myDecision })
     val countdown = secondsLeft?.takeIf { it <= COUNTDOWN_FROM_S }?.let { "noch $it s, dann spielt die KI" }
