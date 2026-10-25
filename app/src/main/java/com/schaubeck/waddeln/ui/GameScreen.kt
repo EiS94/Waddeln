@@ -188,13 +188,14 @@ private fun Table(table: TableUi, onSchub: () -> Unit, onShowLastTrick: (Boolean
     BoxWithConstraints(Modifier.fillMaxSize()) {
         // The Haubi has the size of the own cards; the table is as wide as the hand.
         val haubiWidth = handCardWidth(maxWidth)
+        val trickWidth = trickCardWidth(maxWidth, maxHeight)
         // Below the Haubi so they never overlap
         val sideSeatTop = haubiWidth * CARD_ASPECT + 48.dp
         // Above the trick so speech bubbles stay readable
         Seats(table, sideSeatTop)
         HaubiCorner(s, haubiWidth, Modifier.align(Alignment.TopStart).padding(8.dp))
         BottomCardCorner(s, Modifier.align(Alignment.TopEnd).padding(8.dp))
-        TrickArea(table, Modifier.align(Alignment.Center))
+        TrickArea(table, trickWidth, Modifier.align(Alignment.Center))
         TableInfo(table, Modifier.align(Alignment.BottomCenter).padding(bottom = 4.dp))
         if (Action.Schub in table.actions) {
             Button(
@@ -213,7 +214,7 @@ private fun Table(table: TableUi, onSchub: () -> Unit, onShowLastTrick: (Boolean
         }
         table.lastTrickShownBy?.let { shownBy ->
             LastTrickOverlay(
-                table, shownBy,
+                table, shownBy, trickWidth,
                 onClose = if (shownBy == table.me) ({ onShowLastTrick(false) }) else null,
                 modifier = Modifier.align(Alignment.Center).zIndex(2f),
             )
@@ -239,7 +240,7 @@ private fun handSize(table: TableUi, seat: Int): Int = if (table.cut != null) 0 
  * only they can close it ([onClose]), playing a card closes it too.
  */
 @Composable
-private fun LastTrickOverlay(table: TableUi, shownBy: Int, onClose: (() -> Unit)?, modifier: Modifier) {
+private fun LastTrickOverlay(table: TableUi, shownBy: Int, cardWidth: Dp, onClose: (() -> Unit)?, modifier: Modifier) {
     val trick = table.obs.completedTricks.lastOrNull() ?: return
     val shape = RoundedCornerShape(16.dp)
     Column(
@@ -255,12 +256,13 @@ private fun LastTrickOverlay(table: TableUi, shownBy: Int, onClose: (() -> Unit)
             "Gewonnen von ${table.names[trick.winner]}",
             color = Color.White, fontSize = 13.sp,
         )
-        Box(Modifier.size(200.dp, 210.dp)) {
+        val scale = cardWidth / BaseTrickCardWidth
+        Box(Modifier.size(200.dp * scale, 210.dp * scale)) {
             trick.plays.forEachIndexed { i, play ->
-                val (spot, angle) = trickSpot(table.relative(play.player))
+                val (spot, angle) = trickSpot(table.relative(play.player), scale)
                 CardView(
                     card = play.card,
-                    width = 64.dp,
+                    width = cardWidth,
                     highlight = play.player == trick.winner,
                     modifier = Modifier
                         .align(Alignment.Center)
@@ -486,15 +488,30 @@ private fun EmptySlot(text: String, width: Dp) {
 private const val PLAY_MS = 380
 private const val COLLECT_MS = 450
 
+/** Width of the cards in the middle at which [trickSpot] places them; larger cards spread further. */
+private val BaseTrickCardWidth = 64.dp
+
+/**
+ * Width of the cards in the middle of a table [width] × [height]: they grow with the screen (for
+ * players who see less well), but never so far that they reach the seats or the Haubi.
+ */
+private fun trickCardWidth(width: Dp, height: Dp): Dp =
+    minOf(width * 0.19f, height * 0.15f, 80.dp).coerceAtLeast(BaseTrickCardWidth)
+
 /**
  * Where a card lies in the trick (offset from the trick centre) and its slight rotation,
- * by [relative] seat position (0 = own, 1 = left, 2 = partner, 3 = right).
+ * by [relative] seat position (0 = own, 1 = left, 2 = partner, 3 = right), for cards [scale] times
+ * as wide as [BaseTrickCardWidth]. Larger cards spread only half as much further and overlap more,
+ * so they stay clear of the seats.
  */
-private fun trickSpot(relative: Int): Pair<DpOffset, Float> = when (relative) {
-    0 -> DpOffset(0.dp, 46.dp) to -3f
-    1 -> DpOffset((-58).dp, 0.dp) to 6f
-    2 -> DpOffset(0.dp, (-46).dp) to 2f
-    else -> DpOffset(58.dp, 0.dp) to -6f
+private fun trickSpot(relative: Int, scale: Float): Pair<DpOffset, Float> {
+    val spread = 1f + (scale - 1f) / 2
+    return when (relative) {
+        0 -> DpOffset(0.dp, 46.dp * spread) to -3f
+        1 -> DpOffset((-58).dp * spread, 0.dp) to 6f
+        2 -> DpOffset(0.dp, (-46).dp * spread) to 2f
+        else -> DpOffset(58.dp * spread, 0.dp) to -6f
+    }
 }
 
 /** Approximate position of a [relative] seat to the trick centre: cards fly from and to there. */
@@ -512,7 +529,7 @@ private fun lerp(a: DpOffset, b: DpOffset, t: Float) = DpOffset(lerp(a.x, b.x, t
  * the winning card framed and is then collected towards the winner.
  */
 @Composable
-private fun TrickArea(table: TableUi, modifier: Modifier) {
+private fun TrickArea(table: TableUi, cardWidth: Dp, modifier: Modifier) {
     val s = table.obs
     val speed = table.speed
     val completed = s.completedTricks.lastOrNull()
@@ -533,17 +550,18 @@ private fun TrickArea(table: TableUi, modifier: Modifier) {
     }
     val c = if (showingCompleted) collect.value else 0f
 
-    Box(modifier.offset(y = 18.dp).size(220.dp, 230.dp)) {
+    val scale = cardWidth / BaseTrickCardWidth
+    Box(modifier.offset(y = 18.dp).size(220.dp * scale, 230.dp * scale)) {
         plays.forEachIndexed { i, play ->
             key(s.roundNumber, play.card) {
                 val fly = remember { Animatable(0f) }
                 LaunchedEffect(Unit) { fly.animateTo(1f, tween(PLAY_MS, easing = FastOutSlowInEasing)) }
-                val (spot, angle) = trickSpot(table.relative(play.player))
+                val (spot, angle) = trickSpot(table.relative(play.player), scale)
                 val inPlace = lerp(seatOrigin(table.relative(play.player)), spot, fly.value)
                 val pos = if (winner != null) lerp(inPlace, seatOrigin(table.relative(winner)), c) else inPlace
                 CardView(
                     card = play.card,
-                    width = 64.dp,
+                    width = cardWidth,
                     highlight = play.player == winner,
                     modifier = Modifier
                         .align(Alignment.Center)
