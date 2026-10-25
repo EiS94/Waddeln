@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -250,7 +249,7 @@ private fun Pile(count: Int, width: Dp, label: String) {
                 CardBack(width = width, modifier = Modifier.offset(x = 1.dp * i, y = 6.dp - 1.dp * i))
             }
         }
-        Text("$count $label", color = Color.White, fontSize = 11.sp, modifier = Modifier.width(width + 30.dp), textAlign = TextAlign.Center)
+        Text("$count $label", color = Color.White, fontSize = 11.sp, maxLines = 1, softWrap = false, textAlign = TextAlign.Center)
     }
 }
 

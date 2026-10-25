@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -103,6 +104,11 @@ fun CardView(
     onClick: (() -> Unit)? = null,
 ) {
     val isTrump = trump?.isTrump(card) == true
+    val frame = when {
+        highlight -> 4.dp
+        isTrump -> 2.5.dp
+        else -> 0.dp
+    }
     Box(
         modifier = modifier
             .size(width, width * CARD_ASPECT)
@@ -110,13 +116,7 @@ fun CardView(
             .shadow(3.dp, CardShape)
             .clip(CardShape)
             .background(Color.White)
-            .then(
-                when {
-                    highlight -> Modifier.border(BorderStroke(4.dp, TrumpGold), CardShape)
-                    isTrump -> Modifier.border(BorderStroke(2.5.dp, TrumpGold), CardShape)
-                    else -> Modifier
-                },
-            )
+            .then(if (frame > 0.dp) Modifier.border(BorderStroke(frame, TrumpGold), CardShape) else Modifier)
             .then(if (onClick != null && enabled) Modifier.clickable(onClick = onClick) else Modifier)
             .semantics { contentDescription = Texts.card(card) },
     ) {
@@ -124,7 +124,8 @@ fun CardView(
             painter = painterResource(cardImage(card)),
             contentDescription = null,
             contentScale = ContentScale.FillBounds,
-            modifier = Modifier.size(width, width * CARD_ASPECT),
+            // The frame goes around the picture, so it hides no part of it (e.g. the index in the corner).
+            modifier = Modifier.size(width, width * CARD_ASPECT).padding(frame),
         )
     }
 }
