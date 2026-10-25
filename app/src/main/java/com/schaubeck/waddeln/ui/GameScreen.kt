@@ -389,8 +389,8 @@ private fun remainingMs(speech: Speech, durationMs: Long) = durationMs - (System
 private fun startsInMs(speech: Speech) = speech.at - SystemClock.elapsedRealtime()
 
 /**
- * Name of a seat with badges (dealer, Kritten taken while cutting, laid out cards, lost connection);
- * glows when to move.
+ * Name of a seat with badges (dealer, Kritten taken while cutting, who leads the first trick, laid out
+ * cards, lost connection); glows when to move.
  */
 @Composable
 private fun SeatChip(table: TableUi, seat: Int, modifier: Modifier = Modifier) {
@@ -401,8 +401,12 @@ private fun SeatChip(table: TableUi, seat: Int, modifier: Modifier = Modifier) {
     } else {
         s.phase in setOf(Phase.SCHLAG, Phase.FARBE, Phase.PLAYING) && s.pendingSchub == null && s.playerToMove == seat
     }
+    // Before the first card everyone sees who leads, also while a Schub waits for the answer.
+    val leads = cut == null && s.phase == Phase.PLAYING && s.completedTricks.isEmpty() && s.currentTrick.isEmpty() &&
+        s.trickLeader == seat
     val badges = buildList {
         if (seat == s.dealer) add("Geber")
+        if (leads) add("kommt raus")
         if (cut != null && seat == cut.abheber) add("Abheber")
         if (cut == null && seat == s.abheber && s.abheberKritten > 0) add("${Texts.kritten(s.abheberKritten)} abgehoben")
         s.laidOutCounts?.get(seat)?.takeIf { it > 0 }?.let { add("$it hingelegt") }
@@ -413,7 +417,11 @@ private fun SeatChip(table: TableUi, seat: Int, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .background(if (toMove) Highlight.copy(alpha = 0.3f) else Panel, shape)
-            .border(if (toMove) 2.dp else 0.dp, if (toMove) Highlight else Color.Transparent, shape)
+            .border(
+                width = if (toMove) 2.dp else if (leads) 1.dp else 0.dp,
+                color = if (toMove) Highlight else if (leads) Highlight.copy(alpha = 0.7f) else Color.Transparent,
+                shape = shape,
+            )
             .padding(horizontal = 8.dp, vertical = 3.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -562,10 +570,13 @@ private fun TableInfo(table: TableUi, modifier: Modifier) {
         s.playerToMove == table.me -> "Du bist am Zug"
         else -> null // the glowing name shows who is to move
     }
+    // We have no name badge, so our lead in the first trick is said here (e.g. while a Schub is open).
+    val beforeFirstLead = table.cut == null && s.phase == Phase.PLAYING && s.completedTricks.isEmpty() && s.currentTrick.isEmpty()
+    val lead = "Du kommst raus".takeIf { beforeFirstLead && s.trickLeader == table.me && s.playerToMove != table.me }
     val myDecision = table.actions.any { it != Action.Schub }
     val secondsLeft = secondsUntil(table.deadline.takeIf { myDecision })
     val countdown = secondsLeft?.takeIf { it <= COUNTDOWN_FROM_S }?.let { "noch $it s, dann spielt die KI" }
-    val text = listOfNotNull(status, countdown).joinToString(" · ").ifEmpty { null }
+    val text = listOfNotNull(status, lead, countdown).joinToString(" · ").ifEmpty { null }
     if (text == null || table.notice != null) return
     Text(
         text,

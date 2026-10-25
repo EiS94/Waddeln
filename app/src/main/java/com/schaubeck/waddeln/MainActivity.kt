@@ -31,11 +31,12 @@ import com.schaubeck.waddeln.ui.GameScreen
 import com.schaubeck.waddeln.ui.LocalTableStyle
 import com.schaubeck.waddeln.ui.MainMenu
 import com.schaubeck.waddeln.ui.OnlineScreen
+import com.schaubeck.waddeln.ui.RulesScreen
 import com.schaubeck.waddeln.ui.SettingsScreen
 import com.schaubeck.waddeln.ui.SwitchRoomDialog
 import com.schaubeck.waddeln.ui.StatsScreen
 
-private enum class Screen { MENU, GAME, SETTINGS, STATS, ONLINE }
+private enum class Screen { MENU, GAME, SETTINGS, STATS, ONLINE, RULES }
 
 class MainActivity : ComponentActivity() {
     private val viewModel: GameViewModel by viewModels()
@@ -93,7 +94,10 @@ class MainActivity : ComponentActivity() {
                         onOnline = { screen = Screen.ONLINE },
                         onSettings = { screen = Screen.SETTINGS },
                         onStats = { screen = Screen.STATS },
+                        onRules = { screen = Screen.RULES },
                     )
+
+                    Screen.RULES -> RulesScreen(onBack = { screen = Screen.MENU })
 
                     Screen.GAME -> GameScreen(
                         table = ui.table,
