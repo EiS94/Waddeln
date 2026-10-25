@@ -663,8 +663,8 @@ private fun ActionArea(
                     }
                 }
                 if (table.canProposeSchlagwechsel) {
-                    TextButton(onClick = onProposeSchlagwechsel) {
-                        Text("Schlagwechsel vorschlagen", color = Highlight)
+                    OutlinedButton(onClick = onProposeSchlagwechsel, modifier = Modifier.padding(top = 4.dp)) {
+                        Text("Schlagwechsel vorschlagen", color = Color.White)
                     }
                 }
             }
@@ -694,8 +694,8 @@ private fun ActionArea(
                     Text("$partner: „$it“", color = Highlight, fontSize = 15.sp, modifier = Modifier.padding(bottom = 4.dp))
                 }
                 if (table.canAskPartner) {
-                    TextButton(onClick = onAskPartner) {
-                        Text("$partner fragen, wie gut die Karten sind", color = Highlight)
+                    OutlinedButton(onClick = onAskPartner, modifier = Modifier.padding(bottom = 4.dp)) {
+                        Text("$partner fragen, wie gut die Karten sind", color = Color.White)
                     }
                 }
                 if (table.waitingForPartner) {
@@ -745,8 +745,8 @@ private fun ActionArea(
             {
                 val partner = table.names[table.seatAt(2)]
                 when {
-                    table.canAskSchadet -> TextButton(onClick = onAskSchadet) {
-                        Text("Schadder? – $partner fragen, ob der Haubi schadet", color = Highlight)
+                    table.canAskSchadet -> OutlinedButton(onClick = onAskSchadet) {
+                        Text("Schadder? – $partner fragen, ob der Haubi schadet", color = Color.White)
                     }
                     table.waitingForSchadet -> Text("Warte auf Antwort von $partner …", color = Highlight, fontSize = 14.sp)
                     else -> Text("$partner: „${table.schadetAnswer}“", color = Highlight, fontSize = 15.sp)
