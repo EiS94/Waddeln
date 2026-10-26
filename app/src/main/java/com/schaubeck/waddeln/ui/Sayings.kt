@@ -68,15 +68,14 @@ class Sayings(private val res: Resources) {
                 PartnerHint.NOTHING, PartnerHint.LITTLE -> R.string.say_hint_with_little
                 PartnerHint.ONE_TRICK -> R.string.say_hint_with_one
                 PartnerHint.TWO_TRICKS -> R.string.say_hint_with_two
-                PartnerHint.ALL_TRICKS -> if (needed == 1) R.string.say_hint_with_all_1 else R.string.say_hint_with_all
+                PartnerHint.ALL_TRICKS -> R.string.say_hint_with_all
             }
             HintTrick.AFTER -> when (hint) {
                 PartnerHint.NOTHING -> R.string.say_hint_after_nothing
                 PartnerHint.LITTLE -> R.string.say_hint_after_little
                 PartnerHint.ONE_TRICK -> R.string.say_hint_after_one
                 PartnerHint.TWO_TRICKS -> R.string.say_hint_after_two
-                // This trick may already be the last one we need.
-                PartnerHint.ALL_TRICKS -> if (needed == 1) R.string.say_hint_after_all_done else R.string.say_hint_after_all
+                PartnerHint.ALL_TRICKS -> R.string.say_hint_after_all
             }
             HintTrick.NOT -> when (hint) {
                 PartnerHint.NOTHING -> R.string.say_hint_not_nothing
