@@ -1,58 +1,77 @@
 package com.schaubeck.waddeln.ui
 
-import com.schaubeck.waddeln.rules.Card
+import androidx.annotation.StringRes
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+import com.schaubeck.waddeln.R
 import com.schaubeck.waddeln.rules.Rank
 import com.schaubeck.waddeln.rules.RoundEndReason
 import com.schaubeck.waddeln.rules.Suit
-import com.schaubeck.waddeln.rules.Trump
+import com.schaubeck.waddeln.rules.agent.PartnerHint
+import com.schaubeck.waddeln.rules.agent.SchadetAnswer
 import com.schaubeck.waddeln.rules.teamOf
 
-/** German UI texts. "Wir"/"Du" always refer to the player [me] the table is shown for. */
+/** UI texts built from string resources. "Wir"/"Du" always refer to the player [me] the table is shown for. */
 object Texts {
-    fun suit(suit: Suit) = when (suit) {
-        Suit.SCHELL -> "Schell"
-        Suit.HERZ -> "Herz"
-        Suit.EICHEL -> "Eichel"
-        Suit.GRAS -> "Gras"
+    @StringRes
+    fun suit(suit: Suit): Int = when (suit) {
+        Suit.SCHELL -> R.string.suit_schell
+        Suit.HERZ -> R.string.suit_herz
+        Suit.EICHEL -> R.string.suit_eichel
+        Suit.GRAS -> R.string.suit_gras
     }
 
-    fun rank(rank: Rank) = when (rank) {
-        Rank.SEVEN -> "7"
-        Rank.EIGHT -> "8"
-        Rank.NINE -> "9"
-        Rank.TEN -> "10"
-        Rank.UNTER -> "Unter"
-        Rank.OBER -> "Ober"
-        Rank.KOENIG -> "König"
-        Rank.ASS -> "Ass"
+    @StringRes
+    fun rank(rank: Rank): Int = when (rank) {
+        Rank.SEVEN -> R.string.rank_seven
+        Rank.EIGHT -> R.string.rank_eight
+        Rank.NINE -> R.string.rank_nine
+        Rank.TEN -> R.string.rank_ten
+        Rank.UNTER -> R.string.rank_unter
+        Rank.OBER -> R.string.rank_ober
+        Rank.KOENIG -> R.string.rank_koenig
+        Rank.ASS -> R.string.rank_ass
     }
-
-    fun card(card: Card) = "${suit(card.suit)} ${rank(card.rank)}"
 
     /** "1 Kritte", "2 Kritten", ... */
-    fun kritten(count: Int) = if (count == 1) "1 Kritte" else "$count Kritten"
+    @Composable
+    fun kritten(count: Int): String =
+        if (count == 1) stringResource(R.string.kritten_one) else stringResource(R.string.kritten_many, count)
 
-    fun kritteName(card: Card): String? = when (card) {
-        Card.MAX -> "Max"
-        Card.BELLO -> "Bello"
-        Card.SECHER -> "Secher"
-        else -> null
-    }
+    @Composable
+    fun schubNotice(asking: Int, answering: Int, newValue: Int, names: List<String>, me: Int): String =
+        if (asking == me) {
+            stringResource(R.string.notice_schub_you, names[answering], newValue)
+        } else {
+            stringResource(R.string.notice_schub_other, names[asking], names[answering], newValue)
+        }
 
-    fun haubi(trump: Trump): String =
-        "Haubi: ${card(trump.haubi)}" + (kritteName(trump.haubi)?.let { " ($it)" } ?: "")
-
-    fun schubNotice(asking: Int, answering: Int, newValue: Int, names: List<String>, me: Int): String {
-        val asker = if (asking == me) "Du sagst" else "${names[asking]} sagt"
-        return "$asker Schub – ${names[answering]} bleibt.\nSpielwert jetzt $newValue."
-    }
-
+    @Composable
     fun roundResult(winningTeam: Int, points: Int, reason: RoundEndReason, me: Int): String {
         val won = winningTeam == teamOf(me)
-        val pts = if (points == 1) "1 Punkt" else "$points Punkte"
-        return when (reason) {
-            RoundEndReason.TRICKS -> if (won) "Wir gewinnen das Spiel: $pts." else "Die Gegner gewinnen das Spiel: $pts."
-            RoundEndReason.GIVEN_UP -> if (won) "Die Gegner gehen – wir bekommen $pts." else "Wir gehen – die Gegner bekommen $pts."
+        val pts = if (points == 1) stringResource(R.string.end_points_one) else stringResource(R.string.end_points_many, points)
+        val text = when (reason) {
+            RoundEndReason.TRICKS -> if (won) R.string.end_round_won else R.string.end_round_lost
+            RoundEndReason.GIVEN_UP -> if (won) R.string.end_opponents_gave_up else R.string.end_we_gave_up
         }
+        return stringResource(text, pts)
+    }
+
+    /** Label of the buttons a human answers "Schadder?" with. */
+    @StringRes
+    fun schadetLabel(answer: SchadetAnswer): Int = when (answer) {
+        SchadetAnswer.YES -> R.string.schadet_label_yes
+        SchadetAnswer.A_LITTLE -> R.string.schadet_label_a_little
+        SchadetAnswer.NO -> R.string.schadet_label_no
+    }
+
+    /** Short label of a hint level for the buttons a human partner answers with. */
+    @StringRes
+    fun hintLabel(hint: PartnerHint): Int = when (hint) {
+        PartnerHint.NOTHING -> R.string.hint_label_nothing
+        PartnerHint.LITTLE -> R.string.hint_label_little
+        PartnerHint.ONE_TRICK -> R.string.hint_label_one_trick
+        PartnerHint.TWO_TRICKS -> R.string.hint_label_two_tricks
+        PartnerHint.ALL_TRICKS -> R.string.hint_label_all
     }
 }

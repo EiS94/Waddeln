@@ -18,6 +18,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
@@ -104,6 +105,7 @@ fun CardView(
     onClick: (() -> Unit)? = null,
 ) {
     val isTrump = trump?.isTrump(card) == true
+    val description = stringResource(R.string.card_name, stringResource(Texts.suit(card.suit)), stringResource(Texts.rank(card.rank)))
     val frame = when {
         highlight -> 4.dp
         isTrump -> 2.5.dp
@@ -118,7 +120,7 @@ fun CardView(
             .background(Color.White)
             .then(if (frame > 0.dp) Modifier.border(BorderStroke(frame, TrumpGold), CardShape) else Modifier)
             .then(if (onClick != null && enabled) Modifier.clickable(onClick = onClick) else Modifier)
-            .semantics { contentDescription = Texts.card(card) },
+            .semantics { contentDescription = description },
     ) {
         Image(
             painter = painterResource(cardImage(card)),

@@ -26,17 +26,24 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.annotation.StringRes
+import com.schaubeck.waddeln.R
 import com.schaubeck.waddeln.game.Counter
 import com.schaubeck.waddeln.game.Stats
 import com.schaubeck.waddeln.rules.Rank
 import com.schaubeck.waddeln.rules.Suit
 import java.util.Locale
 
-private enum class StatsTab(val label: String) { ALL("Gesamt"), OFFLINE("Offline"), ONLINE("Online") }
+private enum class StatsTab(@StringRes val label: Int) {
+    ALL(R.string.stats_tab_all),
+    OFFLINE(R.string.stats_tab_offline),
+    ONLINE(R.string.stats_tab_online),
+}
 
 /** Statistics of the own games, offline and online. */
 @Composable
@@ -54,19 +61,19 @@ fun StatsScreen(offline: Stats, online: Stats, onReset: () -> Unit, onBack: () -
                 modifier = Modifier.fillMaxWidth().background(BarGreen).padding(horizontal = 4.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                TextButton(onClick = onBack) { Text("‹ Zurück", color = Color.White, fontSize = 16.sp) }
-                Text("Statistik", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                TextButton(onClick = onBack) { Text(stringResource(R.string.common_back), color = Color.White, fontSize = 16.sp) }
+                Text(stringResource(R.string.stats_title), color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             }
             Column(
                 modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    StatsTab.entries.forEach { TabChip(it.label, it == tab, Modifier.weight(1f)) { tab = it } }
+                    StatsTab.entries.forEach { TabChip(stringResource(it.label), it == tab, Modifier.weight(1f)) { tab = it } }
                 }
                 if (stats.isEmpty) {
                     Text(
-                        "Noch keine Spiele gezählt. Gezählt wird jedes Spiel, das du bis zum Ende spielst.",
+                        stringResource(R.string.stats_empty),
                         color = Color.White, fontSize = 15.sp, textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth().background(Panel, RoundedCornerShape(14.dp)).padding(16.dp),
                     )
@@ -74,7 +81,7 @@ fun StatsScreen(offline: Stats, online: Stats, onReset: () -> Unit, onBack: () -
                     StatsContent(stats, showStreak = tab != StatsTab.ALL)
                 }
                 OutlinedButton(onClick = { confirmReset = true }, modifier = Modifier.fillMaxWidth()) {
-                    Text("Statistik zurücksetzen", color = Color.White)
+                    Text(stringResource(R.string.stats_reset), color = Color.White)
                 }
             }
         }
@@ -83,15 +90,15 @@ fun StatsScreen(offline: Stats, online: Stats, onReset: () -> Unit, onBack: () -
         AlertDialog(
             onDismissRequest = { confirmReset = false },
             containerColor = Color(0xFF2B1F14),
-            title = { Text("Statistik zurücksetzen?", color = Highlight) },
-            text = { Text("Alle Zahlen (offline und online) werden gelöscht.", color = Color.White) },
+            title = { Text(stringResource(R.string.stats_reset_title), color = Highlight) },
+            text = { Text(stringResource(R.string.stats_reset_text), color = Color.White) },
             confirmButton = {
                 TextButton(onClick = {
                     confirmReset = false
                     onReset()
-                }) { Text("Zurücksetzen", color = Highlight) }
+                }) { Text(stringResource(R.string.stats_reset_confirm), color = Highlight) }
             },
-            dismissButton = { TextButton(onClick = { confirmReset = false }) { Text("Abbrechen", color = Color.White) } },
+            dismissButton = { TextButton(onClick = { confirmReset = false }) { Text(stringResource(R.string.common_cancel), color = Color.White) } },
         )
     }
 }
@@ -114,64 +121,66 @@ private fun TabChip(label: String, selected: Boolean, modifier: Modifier, onClic
 @Composable
 private fun StatsContent(s: Stats, showStreak: Boolean) {
     val rounds = s[Counter.ROUNDS]
-    Section("Matches") {
-        StatRow("Gespielt", s[Counter.MATCHES].toString())
-        StatRow("Gewonnen", withShare(s[Counter.MATCHES_WON], s[Counter.MATCHES]))
-        StatRow("Längste Siegesserie", s[Counter.BEST_STREAK].toString())
-        if (showStreak) StatRow("Aktuelle Siegesserie", s[Counter.STREAK].toString())
+    Section(stringResource(R.string.stats_matches)) {
+        StatRow(R.string.stats_played, s[Counter.MATCHES].toString())
+        StatRow(R.string.stats_won, withShare(s[Counter.MATCHES_WON], s[Counter.MATCHES]))
+        StatRow(R.string.stats_best_streak, s[Counter.BEST_STREAK].toString())
+        if (showStreak) StatRow(R.string.stats_streak, s[Counter.STREAK].toString())
     }
-    Section("Spiele") {
-        StatRow("Gespielt", rounds.toString())
-        StatRow("Gewonnen", withShare(s[Counter.ROUNDS_WON], rounds))
-        StatRow("Punkte geholt : abgegeben", "${s[Counter.POINTS_WON]} : ${s[Counter.POINTS_LOST]}")
-        StatRow("Meiste Punkte in einem Spiel", s[Counter.BEST_ROUND].toString())
-        StatRow("Zu null gewonnen (3:0)", s[Counter.WON_TO_NIL].toString())
+    Section(stringResource(R.string.stats_rounds)) {
+        StatRow(R.string.stats_played, rounds.toString())
+        StatRow(R.string.stats_won, withShare(s[Counter.ROUNDS_WON], rounds))
+        StatRow(R.string.stats_points, stringResource(R.string.stats_points_value, s[Counter.POINTS_WON], s[Counter.POINTS_LOST]))
+        StatRow(R.string.stats_best_round, s[Counter.BEST_ROUND].toString())
+        StatRow(R.string.stats_won_to_nil, s[Counter.WON_TO_NIL].toString())
     }
-    Section("Stiche") {
-        StatRow("Selbst gemacht", s[Counter.OWN_TRICKS].toString())
-        StatRow("Pro Spiel", average(s[Counter.OWN_TRICKS], rounds))
+    Section(stringResource(R.string.stats_tricks)) {
+        StatRow(R.string.stats_own_tricks, s[Counter.OWN_TRICKS].toString())
+        StatRow(R.string.stats_per_round, average(s[Counter.OWN_TRICKS], rounds))
     }
-    Section("Ansagen") {
-        StatRow("Schlag angesagt", s[Counter.SCHLAG_CALLED].toString())
-        StatRow("… davon gewonnen", withShare(s[Counter.SCHLAG_WON], s[Counter.SCHLAG_CALLED]))
-        favourite(Rank.entries, s::schlag)?.let { StatRow("Lieblingsschlag", Texts.rank(it)) }
-        StatRow("Farbe angesagt", s[Counter.FARBE_CALLED].toString())
-        StatRow("… davon gewonnen", withShare(s[Counter.FARBE_WON], s[Counter.FARBE_CALLED]))
-        favourite(Suit.entries, s::farbe)?.let { StatRow("Lieblingsfarbe", Texts.suit(it)) }
+    Section(stringResource(R.string.stats_announcements)) {
+        StatRow(R.string.stats_schlag_called, s[Counter.SCHLAG_CALLED].toString())
+        StatRow(R.string.stats_of_which_won, withShare(s[Counter.SCHLAG_WON], s[Counter.SCHLAG_CALLED]))
+        favourite(Rank.entries, s::schlag)?.let { StatRow(R.string.stats_favourite_schlag, stringResource(Texts.rank(it))) }
+        StatRow(R.string.stats_farbe_called, s[Counter.FARBE_CALLED].toString())
+        StatRow(R.string.stats_of_which_won, withShare(s[Counter.FARBE_WON], s[Counter.FARBE_CALLED]))
+        favourite(Suit.entries, s::farbe)?.let { StatRow(R.string.stats_favourite_farbe, stringResource(Texts.suit(it))) }
     }
-    Section("Schub") {
-        StatRow("Du hast Schub gesagt", s[Counter.SCHUB_CALLED].toString())
-        StatRow("… Gegner gegangen", withShare(s[Counter.SCHUB_WENT], s[Counter.SCHUB_CALLED]))
-        StatRow("… Gegner geblieben", s[Counter.SCHUB_STAYED].toString())
+    Section(stringResource(R.string.stats_schub)) {
+        StatRow(R.string.stats_schub_called, s[Counter.SCHUB_CALLED].toString())
+        StatRow(R.string.stats_schub_went, withShare(s[Counter.SCHUB_WENT], s[Counter.SCHUB_CALLED]))
+        StatRow(R.string.stats_schub_stayed, s[Counter.SCHUB_STAYED].toString())
         val faced = s[Counter.FACED_STAYED] + s[Counter.FACED_WENT]
-        StatRow("Schub der Gegner", faced.toString())
-        StatRow("… ihr seid gegangen", withShare(s[Counter.FACED_WENT], faced))
-        StatRow("… ihr seid geblieben", withShare(s[Counter.FACED_STAYED], faced))
-        StatRow("… geblieben und gewonnen", withShare(s[Counter.FACED_STAYED_WON], s[Counter.FACED_STAYED]))
+        StatRow(R.string.stats_faced, faced.toString())
+        StatRow(R.string.stats_faced_went, withShare(s[Counter.FACED_WENT], faced))
+        StatRow(R.string.stats_faced_stayed, withShare(s[Counter.FACED_STAYED], faced))
+        StatRow(R.string.stats_faced_stayed_won, withShare(s[Counter.FACED_STAYED_WON], s[Counter.FACED_STAYED]))
     }
-    Section("Deine Karten") {
-        StatRow("Haubi auf der Hand", withShare(s[Counter.HAUBI_HELD], rounds))
-        StatRow("Max auf der Hand", withShare(s[Counter.MAX_HELD], rounds))
-        StatRow("Bello auf der Hand", withShare(s[Counter.BELLO_HELD], rounds))
-        StatRow("Secher auf der Hand", withShare(s[Counter.SECHER_HELD], rounds))
-        StatRow("Trümpfe pro Spiel", average(s[Counter.TRUMPS_HELD], rounds))
+    Section(stringResource(R.string.stats_your_cards)) {
+        StatRow(R.string.stats_haubi_held, withShare(s[Counter.HAUBI_HELD], rounds))
+        StatRow(R.string.stats_max_held, withShare(s[Counter.MAX_HELD], rounds))
+        StatRow(R.string.stats_bello_held, withShare(s[Counter.BELLO_HELD], rounds))
+        StatRow(R.string.stats_secher_held, withShare(s[Counter.SECHER_HELD], rounds))
+        StatRow(R.string.stats_trumps_held, average(s[Counter.TRUMPS_HELD], rounds))
     }
 }
 
 @Composable
-private fun StatRow(label: String, value: String) {
+private fun StatRow(@StringRes label: Int, value: String) {
     Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, color = Color.White, fontSize = 15.sp, modifier = Modifier.weight(1f))
+        Text(stringResource(label), color = Color.White, fontSize = 15.sp, modifier = Modifier.weight(1f))
         Text(value, color = Highlight, fontSize = 15.sp, fontWeight = FontWeight.Bold)
     }
 }
 
 /** "7 (35 %)"; without share while [total] is 0. */
+@Composable
 private fun withShare(count: Int, total: Int): String =
-    if (total == 0) count.toString() else "$count (${count * 100 / total} %)"
+    if (total == 0) count.toString() else stringResource(R.string.stats_share, count, count * 100 / total)
 
+@Composable
 private fun average(sum: Int, count: Int): String =
-    if (count == 0) "–" else String.format(Locale.GERMAN, "%.1f", sum.toDouble() / count)
+    if (count == 0) stringResource(R.string.stats_no_average) else String.format(Locale.GERMAN, "%.1f", sum.toDouble() / count)
 
 /** The most frequent entry, or null if none was counted yet. */
 private fun <T> favourite(entries: List<T>, count: (T) -> Int): T? =

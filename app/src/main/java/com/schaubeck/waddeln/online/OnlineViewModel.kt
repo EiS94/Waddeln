@@ -4,6 +4,7 @@ import android.app.Application
 import android.os.SystemClock
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.schaubeck.waddeln.R
 import com.schaubeck.waddeln.game.ANSWER_DELAY_MS
 import com.schaubeck.waddeln.game.CutUi
 import com.schaubeck.waddeln.game.GameSpeed
@@ -54,6 +55,8 @@ data class OnlineUi(
 /** Online play: talks to the server and turns its messages into what the screens show. */
 class OnlineViewModel(application: Application) : AndroidViewModel(application) {
     private val deviceId = SettingsStore(application).deviceId()
+    private val res = application.resources
+    private val sayings = Sayings(res)
     private val client = OnlineClient(viewModelScope, ::onConnected, ::onMessage)
     private val statsStore = StatsStore(application)
     private val statsTracker = StatsTracker { statsStore.add(StatsMode.ONLINE, it) }
@@ -170,14 +173,14 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
     override fun onCleared() = client.stop()
 
     private fun send(message: ClientMessage) {
-        if (!client.send(message)) showError("Keine Verbindung zum Server.")
+        if (!client.send(message)) showError(res.getString(R.string.online_no_connection))
     }
 
     private fun onConnected(connected: Boolean) = update {
         when {
             connected -> it.copy(connection = ConnectionState.CONNECTED)
             it.connection == ConnectionState.CONNECTING -> {
-                it.copy(connection = ConnectionState.LOST, error = "Server nicht erreichbar.")
+                it.copy(connection = ConnectionState.LOST, error = res.getString(R.string.online_unreachable))
             }
             else -> it.copy(connection = ConnectionState.LOST)
         }
@@ -235,28 +238,28 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
         // only a new last action means a new action. The same seat never says the same thing twice
         // in a row, since every spoken action is followed by another one or a new round.
         if (last != null && last.action.isSpoken() && last != old.lastAction) {
-            Sayings.speech(last.action)?.let { say(last.seat, it) }
+            sayings.speech(last.action)?.let { say(last.seat, it) }
         }
         val asking = game.partnerQuestion
         val newQuestion = asking != null && old.partnerQuestion == null
-        if (newQuestion) say(asking, Sayings.partnerQuestion())
+        if (newQuestion) say(asking, sayings.partnerQuestion())
         if (hint != null && old.partnerHint == null) {
-            val text = Sayings.partnerHint(hint.hint, obs.tricksWon[teamOf(hint.seat)])
+            val text = sayings.partnerHint(hint.hint, obs.tricksWon[teamOf(hint.seat)])
             hintText = text
             // A bot partner answers at once; the answer still follows the question.
             say(hint.seat, text, delayMs = if (newQuestion) ANSWER_DELAY_MS else 0)
         }
         val swap = obs.schlagwechsel
         val oldSwap = old.observation.schlagwechsel.takeIf { obs.roundNumber == old.observation.roundNumber }
-        if (swap != null && oldSwap == null) say((obs.dealer + 1) % PLAYER_COUNT, Sayings.schlagwechselQuestion())
+        if (swap != null && oldSwap == null) say((obs.dealer + 1) % PLAYER_COUNT, sayings.schlagwechselQuestion())
         val accepted = swap?.accepted
-        if (accepted != null && oldSwap?.accepted == null) say(obs.dealer, Sayings.schlagwechselAnswer(accepted))
+        if (accepted != null && oldSwap?.accepted == null) say(obs.dealer, sayings.schlagwechselAnswer(accepted))
         val schadetAsker = game.schadetQuestion
         if (schadetAsker == null) schadetText = null
-        if (schadetAsker != null && old.schadetQuestion == null) say(schadetAsker, Sayings.schadetQuestion())
+        if (schadetAsker != null && old.schadetQuestion == null) say(schadetAsker, sayings.schadetQuestion())
         val schadet = game.schadetAnswer
         if (schadet != null && old.schadetAnswer == null) {
-            val text = Sayings.schadetAnswer(schadet.answer)
+            val text = sayings.schadetAnswer(schadet.answer)
             if (schadetAsker == now.yourSeat) schadetText = text
             say(schadet.seat, text)
         }
@@ -285,7 +288,7 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
     private fun finishCut() {
         val shown = cutShown ?: return
         cutShown = null
-        if (shown.krittenCount > 0) say(shown.abheber, Sayings.kritten(shown.krittenCount))
+        if (shown.krittenCount > 0) say(shown.abheber, sayings.kritten(shown.krittenCount))
         refreshGame()
     }
 
@@ -340,7 +343,7 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
             waitingForOthers = over && game.ready[me],
             deadline = deadline,
             cut = cutShown ?: game.cut?.takeIf { it.cut == null }?.let { CutUi(it.abheber, choosing = it.abheber == me && selfCut) },
-            connectionProblem = if (connection == ConnectionState.LOST) "Verbindung unterbrochen – verbinde neu …" else null,
+            connectionProblem = if (connection == ConnectionState.LOST) res.getString(R.string.game_connection_lost) else null,
         )
     }
 
@@ -359,25 +362,27 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
         _ui.value = next.copy(game = next.table?.let { tableUi(it, next.connection) })
     }
 
+    /**
+     * Display name of a seat: the nickname, else the bot's name, else (older server)
+     * the bot named by its position relative to us.
+     */
+    private fun seatName(table: ServerMessage.Table, seat: Int): String {
+        val info = table.room.seats[seat]
+        info.name?.let { return it }
+        info.botName?.let { return it }
+        return res.getString(
+            when ((seat - table.yourSeat + PLAYER_COUNT) % PLAYER_COUNT) {
+                1 -> R.string.online_bot_left
+                2 -> R.string.online_bot_partner
+                3 -> R.string.online_bot_right
+                else -> R.string.online_bot
+            },
+        )
+    }
+
     companion object {
         const val NOTICE_MS = 4000L
         const val ERROR_MS = 4000L
         const val MAX_SPEECH = 8
-
-        /**
-         * Display name of a seat: the nickname, else the bot's name, else (older server)
-         * the bot named by its position relative to us.
-         */
-        fun seatName(table: ServerMessage.Table, seat: Int): String {
-            val info = table.room.seats[seat]
-            info.name?.let { return it }
-            info.botName?.let { return it }
-            return when ((seat - table.yourSeat + PLAYER_COUNT) % PLAYER_COUNT) {
-                1 -> "KI links"
-                2 -> "KI Partner"
-                3 -> "KI rechts"
-                else -> "KI"
-            }
-        }
     }
 }

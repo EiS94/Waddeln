@@ -38,12 +38,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.annotation.StringRes
+import com.schaubeck.waddeln.R
 import com.schaubeck.waddeln.online.ConnectionState
 import com.schaubeck.waddeln.online.OnlineUi
 import com.schaubeck.waddeln.protocol.BotStrength
@@ -75,8 +78,8 @@ fun OnlineScreen(
                 modifier = Modifier.fillMaxWidth().background(BarGreen).padding(horizontal = 4.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                TextButton(onClick = onBack) { Text("‹ Zurück", color = Color.White, fontSize = 16.sp) }
-                Text("Online spielen", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                TextButton(onClick = onBack) { Text(stringResource(R.string.common_back), color = Color.White, fontSize = 16.sp) }
+                Text(stringResource(R.string.online_title), color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             }
             Column(
                 modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
@@ -98,9 +101,9 @@ fun OnlineScreen(
 @Composable
 private fun ConnectionLine(connection: ConnectionState, serverUrl: String) {
     val (text, color) = when (connection) {
-        ConnectionState.OFF, ConnectionState.CONNECTING -> "Verbinde mit dem Server …" to Color.White
-        ConnectionState.CONNECTED -> "Mit dem Server verbunden" to Color(0xFFA5D6A7)
-        ConnectionState.LOST -> "Keine Verbindung – neuer Versuch läuft …" to Color(0xFFFFAB91)
+        ConnectionState.OFF, ConnectionState.CONNECTING -> stringResource(R.string.online_connecting) to Color.White
+        ConnectionState.CONNECTED -> stringResource(R.string.online_connected) to Color(0xFFA5D6A7)
+        ConnectionState.LOST -> stringResource(R.string.online_lost) to Color(0xFFFFAB91)
     }
     Column {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -110,7 +113,7 @@ private fun ConnectionLine(connection: ConnectionState, serverUrl: String) {
             Text(text, color = color, fontSize = 14.sp)
         }
         if (connection == ConnectionState.LOST) {
-            Text("Server: $serverUrl (änderbar in den Einstellungen)", color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
+            Text(stringResource(R.string.online_server, serverUrl), color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
         }
     }
 }
@@ -137,25 +140,25 @@ private fun Home(
     // A code from an invitation link waits here until the player has a nickname.
     LaunchedEffect(ui.invite) { ui.invite?.let { code = it } }
     val ready = ui.connection == ConnectionState.CONNECTED && ui.greeted && name.isNotBlank()
-    Section("Dein Spitzname") {
-        NameField("Spitzname", name, "z. B. Schorsch", onNameChange)
+    Section(stringResource(R.string.online_nickname_title)) {
+        NameField(stringResource(R.string.online_nickname), name, stringResource(R.string.online_nickname_placeholder), onNameChange)
         if (name.isBlank()) {
-            val hint = if (ui.invite != null) "Du bist eingeladen: Gib deinen Spitznamen ein und tippe unten auf „Beitreten“." else "Den sehen deine Mitspieler."
+            val hint = stringResource(if (ui.invite != null) R.string.online_nickname_invited else R.string.online_nickname_hint)
             Text(hint, color = if (ui.invite != null) Highlight else Color.White.copy(alpha = 0.7f), fontSize = 13.sp)
         }
     }
-    Section("Neuer Raum") {
+    Section(stringResource(R.string.online_new_room)) {
         Text(
-            "Du bekommst einen Code, den du deinen Mitspielern gibst. Freie Plätze übernimmt die KI.",
+            stringResource(R.string.online_new_room_text),
             color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp,
         )
         Spacer(Modifier.height(4.dp))
         Button(onClick = onCreate, enabled = ready, colors = woodButton(), modifier = Modifier.fillMaxWidth().height(48.dp)) {
-            Text("Raum erstellen", fontSize = 17.sp)
+            Text(stringResource(R.string.online_create_room), fontSize = 17.sp)
         }
     }
-    Section("Raum beitreten") {
-        TextSetting("Raum-Code", code, "z. B. K7QMX", keyboardType = KeyboardType.Ascii, maxLength = ROOM_CODE_LENGTH) {
+    Section(stringResource(R.string.online_join_room)) {
+        TextSetting(stringResource(R.string.online_room_code), code, stringResource(R.string.online_room_code_placeholder), keyboardType = KeyboardType.Ascii, maxLength = ROOM_CODE_LENGTH) {
             code = it.uppercase().filter(Char::isLetterOrDigit)
         }
         Spacer(Modifier.height(4.dp))
@@ -164,7 +167,7 @@ private fun Home(
             enabled = ready && code.length == ROOM_CODE_LENGTH,
             colors = woodButton(),
             modifier = Modifier.fillMaxWidth().height(48.dp),
-        ) { Text("Beitreten", fontSize = 17.sp) }
+        ) { Text(stringResource(R.string.online_join), fontSize = 17.sp) }
     }
 }
 
@@ -196,7 +199,7 @@ private fun Lobby(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         val context = LocalContext.current
-        Text("Raum-Code", color = Color.White, fontSize = 14.sp)
+        Text(stringResource(R.string.online_room_code), color = Color.White, fontSize = 14.sp)
         Text(
             room.code,
             color = Highlight,
@@ -205,21 +208,20 @@ private fun Lobby(
             fontFamily = FontFamily.Monospace,
             modifier = Modifier.clickable { copyRoomCode(context, room.code) },
         )
-        Text("Gib den Code deinen Mitspielern oder schick ihnen eine Einladung.", color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp, textAlign = TextAlign.Center)
+        Text(stringResource(R.string.online_room_code_text), color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp, textAlign = TextAlign.Center)
         Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = { copyRoomCode(context, room.code) }, modifier = Modifier.weight(1f)) {
-                Text("Kopieren", color = Color.White)
+                Text(stringResource(R.string.online_copy), color = Color.White)
             }
             Button(onClick = { shareInvite(context, room.code) }, colors = woodButton(), modifier = Modifier.weight(1f)) {
-                Text("Einladen")
+                Text(stringResource(R.string.online_invite))
             }
         }
     }
-    Section("Plätze") {
+    Section(stringResource(R.string.online_seats)) {
         Text(
-            "Gegenüber Sitzende spielen zusammen. Tippe auf einen KI-Platz, um dich dorthin zu setzen." +
-                if (isHost) " Mit dem Stift gibst du einer KI einen anderen Namen." else "",
+            stringResource(if (isHost) R.string.online_seats_text_host else R.string.online_seats_text),
             color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp,
         )
         Spacer(Modifier.height(6.dp))
@@ -233,21 +235,25 @@ private fun Lobby(
         SeatBox(table, me, onTakeSeat, onRename, Modifier.fillMaxWidth(0.5f).align(Alignment.CenterHorizontally))
     }
     if (isHost) {
-        Section("Stärke der KI") {
+        Section(stringResource(R.string.online_bot_strength)) {
             BotStrength.entries.forEach { strength ->
-                Choice(strengthLabel(strength), null, strength == room.botStrength) { onBotStrength(strength) }
+                Choice(stringResource(strengthLabel(strength)), null, strength == room.botStrength) { onBotStrength(strength) }
             }
         }
         Button(onClick = onStart, colors = woodButton(), modifier = Modifier.fillMaxWidth().height(52.dp)) {
-            Text("Spiel starten", fontSize = 18.sp)
+            Text(stringResource(R.string.online_start), fontSize = 18.sp)
         }
     } else {
         Text(
-            "KI: ${strengthLabel(room.botStrength)} · Warte, bis ${room.seats.firstOrNull { it.host }?.name ?: "der Gastgeber"} das Spiel startet …",
+            stringResource(
+                R.string.online_waiting_for_host,
+                stringResource(strengthLabel(room.botStrength)),
+                room.seats.firstOrNull { it.host }?.name ?: stringResource(R.string.online_the_host),
+            ),
             color = Highlight, fontSize = 15.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(),
         )
     }
-    OutlinedButton(onClick = onLeave, modifier = Modifier.fillMaxWidth()) { Text("Raum verlassen", color = Color.White) }
+    OutlinedButton(onClick = onLeave, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.common_leave_room), color = Color.White) }
 }
 
 @Composable
@@ -275,7 +281,7 @@ private fun SeatBox(
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    if (free) info.botName ?: "frei" else info.name!!,
+                    if (free) info.botName ?: stringResource(R.string.online_seat_free) else info.name!!,
                     color = if (free) Color.White.copy(alpha = 0.75f) else Color.White,
                     fontSize = 15.sp,
                     fontWeight = if (mine) FontWeight.Bold else FontWeight.Normal,
@@ -290,11 +296,11 @@ private fun SeatBox(
                 }
             }
             val tags = buildList {
-                if (free) add("KI")
-                if (mine) add("du")
-                if (info.host) add("Gastgeber")
-                if (info.isHuman && !info.connected) add("offline")
-                if (seat != table.yourSeat && ourTeam) add("Partner")
+                if (free) add(stringResource(R.string.online_tag_bot))
+                if (mine) add(stringResource(R.string.online_tag_you))
+                if (info.host) add(stringResource(R.string.online_tag_host))
+                if (info.isHuman && !info.connected) add(stringResource(R.string.online_tag_offline))
+                if (seat != table.yourSeat && ourTeam) add(stringResource(R.string.online_tag_partner))
             }
             if (tags.isNotEmpty()) Text(tags.joinToString(" · "), color = Highlight, fontSize = 11.sp)
         }
@@ -307,17 +313,15 @@ fun SwitchRoomDialog(current: String, invite: String, inGame: Boolean, onSwitch:
     AlertDialog(
         onDismissRequest = onStay,
         containerColor = Color(0xFF2B1F14),
-        title = { Text("Einladung in Raum $invite", color = Highlight) },
+        title = { Text(stringResource(R.string.online_switch_title, invite), color = Highlight) },
         text = {
             Text(
-                "Du sitzt gerade in Raum $current." +
-                    (if (inGame) " Wenn du gehst, spielt dort die KI für dich weiter." else "") +
-                    " Möchtest du in Raum $invite wechseln?",
+                stringResource(if (inGame) R.string.online_switch_text_in_game else R.string.online_switch_text, current, invite),
                 color = Color.White,
             )
         },
-        confirmButton = { TextButton(onClick = onSwitch) { Text("Wechseln", color = Highlight) } },
-        dismissButton = { TextButton(onClick = onStay) { Text("Bleiben", color = Color.White) } },
+        confirmButton = { TextButton(onClick = onSwitch) { Text(stringResource(R.string.online_switch), color = Highlight) } },
+        dismissButton = { TextButton(onClick = onStay) { Text(stringResource(R.string.online_stay), color = Color.White) } },
     )
 }
 
@@ -328,38 +332,39 @@ private fun BotNameDialog(current: String, onDone: (String?) -> Unit) {
     AlertDialog(
         onDismissRequest = { onDone(null) },
         containerColor = Color(0xFF2B1F14),
-        title = { Text("Name der KI", color = Highlight) },
-        text = { TextSetting("Name", name, current, maxLength = MAX_NAME_LENGTH) { name = it } },
+        title = { Text(stringResource(R.string.online_bot_name_title), color = Highlight) },
+        text = { TextSetting(stringResource(R.string.online_bot_name), name, current, maxLength = MAX_NAME_LENGTH) { name = it } },
         confirmButton = {
-            TextButton(onClick = { onDone(name) }, enabled = name.isNotBlank()) { Text("OK", color = Highlight) }
+            TextButton(onClick = { onDone(name) }, enabled = name.isNotBlank()) { Text(stringResource(R.string.common_ok), color = Highlight) }
         },
         dismissButton = {
-            TextButton(onClick = { onDone(null) }) { Text("Abbrechen", color = Color.White) }
+            TextButton(onClick = { onDone(null) }) { Text(stringResource(R.string.common_cancel), color = Color.White) }
         },
     )
 }
 
 private fun copyRoomCode(context: Context, code: String) {
     val clipboard = context.getSystemService(ClipboardManager::class.java)
-    clipboard.setPrimaryClip(ClipData.newPlainText("Raum-Code", code))
+    clipboard.setPrimaryClip(ClipData.newPlainText(context.getString(R.string.online_room_code), code))
     // From Android 13 on, the system confirms the copy itself.
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-        Toast.makeText(context, "Raum-Code kopiert", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, R.string.online_copied, Toast.LENGTH_SHORT).show()
     }
 }
 
 /** Opens the share sheet with a link that opens the room in the app. */
 private fun shareInvite(context: Context, code: String) {
-    val text = "Spiel mit mir Waddeln! Tipp auf den Link oder gib in der App bei „Raum beitreten“ den Code $code ein: ${inviteLink(code)}"
+    val text = context.getString(R.string.online_invite_text, code, inviteLink(code))
     val send = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
         putExtra(Intent.EXTRA_TEXT, text)
     }
-    context.startActivity(Intent.createChooser(send, "Zu Waddeln einladen"))
+    context.startActivity(Intent.createChooser(send, context.getString(R.string.online_invite_chooser)))
 }
 
-private fun strengthLabel(strength: BotStrength) = when (strength) {
-    BotStrength.EASY -> "Leicht"
-    BotStrength.MEDIUM -> "Mittel"
-    BotStrength.HARD -> "Schwer"
+@StringRes
+private fun strengthLabel(strength: BotStrength): Int = when (strength) {
+    BotStrength.EASY -> R.string.difficulty_easy
+    BotStrength.MEDIUM -> R.string.difficulty_medium
+    BotStrength.HARD -> R.string.difficulty_hard
 }

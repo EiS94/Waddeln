@@ -28,12 +28,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.schaubeck.waddeln.R
 import com.schaubeck.waddeln.game.Difficulty
 import com.schaubeck.waddeln.game.GameSpeed
 import com.schaubeck.waddeln.game.Settings
@@ -48,69 +50,69 @@ fun SettingsScreen(settings: Settings, onChange: (Settings) -> Unit, onBack: () 
                 modifier = Modifier.fillMaxWidth().background(BarGreen).padding(horizontal = 4.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                TextButton(onClick = onBack) { Text("‹ Zurück", color = Color.White, fontSize = 16.sp) }
-                Text("Einstellungen", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                TextButton(onClick = onBack) { Text(stringResource(R.string.common_back), color = Color.White, fontSize = 16.sp) }
+                Text(stringResource(R.string.settings_title), color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             }
             Column(
                 modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                Section("Spielgeschwindigkeit") {
+                Section(stringResource(R.string.settings_speed)) {
                     GameSpeed.entries.forEach { speed ->
-                        Choice(speed.label, null, speed == settings.speed) { onChange(settings.copy(speed = speed)) }
+                        Choice(stringResource(speed.label), null, speed == settings.speed) { onChange(settings.copy(speed = speed)) }
                     }
                 }
-                Section("Schwierigkeitsgrad") {
+                Section(stringResource(R.string.settings_difficulty)) {
                     Difficulty.entries.forEach { d ->
-                        Choice(d.label, d.description, d == settings.difficulty) { onChange(settings.copy(difficulty = d)) }
+                        Choice(stringResource(d.label), stringResource(d.description), d == settings.difficulty) { onChange(settings.copy(difficulty = d)) }
                     }
-                    Text("Dein Partner spielt immer in voller Stärke.", color = Color.White.copy(alpha = 0.7f), fontSize = 13.sp)
+                    Text(stringResource(R.string.settings_partner_full_strength), color = Color.White.copy(alpha = 0.7f), fontSize = 13.sp)
                 }
-                Section("Spieltisch") {
+                Section(stringResource(R.string.settings_table)) {
                     TableStyle.entries.forEach { t ->
-                        Choice(t.label, null, t == settings.table) { onChange(settings.copy(table = t)) }
+                        Choice(stringResource(t.label), null, t == settings.table) { onChange(settings.copy(table = t)) }
                     }
-                    Toggle("Selbst abheben", "Aus: Die App hebt für dich zufällig ab", settings.selfCut) {
+                    Toggle(stringResource(R.string.settings_self_cut), stringResource(R.string.settings_self_cut_description), settings.selfCut) {
                         onChange(settings.copy(selfCut = it))
                     }
                 }
-                Section("Ton") {
-                    Toggle("Geräusche", "Mischen, Karten und Stiche", settings.soundEffects) {
+                Section(stringResource(R.string.settings_sound)) {
+                    Toggle(stringResource(R.string.settings_sound_effects), stringResource(R.string.settings_sound_effects_description), settings.soundEffects) {
                         onChange(settings.copy(soundEffects = it))
                     }
-                    Toggle("Stimmen", "Die Spieler sprechen ihre Ansagen", settings.voices) {
+                    Toggle(stringResource(R.string.settings_voices), stringResource(R.string.settings_voices_description), settings.voices) {
                         onChange(settings.copy(voices = it))
                     }
                 }
-                Section("Namen der Spieler") {
-                    val labels = listOf("Dein Name", "Gegner links", "Partner", "Gegner rechts")
+                Section(stringResource(R.string.settings_names)) {
+                    val labels = listOf(R.string.settings_name_you, R.string.settings_name_left, R.string.settings_name_partner, R.string.settings_name_right)
                     for (seat in listOf(0, 2, 1, 3)) {
-                        NameField(labels[seat], settings.names[seat], Settings.DEFAULT_NAMES[seat]) { name ->
+                        NameField(stringResource(labels[seat]), settings.names[seat], stringResource(Settings.DEFAULT_NAMES[seat])) { name ->
                             onChange(settings.copy(names = settings.names.toMutableList().also { it[seat] = name }))
                         }
                     }
                 }
-                Section("Online") {
+                Section(stringResource(R.string.settings_online)) {
                     TextSetting(
-                        label = "Server-Adresse",
+                        label = stringResource(R.string.settings_server_url),
                         value = settings.serverUrl,
                         placeholder = Settings.DEFAULT_SERVER_URL,
                         keyboardType = KeyboardType.Uri,
                         maxLength = 200,
                     ) { onChange(settings.copy(serverUrl = it)) }
                     TextButton(onClick = { onChange(settings.copy(serverUrl = Settings.DEFAULT_SERVER_URL)) }) {
-                        Text("Standard wiederherstellen", color = Highlight)
+                        Text(stringResource(R.string.settings_server_reset), color = Highlight)
                     }
                 }
-                Section("Datenschutz") {
+                Section(stringResource(R.string.settings_privacy)) {
                     Text(
-                        "Gegen den Computer bleibt alles auf dem Gerät. Online werden nur Spitzname und eine zufällige Geräte-ID an den Server übertragen.",
+                        stringResource(R.string.settings_privacy_text),
                         color = Color.White.copy(alpha = 0.7f),
                         fontSize = 13.sp,
                     )
                     val uriHandler = LocalUriHandler.current
                     TextButton(onClick = { uriHandler.openUri(PRIVACY_POLICY_URL) }) {
-                        Text("Datenschutzerklärung öffnen", color = Highlight)
+                        Text(stringResource(R.string.settings_privacy_open), color = Highlight)
                     }
                 }
             }

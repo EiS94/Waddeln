@@ -51,6 +51,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
@@ -58,6 +59,7 @@ import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import com.schaubeck.waddeln.R
 import com.schaubeck.waddeln.game.Speech
 import com.schaubeck.waddeln.game.TableUi
 import com.schaubeck.waddeln.rules.Action
@@ -158,20 +160,20 @@ private fun TopBar(s: Observation) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        ScoreLabel("Wir", s.scores[us], s.isGespannt(us))
+        ScoreLabel(stringResource(R.string.game_we), s.scores[us], s.isGespannt(us))
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            BarText("Stiche ${s.tricksWon[us]} : ${s.tricksWon[1 - us]}", size = 15, color = Highlight)
-            BarText("Spielwert ${s.gameValue} · Spiel ${s.roundNumber}", size = 12)
+            BarText(stringResource(R.string.game_tricks, s.tricksWon[us], s.tricksWon[1 - us]), size = 15, color = Highlight)
+            BarText(stringResource(R.string.game_value_round, s.gameValue, s.roundNumber), size = 12)
         }
-        ScoreLabel("Gegner", s.scores[1 - us], s.isGespannt(1 - us))
+        ScoreLabel(stringResource(R.string.game_opponents), s.scores[1 - us], s.isGespannt(1 - us))
     }
 }
 
 @Composable
 private fun ScoreLabel(name: String, score: Int, gespannt: Boolean) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        BarText("$name $score", size = 22, bold = true)
-        if (gespannt) BarText("gespannt", size = 11, color = Highlight)
+        BarText(stringResource(R.string.game_score, name, score), size = 22, bold = true)
+        if (gespannt) BarText(stringResource(R.string.game_gespannt), size = 11, color = Highlight)
     }
 }
 
@@ -203,14 +205,14 @@ private fun Table(table: TableUi, onSchub: () -> Unit, onShowLastTrick: (Boolean
                 colors = ButtonDefaults.buttonColors(containerColor = SchubOrange),
                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
                 modifier = Modifier.align(Alignment.BottomEnd).padding(end = 8.dp, bottom = 4.dp),
-            ) { Text("Schub!", fontWeight = FontWeight.Bold) }
+            ) { Text(stringResource(R.string.game_schub_button), fontWeight = FontWeight.Bold) }
         }
         if (table.canShowLastTrick && table.lastTrickShownBy == null) {
             OutlinedButton(
                 onClick = { onShowLastTrick(true) },
                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                 modifier = Modifier.align(Alignment.BottomStart).padding(start = 8.dp, bottom = 4.dp),
-            ) { Text("Letzter Stich", color = Color.White, fontSize = 13.sp) }
+            ) { Text(stringResource(R.string.game_last_trick), color = Color.White, fontSize = 13.sp) }
         }
         table.lastTrickShownBy?.let { shownBy ->
             LastTrickOverlay(
@@ -251,9 +253,9 @@ private fun LastTrickOverlay(table: TableUi, shownBy: Int, cardWidth: Dp, onClos
             .padding(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("Letzter Stich", color = Highlight, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.game_last_trick), color = Highlight, fontSize = 16.sp, fontWeight = FontWeight.Bold)
         Text(
-            "Gewonnen von ${table.names[trick.winner]}",
+            stringResource(R.string.game_last_trick_won_by, table.names[trick.winner]),
             color = Color.White, fontSize = 13.sp,
         )
         val scale = cardWidth / BaseTrickCardWidth
@@ -273,7 +275,7 @@ private fun LastTrickOverlay(table: TableUi, shownBy: Int, cardWidth: Dp, onClos
             }
         }
         Text(
-            if (onClose != null) "Tippen zum Schließen" else "${table.names[shownBy]} schaut den letzten Stich an",
+            if (onClose != null) stringResource(R.string.game_last_trick_close) else stringResource(R.string.game_last_trick_shown_by, table.names[shownBy]),
             color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp,
         )
     }
@@ -407,13 +409,13 @@ private fun SeatChip(table: TableUi, seat: Int, modifier: Modifier = Modifier) {
     val leads = cut == null && s.phase == Phase.PLAYING && s.currentTrick.isEmpty() &&
         s.trickLeader == seat
     val badges = buildList {
-        if (seat == s.dealer) add("Geber")
-        if (leads) add("kommt raus")
-        if (cut != null && seat == cut.abheber) add("Abheber")
-        if (cut == null && seat == s.abheber && s.abheberKritten > 0) add("${Texts.kritten(s.abheberKritten)} abgehoben")
-        s.laidOutCounts?.get(seat)?.takeIf { it > 0 }?.let { add("$it hingelegt") }
-        if (seat in table.absent) add("offline – KI spielt")
-        if (seat in table.bots) add("KI")
+        if (seat == s.dealer) add(stringResource(R.string.badge_dealer))
+        if (leads) add(stringResource(R.string.badge_leads))
+        if (cut != null && seat == cut.abheber) add(stringResource(R.string.badge_abheber))
+        if (cut == null && seat == s.abheber && s.abheberKritten > 0) add(stringResource(R.string.badge_kritten_taken, Texts.kritten(s.abheberKritten)))
+        s.laidOutCounts?.get(seat)?.takeIf { it > 0 }?.let { add(stringResource(R.string.badge_laid_out, it)) }
+        if (seat in table.absent) add(stringResource(R.string.badge_absent))
+        if (seat in table.bots) add(stringResource(R.string.badge_bot))
     }
     val shape = RoundedCornerShape(10.dp)
     Column(
@@ -449,13 +451,13 @@ private val CornerCardWidth = 52.dp
 @Composable
 private fun HaubiCorner(s: Observation, width: Dp, modifier: Modifier) {
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        CornerLabel("Haubi")
+        CornerLabel(stringResource(R.string.game_haubi))
         Spacer(Modifier.height(3.dp))
         val trump = s.trump
         if (trump != null) {
             CardView(trump.haubi, width = width)
         } else {
-            EmptySlot(s.schlag?.let { "Schlag\n${Texts.rank(it)}" } ?: "?", width)
+            EmptySlot(s.schlag?.let { stringResource(R.string.game_schlag_slot, stringResource(Texts.rank(it))) } ?: stringResource(R.string.game_no_haubi_yet), width)
         }
     }
 }
@@ -464,7 +466,7 @@ private fun HaubiCorner(s: Observation, width: Dp, modifier: Modifier) {
 @Composable
 private fun BottomCardCorner(s: Observation, modifier: Modifier) {
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        CornerLabel("Unten")
+        CornerLabel(stringResource(R.string.game_bottom_card))
         Spacer(Modifier.height(3.dp))
         CardView(s.visibleBottomCard, width = CornerCardWidth)
     }
@@ -582,18 +584,18 @@ private fun TableInfo(table: TableUi, modifier: Modifier) {
     val s = table.obs
     val status = when {
         s.phase == Phase.ROUND_OVER || s.phase == Phase.MATCH_OVER -> null
-        s.pendingSchub != null && teamOf(s.pendingSchub!!.askingPlayer) == s.team -> "Warte auf Antwort der Gegner …"
-        s.pendingSchub != null && Action.Bleiben !in table.actions -> "Warte auf Antwort deines Partners …"
+        s.pendingSchub != null && teamOf(s.pendingSchub!!.askingPlayer) == s.team -> stringResource(R.string.status_wait_opponents)
+        s.pendingSchub != null && Action.Bleiben !in table.actions -> stringResource(R.string.status_wait_partner)
         s.pendingSchub != null -> null
-        s.playerToMove == table.me -> "Du bist am Zug"
+        s.playerToMove == table.me -> stringResource(R.string.status_your_turn)
         else -> null // the glowing name shows who is to move
     }
     // We have no name badge, so our lead of the next trick is said here (e.g. while a Schub is open).
     val beforeLead = table.cut == null && s.phase == Phase.PLAYING && s.currentTrick.isEmpty()
-    val lead = "Du kommst raus".takeIf { beforeLead && s.trickLeader == table.me && s.playerToMove != table.me }
+    val lead = stringResource(R.string.status_you_lead).takeIf { beforeLead && s.trickLeader == table.me && s.playerToMove != table.me }
     val myDecision = table.actions.any { it != Action.Schub }
     val secondsLeft = secondsUntil(table.deadline.takeIf { myDecision })
-    val countdown = secondsLeft?.takeIf { it <= COUNTDOWN_FROM_S }?.let { "noch $it s, dann spielt die KI" }
+    val countdown = secondsLeft?.takeIf { it <= COUNTDOWN_FROM_S }?.let { stringResource(R.string.status_countdown, it) }
     val text = listOfNotNull(status, lead, countdown).joinToString(" · ").ifEmpty { null }
     if (text == null || table.notice != null) return
     Text(
@@ -646,28 +648,28 @@ private fun ActionArea(
         notice != null && actions.none { it is Action.AnnounceSchlag || it is Action.AnnounceFarbe || it == Action.Bleiben } -> {
             {
                 PanelTitle(Texts.schubNotice(notice.askingPlayer, notice.answeringPlayer, notice.newGameValue, table.names, table.me))
-                Button(onClick = onNoticeConfirmed, colors = woodButton()) { Text("OK") }
+                Button(onClick = onNoticeConfirmed, colors = woodButton()) { Text(stringResource(R.string.common_ok)) }
             }
         }
 
         table.schlagwechselAsksUs -> {
             {
                 val proposer = table.names[nextPlayer(s.dealer)]
-                PanelTitle("$proposer will einen Schlagwechsel: Du sagst den Schlag an, $proposer die Farbe.")
+                PanelTitle(stringResource(R.string.action_schlagwechsel_asks_us, proposer))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Button(onClick = { onAnswerSchlagwechsel(true) }, colors = woodButton()) { Text("Annehmen") }
-                    OutlinedButton(onClick = { onAnswerSchlagwechsel(false) }) { Text("Ablehnen", color = Color.White) }
+                    Button(onClick = { onAnswerSchlagwechsel(true) }, colors = woodButton()) { Text(stringResource(R.string.action_accept)) }
+                    OutlinedButton(onClick = { onAnswerSchlagwechsel(false) }) { Text(stringResource(R.string.action_decline), color = Color.White) }
                 }
             }
         }
 
         table.waitingForSchlagwechsel -> {
-            { Text("Schlagwechsel? – warte auf ${table.names[s.dealer]} …", color = Highlight, fontSize = 14.sp) }
+            { Text(stringResource(R.string.action_schlagwechsel_waiting, table.names[s.dealer]), color = Highlight, fontSize = 14.sp) }
         }
 
         actions.any { it is Action.AnnounceSchlag } -> {
             {
-                PanelTitle("Sag den Schlag an")
+                PanelTitle(stringResource(R.string.action_announce_schlag))
                 Rank.entries.chunked(4).forEach { row ->
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         row.forEach { rank ->
@@ -676,13 +678,13 @@ private fun ActionArea(
                                 colors = woodButton(),
                                 contentPadding = CompactPadding,
                                 modifier = Modifier.weight(1f),
-                            ) { Text(Texts.rank(rank), maxLines = 1) }
+                            ) { Text(stringResource(Texts.rank(rank)), maxLines = 1) }
                         }
                     }
                 }
                 if (table.canProposeSchlagwechsel) {
                     OutlinedButton(onClick = onProposeSchlagwechsel, modifier = Modifier.padding(top = 4.dp)) {
-                        Text("Schlagwechsel vorschlagen", color = Color.White)
+                        Text(stringResource(R.string.action_propose_schlagwechsel), color = Color.White)
                     }
                 }
             }
@@ -690,7 +692,7 @@ private fun ActionArea(
 
         actions.any { it is Action.AnnounceFarbe } -> {
             {
-                PanelTitle("Sag die Farbe an – Schlag ${Texts.rank(s.schlag!!)}")
+                PanelTitle(stringResource(R.string.action_announce_farbe, stringResource(Texts.rank(s.schlag!!))))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Suit.entries.forEach { suit ->
                         Button(
@@ -698,7 +700,7 @@ private fun ActionArea(
                             colors = ButtonDefaults.buttonColors(containerColor = suitColor(suit)),
                             contentPadding = CompactPadding,
                             modifier = Modifier.weight(1f),
-                        ) { Text(Texts.suit(suit), maxLines = 1) }
+                        ) { Text(stringResource(Texts.suit(suit)), maxLines = 1) }
                     }
                 }
             }
@@ -706,21 +708,21 @@ private fun ActionArea(
 
         Action.Bleiben in actions -> {
             {
-                PanelTitle("${table.names[s.pendingSchub!!.askingPlayer]} sagt Schub! Geht ihr?")
+                PanelTitle(stringResource(R.string.action_schub_asked, table.names[s.pendingSchub!!.askingPlayer]))
                 val partner = table.names[table.seatAt(2)]
                 saidPartnerHint(table)?.let {
-                    Text("$partner: „$it“", color = Highlight, fontSize = 15.sp, modifier = Modifier.padding(bottom = 4.dp))
+                    Text(stringResource(R.string.action_partner_said, partner, it), color = Highlight, fontSize = 15.sp, modifier = Modifier.padding(bottom = 4.dp))
                 }
                 if (table.canAskPartner) {
                     OutlinedButton(onClick = onAskPartner, modifier = Modifier.padding(bottom = 4.dp)) {
-                        Text("$partner fragen, wie gut die Karten sind", color = Color.White)
+                        Text(stringResource(R.string.action_ask_partner, partner), color = Color.White)
                     }
                 }
                 if (table.waitingForPartner) {
-                    Text("Warte auf Antwort von $partner …", color = Highlight, fontSize = 14.sp, modifier = Modifier.padding(bottom = 4.dp))
+                    Text(stringResource(R.string.action_wait_for, partner), color = Highlight, fontSize = 14.sp, modifier = Modifier.padding(bottom = 4.dp))
                 }
                 if (table.partnerAsksUs) {
-                    Text("$partner fragt, wie gut deine Karten sind:", color = Highlight, fontSize = 14.sp)
+                    Text(stringResource(R.string.action_partner_asks_us, partner), color = Highlight, fontSize = 14.sp)
                     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         PartnerHint.entries.forEach { hint ->
                             Button(
@@ -728,16 +730,16 @@ private fun ActionArea(
                                 colors = woodButton(),
                                 contentPadding = CompactPadding,
                                 modifier = Modifier.weight(1f),
-                            ) { Text(Sayings.hintLabel(hint), fontSize = 12.sp, maxLines = 1) }
+                            ) { Text(stringResource(Texts.hintLabel(hint)), fontSize = 12.sp, maxLines = 1) }
                         }
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Button(onClick = { onAction(Action.Bleiben) }, colors = woodButton()) {
-                        Text("Bleiben (Wert ${s.gameValue + 1})")
+                        Text(stringResource(R.string.action_bleiben, s.gameValue + 1))
                     }
                     OutlinedButton(onClick = { onAction(Action.Gehen) }) {
-                        Text("Gehen (−${s.gameValue})", color = Color.White)
+                        Text(stringResource(R.string.action_gehen, s.gameValue), color = Color.White)
                     }
                 }
             }
@@ -745,7 +747,7 @@ private fun ActionArea(
 
         table.partnerAsksSchadet -> {
             {
-                PanelTitle("${table.names[table.seatAt(2)]} will den Haubi spielen: Schadest du?")
+                PanelTitle(stringResource(R.string.action_partner_asks_schadet, table.names[table.seatAt(2)]))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     SchadetAnswer.entries.forEach { answer ->
                         Button(
@@ -753,7 +755,7 @@ private fun ActionArea(
                             colors = woodButton(),
                             contentPadding = CompactPadding,
                             modifier = Modifier.weight(1f),
-                        ) { Text(Sayings.schadetLabel(answer), maxLines = 1) }
+                        ) { Text(stringResource(Texts.schadetLabel(answer)), maxLines = 1) }
                     }
                 }
             }
@@ -764,10 +766,10 @@ private fun ActionArea(
                 val partner = table.names[table.seatAt(2)]
                 when {
                     table.canAskSchadet -> OutlinedButton(onClick = onAskSchadet) {
-                        Text("Schadder? – $partner fragen, ob der Haubi schadet", color = Color.White)
+                        Text(stringResource(R.string.action_ask_schadet, partner), color = Color.White)
                     }
-                    table.waitingForSchadet -> Text("Warte auf Antwort von $partner …", color = Highlight, fontSize = 14.sp)
-                    else -> Text("$partner: „${table.schadetAnswer}“", color = Highlight, fontSize = 15.sp)
+                    table.waitingForSchadet -> Text(stringResource(R.string.action_wait_for, partner), color = Highlight, fontSize = 14.sp)
+                    else -> Text(stringResource(R.string.action_partner_said, partner, table.schadetAnswer.orEmpty()), color = Highlight, fontSize = 15.sp)
                 }
             }
         }
@@ -886,11 +888,11 @@ private fun RoundEndOverlay(
             if (matchOver) {
                 val won = s.matchWinner == us
                 Text(
-                    if (won) "Gewonnen!" else "Verloren",
+                    stringResource(if (won) R.string.end_match_won_title else R.string.end_match_lost_title),
                     color = Highlight, fontSize = 28.sp, fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    if (won) "Ihr habt das Match gewonnen." else "Die Gegner gewinnen das Match.",
+                    stringResource(if (won) R.string.end_match_won else R.string.end_match_lost),
                     color = Color.White, fontSize = 16.sp,
                 )
             } else {
@@ -902,17 +904,17 @@ private fun RoundEndOverlay(
                 }
             }
             Spacer(Modifier.height(8.dp))
-            Text("Stand: Wir ${s.scores[us]} : ${s.scores[1 - us]} Gegner", color = Color.White, fontSize = 16.sp)
+            Text(stringResource(R.string.end_score, s.scores[us], s.scores[1 - us]), color = Color.White, fontSize = 16.sp)
             Spacer(Modifier.height(14.dp))
             if (table.waitingForOthers) {
-                Text("Warte auf die Mitspieler …", color = Highlight, fontSize = 16.sp)
+                Text(stringResource(R.string.end_waiting_for_others), color = Highlight, fontSize = 16.sp)
             } else {
                 Button(onClick = onContinue, colors = woodButton()) {
-                    Text(if (matchOver) "Neues Match" else "Nächstes Spiel", fontSize = 16.sp)
+                    Text(stringResource(if (matchOver) R.string.end_new_match else R.string.end_next_round), fontSize = 16.sp)
                 }
             }
-            TextButton(onClick = onMenu) { Text("Hauptmenü", color = Color.White) }
-            onLeave?.let { TextButton(onClick = it) { Text("Raum verlassen", color = Color.White) } }
+            TextButton(onClick = onMenu) { Text(stringResource(R.string.end_main_menu), color = Color.White) }
+            onLeave?.let { TextButton(onClick = it) { Text(stringResource(R.string.common_leave_room), color = Color.White) } }
         }
     }
 }

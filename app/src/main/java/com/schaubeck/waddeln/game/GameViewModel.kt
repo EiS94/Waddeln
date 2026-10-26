@@ -40,6 +40,7 @@ data class GameUiState(
 
 class GameViewModel(application: Application) : AndroidViewModel(application) {
     private val store = SettingsStore(application)
+    private val sayings = Sayings(application.resources)
     private var settings = store.load()
     private val game = OfflineGame()
     private val statsStore = StatsStore(application)
@@ -126,7 +127,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     fun onProposeSchlagwechsel() {
         if (!game.humanCanProposeSchlagwechsel()) return
         game.proposeSchlagwechsel()
-        say(OfflineGame.HUMAN, Sayings.schlagwechselQuestion())
+        say(OfflineGame.HUMAN, sayings.schlagwechselQuestion())
         publish()
         runBots()
     }
@@ -135,7 +136,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     fun onAnswerSchlagwechsel(accept: Boolean) {
         if (!game.humanMustAnswerSchlagwechsel()) return
         game.answerSchlagwechsel(accept)
-        say(OfflineGame.HUMAN, Sayings.schlagwechselAnswer(accept))
+        say(OfflineGame.HUMAN, sayings.schlagwechselAnswer(accept))
         publish()
         runBots()
     }
@@ -144,7 +145,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     fun onAskSchadet() {
         if (!game.humanCanAskSchadet()) return
         game.askSchadet()
-        say(OfflineGame.HUMAN, Sayings.schadetQuestion())
+        say(OfflineGame.HUMAN, sayings.schadetQuestion())
         publish()
         runBots()
     }
@@ -153,7 +154,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     fun onAnswerSchadet(answer: SchadetAnswer) {
         if (!game.humanMustAnswerSchadet()) return
         game.answerSchadet(answer)
-        say(OfflineGame.HUMAN, Sayings.schadetAnswer(answer))
+        say(OfflineGame.HUMAN, sayings.schadetAnswer(answer))
         publish()
         runBots()
     }
@@ -163,9 +164,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         if (partnerHint() != null) return
         val hint = game.askPartner() ?: return
         val s = game.state
-        val text = Sayings.partnerHint(hint, s.tricksWon[teamOf(OfflineGame.HUMAN)])
+        val text = sayings.partnerHint(hint, s.tricksWon[teamOf(OfflineGame.HUMAN)])
         givenHint = s.gameValue to text
-        say(OfflineGame.HUMAN, Sayings.partnerQuestion())
+        say(OfflineGame.HUMAN, sayings.partnerQuestion())
         say(OfflineGame.PARTNER, text, delayMs = ANSWER_DELAY_MS)
         publish()
     }
@@ -241,28 +242,28 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                         step.action.isSpoken()
                     }
                     is BotStep.AskedSchadet -> {
-                        say(bot, Sayings.schadetQuestion())
+                        say(bot, sayings.schadetQuestion())
                         true
                     }
                     is BotStep.AnsweredSchadet -> {
-                        val text = Sayings.schadetAnswer(step.answer)
+                        val text = sayings.schadetAnswer(step.answer)
                         if (game.schadet?.asker == OfflineGame.HUMAN) schadetText = text
                         say(bot, text)
                         true
                     }
                     is BotStep.ProposedSchlagwechsel -> {
-                        say(bot, Sayings.schlagwechselQuestion())
+                        say(bot, sayings.schlagwechselQuestion())
                         true
                     }
                     is BotStep.AnsweredSchlagwechsel -> {
-                        say(bot, Sayings.schlagwechselAnswer(step.accept))
+                        say(bot, sayings.schlagwechselAnswer(step.accept))
                         true
                     }
                     is BotStep.AskedPartner -> {
                         // The opponents talk aloud: question by the bot, answer by its partner right after.
-                        say(bot, Sayings.partnerQuestion())
+                        say(bot, sayings.partnerQuestion())
                         val partner = partnerOf(bot)
-                        say(partner, Sayings.partnerHint(step.hint, game.state.tricksWon[teamOf(partner)]), delayMs = ANSWER_DELAY_MS)
+                        say(partner, sayings.partnerHint(step.hint, game.state.tricksWon[teamOf(partner)]), delayMs = ANSWER_DELAY_MS)
                         true
                     }
                 }
@@ -301,7 +302,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private fun finishCut() {
         val shown = cutShown ?: return
         cutShown = null
-        if (shown.krittenCount > 0) say(shown.abheber, Sayings.kritten(shown.krittenCount))
+        if (shown.krittenCount > 0) say(shown.abheber, sayings.kritten(shown.krittenCount))
         publish()
         runBots()
     }
@@ -316,7 +317,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun say(seat: Int, action: Action) {
-        Sayings.speech(action)?.let { say(seat, it) }
+        sayings.speech(action)?.let { say(seat, it) }
     }
 
     private fun say(seat: Int, text: String, delayMs: Long = 0) {
@@ -340,7 +341,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         table = TableUi(
             obs = game.state.observationFor(OfflineGame.HUMAN),
             actions = if (notice != null || cutShown != null) emptyList() else game.humanActions(),
-            names = List(PLAYER_COUNT) { settings.name(it) },
+            names = List(PLAYER_COUNT) { settings.names[it].ifBlank { store.defaultNames[it] } },
             speed = settings.speed,
             notice = notice,
             speech = speech,

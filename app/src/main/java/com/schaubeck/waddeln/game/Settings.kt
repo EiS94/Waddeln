@@ -1,6 +1,8 @@
 package com.schaubeck.waddeln.game
 
 import android.content.Context
+import androidx.annotation.StringRes
+import com.schaubeck.waddeln.R
 import com.schaubeck.waddeln.rules.PLAYER_COUNT
 import java.util.UUID
 
@@ -9,33 +11,33 @@ import java.util.UUID
  * a speech bubble (announcement, Schub, answer) is shown. After a bot spoke, the next bot waits
  * until the bubble is gone.
  */
-enum class GameSpeed(val label: String, val botDelayMs: Long, val trickPauseMs: Long, val speechMs: Long) {
-    SLOW("Langsam", 1600, 2600, 3000),
-    NORMAL("Normal", 1100, 1900, 2200),
-    FAST("Schnell", 600, 1300, 1400),
+enum class GameSpeed(@StringRes val label: Int, val botDelayMs: Long, val trickPauseMs: Long, val speechMs: Long) {
+    SLOW(R.string.speed_slow, 1600, 2600, 3000),
+    NORMAL(R.string.speed_normal, 1100, 1900, 2200),
+    FAST(R.string.speed_fast, 600, 1300, 1400),
 }
 
 /**
  * Strength of the opponents. The partner always plays at full strength.
  * [temperature] is the randomness of the ML bot (0 = always the best move), null = rule-based bot.
  */
-enum class Difficulty(val label: String, val description: String, val temperature: Double?) {
-    EASY("Leicht", "Einfache Regel-Bots", null),
-    MEDIUM("Mittel", "KI, macht manchmal Fehler", 0.7),
-    HARD("Schwer", "KI in voller Stärke", 0.0),
+enum class Difficulty(@StringRes val label: Int, @StringRes val description: Int, val temperature: Double?) {
+    EASY(R.string.difficulty_easy, R.string.difficulty_easy_description, null),
+    MEDIUM(R.string.difficulty_medium, R.string.difficulty_medium_description, 0.7),
+    HARD(R.string.difficulty_hard, R.string.difficulty_hard_description, 0.0),
 }
 
 /** Wood of the table behind all screens. */
-enum class TableStyle(val label: String) {
-    DARK("Dunkles Holz"),
-    LIGHT("Helles Holz"),
+enum class TableStyle(@StringRes val label: Int) {
+    DARK(R.string.table_dark),
+    LIGHT(R.string.table_light),
 }
 
 data class Settings(
     val speed: GameSpeed = GameSpeed.NORMAL,
     val difficulty: Difficulty = Difficulty.HARD,
     /** Names per seat: you, left opponent, partner, right opponent. */
-    val names: List<String> = DEFAULT_NAMES,
+    val names: List<String> = List(PLAYER_COUNT) { "" },
     /** Nickname shown to the other players online. */
     val onlineName: String = "",
     /** WebSocket address of the game server. */
@@ -48,10 +50,14 @@ data class Settings(
     /** As Abheber the player chooses where to cut; otherwise the app cuts at random for them. */
     val selfCut: Boolean = true,
 ) {
-    fun name(seat: Int): String = names[seat].ifBlank { DEFAULT_NAMES[seat] }
-
     companion object {
-        val DEFAULT_NAMES = listOf("Du", "Links", "Partner", "Rechts")
+        /** Names of the seats while the player has not named them. */
+        val DEFAULT_NAMES = listOf(
+            R.string.default_name_you,
+            R.string.default_name_left,
+            R.string.default_name_partner,
+            R.string.default_name_right,
+        )
 
         /** The public game server (a Raspberry Pi behind a Cloudflare tunnel). */
         const val DEFAULT_SERVER_URL = "wss://waddeln.schaumler.de/ws"
@@ -60,12 +66,14 @@ data class Settings(
 
 /** Persists [Settings] in SharedPreferences. */
 class SettingsStore(context: Context) {
+    val defaultNames: List<String> = Settings.DEFAULT_NAMES.map(context::getString)
+
     private val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
     fun load(): Settings = Settings(
         speed = enumOrDefault(prefs.getString(KEY_SPEED, null), GameSpeed.NORMAL),
         difficulty = enumOrDefault(prefs.getString(KEY_DIFFICULTY, null), Difficulty.HARD),
-        names = List(PLAYER_COUNT) { prefs.getString("$KEY_NAME$it", null) ?: Settings.DEFAULT_NAMES[it] },
+        names = List(PLAYER_COUNT) { prefs.getString("$KEY_NAME$it", null) ?: defaultNames[it] },
         onlineName = prefs.getString(KEY_ONLINE_NAME, null).orEmpty(),
         serverUrl = prefs.getString(KEY_SERVER_URL, null) ?: Settings.DEFAULT_SERVER_URL,
         soundEffects = prefs.getBoolean(KEY_SOUND_EFFECTS, true),

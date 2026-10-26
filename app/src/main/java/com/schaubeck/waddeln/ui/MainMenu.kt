@@ -21,10 +21,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.schaubeck.waddeln.R
 import com.schaubeck.waddeln.rules.Card
 
 @Composable
@@ -46,13 +48,13 @@ fun MainMenu(
             KrittenFan()
             Spacer(Modifier.height(24.dp))
             Text(
-                "Waddeln",
+                stringResource(R.string.app_name),
                 color = Highlight,
                 fontSize = 52.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Serif,
             )
-            Text("Das fränkische Kartenspiel", color = Color.White, fontSize = 16.sp)
+            Text(stringResource(R.string.menu_subtitle), color = Color.White, fontSize = 16.sp)
             Spacer(Modifier.height(40.dp))
             Column(
                 modifier = Modifier
@@ -61,12 +63,12 @@ fun MainMenu(
                     .padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                if (matchInProgress) MenuButton("Weiterspielen", onContinue)
-                MenuButton("Neues Spiel", onNewGame, primary = !matchInProgress)
-                MenuButton("Online spielen", onOnline)
-                MenuButton("Spielregeln", onRules, primary = false)
-                MenuButton("Statistik", onStats, primary = false)
-                MenuButton("Einstellungen", onSettings, primary = false)
+                if (matchInProgress) MenuButton(stringResource(R.string.menu_continue), onContinue)
+                MenuButton(stringResource(R.string.menu_new_game), onNewGame, primary = !matchInProgress)
+                MenuButton(stringResource(R.string.menu_online), onOnline)
+                MenuButton(stringResource(R.string.menu_rules), onRules, primary = false)
+                MenuButton(stringResource(R.string.menu_stats), onStats, primary = false)
+                MenuButton(stringResource(R.string.menu_settings), onSettings, primary = false)
             }
         }
     }

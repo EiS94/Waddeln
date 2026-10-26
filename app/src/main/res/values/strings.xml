@@ -1,3 +1,395 @@
-<resources>
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    All texts of the app. Placeholders like %1$s (text) or %1$d (number) are filled in by the app;
+    keep them when editing. An apostrophe is written as \' and a text starting with ? as \?.
+    Sayings (say_*): what players say aloud in the speech bubbles. Variants are separated by |,
+    one of them is picked at random each time.
+    Singular and plural are separate strings (e.g. kritten_one/kritten_many) instead of plurals,
+    so all of them can be edited in the Translations Editor.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="PluralsCandidate">
     <string name="app_name">Waddeln</string>
+
+    <!-- Common -->
+    <string name="common_back">‹ Zurück</string>
+    <string name="common_ok">OK</string>
+    <string name="common_cancel">Abbrechen</string>
+    <string name="common_leave_room">Raum verlassen</string>
+
+    <!-- Cards -->
+    <string name="suit_schell">Schell</string>
+    <string name="suit_herz">Herz</string>
+    <string name="suit_eichel">Eichel</string>
+    <string name="suit_gras">Gras</string>
+    <string name="rank_seven">7</string>
+    <string name="rank_eight">8</string>
+    <string name="rank_nine">9</string>
+    <string name="rank_ten">10</string>
+    <string name="rank_unter">Unter</string>
+    <string name="rank_ober">Ober</string>
+    <string name="rank_koenig">König</string>
+    <string name="rank_ass">Ass</string>
+    <!-- Suit and rank of a card, e.g. "Gras Ober" -->
+    <string name="card_name">%1$s %2$s</string>
+    <string name="kritten_one">1 Kritte</string>
+    <string name="kritten_many">%1$d Kritten</string>
+
+    <!-- Main menu -->
+    <string name="menu_subtitle">Das fränkische Kartenspiel</string>
+    <string name="menu_continue">Weiterspielen</string>
+    <string name="menu_new_game">Neues Spiel</string>
+    <string name="menu_online">Online spielen</string>
+    <string name="menu_rules">Spielregeln</string>
+    <string name="menu_stats">Statistik</string>
+    <string name="menu_settings">Einstellungen</string>
+
+    <!-- Game: top bar -->
+    <string name="game_we">Wir</string>
+    <string name="game_opponents">Gegner</string>
+    <string name="game_score">%1$s %2$d</string>
+    <string name="game_gespannt">gespannt</string>
+    <string name="game_tricks">Stiche %1$d : %2$d</string>
+    <string name="game_value_round">Spielwert %1$d · Spiel %2$d</string>
+    <string name="game_connection_lost">Verbindung unterbrochen – verbinde neu …</string>
+
+    <!-- Game: table -->
+    <string name="game_schub_button">Schub!</string>
+    <string name="game_last_trick">Letzter Stich</string>
+    <string name="game_last_trick_won_by">Gewonnen von %1$s</string>
+    <string name="game_last_trick_close">Tippen zum Schließen</string>
+    <string name="game_last_trick_shown_by">%1$s schaut den letzten Stich an</string>
+    <string name="game_haubi">Haubi</string>
+    <string name="game_bottom_card">Unten</string>
+    <string name="game_schlag_slot">Schlag\n%1$s</string>
+    <string name="game_no_haubi_yet">\?</string>
+
+    <!-- Game: badges under the names -->
+    <string name="badge_dealer">Geber</string>
+    <string name="badge_leads">kommt raus</string>
+    <string name="badge_abheber">Abheber</string>
+    <string name="badge_kritten_taken">%1$s abgehoben</string>
+    <string name="badge_laid_out">%1$d hingelegt</string>
+    <string name="badge_absent">offline – KI spielt</string>
+    <string name="badge_bot">KI</string>
+
+    <!-- Game: status line above the hand -->
+    <string name="status_wait_opponents">Warte auf Antwort der Gegner …</string>
+    <string name="status_wait_partner">Warte auf Antwort deines Partners …</string>
+    <string name="status_your_turn">Du bist am Zug</string>
+    <string name="status_you_lead">Du kommst raus</string>
+    <string name="status_countdown">noch %1$d s, dann spielt die KI</string>
+
+    <!-- Game: action panel -->
+    <string name="notice_schub_you">Du sagst Schub – %1$s bleibt.\nSpielwert jetzt %2$d.</string>
+    <string name="notice_schub_other">%1$s sagt Schub – %2$s bleibt.\nSpielwert jetzt %3$d.</string>
+    <string name="action_schlagwechsel_asks_us">%1$s will einen Schlagwechsel: Du sagst den Schlag an, %1$s die Farbe.</string>
+    <string name="action_accept">Annehmen</string>
+    <string name="action_decline">Ablehnen</string>
+    <string name="action_schlagwechsel_waiting">Schlagwechsel? – warte auf %1$s …</string>
+    <string name="action_announce_schlag">Sag den Schlag an</string>
+    <string name="action_propose_schlagwechsel">Schlagwechsel vorschlagen</string>
+    <string name="action_announce_farbe">Sag die Farbe an – Schlag %1$s</string>
+    <string name="action_schub_asked">%1$s sagt Schub! Geht ihr?</string>
+    <string name="action_partner_said">%1$s: „%2$s“</string>
+    <string name="action_ask_partner">%1$s fragen, wie gut die Karten sind</string>
+    <string name="action_wait_for">Warte auf Antwort von %1$s …</string>
+    <string name="action_partner_asks_us">%1$s fragt, wie gut deine Karten sind:</string>
+    <string name="action_bleiben">Bleiben (Wert %1$d)</string>
+    <string name="action_gehen">Gehen (−%1$d)</string>
+    <string name="action_partner_asks_schadet">%1$s will den Haubi spielen: Schadet er dir?</string>
+    <string name="action_ask_schadet">Schadder? – %1$s fragen, ob der Haubi schadet</string>
+
+    <!-- Game: answer buttons -->
+    <string name="hint_label_nothing">Gar nichts</string>
+    <string name="hint_label_little">Wenig</string>
+    <string name="hint_label_one_trick">1 Stich</string>
+    <string name="hint_label_two_tricks">2 Stiche</string>
+    <string name="hint_label_all">Alle</string>
+    <string name="schadet_label_yes">Ja</string>
+    <string name="schadet_label_a_little">Ein bisschen</string>
+    <string name="schadet_label_no">Nein</string>
+
+    <!-- Game: end of round / match -->
+    <string name="end_match_won_title">Gewonnen!</string>
+    <string name="end_match_lost_title">Verloren</string>
+    <string name="end_match_won">Ihr habt das Match gewonnen.</string>
+    <string name="end_match_lost">Die Gegner gewinnen das Match.</string>
+    <string name="end_points_one">1 Punkt</string>
+    <string name="end_points_many">%1$d Punkte</string>
+    <string name="end_round_won">Wir gewinnen das Spiel: %1$s.</string>
+    <string name="end_round_lost">Die Gegner gewinnen das Spiel: %1$s.</string>
+    <string name="end_opponents_gave_up">Die Gegner gehen – wir bekommen %1$s.</string>
+    <string name="end_we_gave_up">Wir gehen – die Gegner bekommen %1$s.</string>
+    <string name="end_score">Stand: Wir %1$d : %2$d Gegner</string>
+    <string name="end_waiting_for_others">Warte auf die Mitspieler …</string>
+    <string name="end_new_match">Neues Match</string>
+    <string name="end_next_round">Nächstes Spiel</string>
+    <string name="end_main_menu">Hauptmenü</string>
+
+    <!-- Cutting before the deal -->
+    <string name="cut_you_cut">Du hebst ab</string>
+    <string name="cut_other_cuts">%1$s hebt ab …</string>
+    <string name="cut_you_lifted">Du hebst %1$d Karten ab</string>
+    <string name="cut_other_lifted">%1$s hebt %2$d Karten ab</string>
+    <string name="cut_instructions">Tippe oder wische auf den Stapel, wo du abheben willst.</string>
+    <string name="cut_selected">%1$d Karten abheben</string>
+    <string name="cut_button">Abheben</string>
+    <string name="cut_countdown">noch %1$d s, dann hebt die KI ab</string>
+    <string name="cut_pile_lifted">%1$d abgehoben</string>
+    <string name="cut_pile_rest">%1$d Rest</string>
+    <string name="cut_kritte_you">Kritte! Du musst sie nehmen.</string>
+    <string name="cut_kritte_other">Kritte! %1$s muss sie nehmen.</string>
+    <string name="cut_no_kritte">Keine Kritte</string>
+    <string name="cut_kritten_bottom">%1$s – die nächste Karte bleibt unten liegen.</string>
+    <string name="cut_your_kritten">Deine Kritten</string>
+    <string name="cut_kritten_of">Kritten von %1$s</string>
+    <string name="cut_next">Weiter</string>
+
+    <!-- Sayings: announcements -->
+    <string name="say_schlag_seven">Sieben|Siebener|Die Siebener</string>
+    <string name="say_schlag_eight">Acht|Achter|Die Achter</string>
+    <string name="say_schlag_nine">Neun|Neuner|Die Neuner</string>
+    <string name="say_schlag_ten">Zehn|Zehner|Die Zehner</string>
+    <string name="say_schlag_unter">Unter|Die Unter</string>
+    <string name="say_schlag_ober">Ober|Die Ober</string>
+    <string name="say_schlag_koenig">König|Könige|Die Könige</string>
+    <string name="say_schlag_ass">Ass|Sau|Assen|Die Assen</string>
+    <string name="say_farbe_schell">Schell|In Schell</string>
+    <string name="say_farbe_herz">Herz|In Herz</string>
+    <string name="say_farbe_eichel">Eichel|In Eichel</string>
+    <string name="say_farbe_gras">Gras|Grün|Laub|In Grün</string>
+
+    <!-- Sayings: Schub -->
+    <string name="say_schub">Schub!|Geht ihr?|Gehen?|Ab mit euch</string>
+    <string name="say_bleiben">Wir bleiben!|Bleiben!|Nix da, wir bleiben.</string>
+    <string name="say_gehen">Wir gehen.|Gehen.|Müss ma gehen.|Da müss ma gehen.|Hilft nix, wir gehen.</string>
+
+    <!-- Sayings: asking the partner during a Schub -->
+    <string name="say_partner_question">Was hast du?|Wie schaut\'s aus?|Was meinst du?</string>
+    <string name="say_hint_nothing">Ich hab gar nichts.|Nix.|Bei mir schaut\'s schlecht aus.</string>
+    <string name="say_hint_little">Ich hab nicht viel.|Ein bisschen was.|Nicht viel.</string>
+    <string name="say_hint_one_trick">Einen Stich mach ich.|Einen hab ich.</string>
+    <string name="say_hint_two_tricks">Zwei Stiche mach ich.|Zwei hab ich.</string>
+    <!-- "All tricks", by the number of tricks the team still needs -->
+    <string name="say_hint_all_3">Ich mach alle 3 Stiche!|Die mach ich alle!</string>
+    <string name="say_hint_all_2">Die zwei Stiche mach ich!|Die zwei hab ich!</string>
+    <string name="say_hint_all_1">Den letzten Stich mach ich!|Den letzten hab ich!</string>
+
+    <!-- Sayings: "Schadder?" before leading the Haubi into the first trick -->
+    <string name="say_schadet_question">Schadder?|Schadet er?|Schadet er dir?</string>
+    <string name="say_schadet_yes">Ja.|Ja, schadet.</string>
+    <string name="say_schadet_a_little">Ein bisschen.|A bissl.|Geht scho.</string>
+    <string name="say_schadet_no">Nein.|Schadet net.|Kannst spielen.</string>
+
+    <!-- Sayings: Schlagwechsel before the Schlag is announced -->
+    <string name="say_schlagwechsel_question">Schlagwechsel?</string>
+    <string name="say_schlagwechsel_accept">Können wir machen.|Machen wir.|Ja</string>
+    <string name="say_schlagwechsel_decline">Neee.|Nein, sag du an.|Abgelehnt.</string>
+
+    <!-- Sayings: by the number of Kritten the Abheber had to take -->
+    <string name="say_kritten_1">Ha!|Jawohl!</string>
+    <string name="say_kritten_2">Zwei direkt!|Gleich zwei abgehoben.</string>
+    <string name="say_kritten_3">Drei Kritten, könnt direkt gehen!|Drei Kritten!</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Einstellungen</string>
+    <string name="settings_speed">Spielgeschwindigkeit</string>
+    <string name="speed_slow">Langsam</string>
+    <string name="speed_normal">Normal</string>
+    <string name="speed_fast">Schnell</string>
+    <string name="settings_difficulty">Schwierigkeitsgrad</string>
+    <string name="difficulty_easy">Leicht</string>
+    <string name="difficulty_easy_description">Einfache Regel-Bots</string>
+    <string name="difficulty_medium">Mittel</string>
+    <string name="difficulty_medium_description">KI, macht manchmal Fehler</string>
+    <string name="difficulty_hard">Schwer</string>
+    <string name="difficulty_hard_description">KI in voller Stärke</string>
+    <string name="settings_partner_full_strength">Dein Partner spielt immer in voller Stärke.</string>
+    <string name="settings_table">Spieltisch</string>
+    <string name="table_dark">Dunkles Holz</string>
+    <string name="table_light">Helles Holz</string>
+    <string name="settings_self_cut">Selbst abheben</string>
+    <string name="settings_self_cut_description">Aus: Die App hebt für dich zufällig ab</string>
+    <string name="settings_sound">Ton</string>
+    <string name="settings_sound_effects">Geräusche</string>
+    <string name="settings_sound_effects_description">Mischen, Karten und Stiche</string>
+    <string name="settings_voices">Stimmen</string>
+    <string name="settings_voices_description">Die Spieler sprechen ihre Ansagen</string>
+    <string name="settings_names">Namen der Spieler</string>
+    <string name="settings_name_you">Dein Name</string>
+    <string name="settings_name_left">Gegner links</string>
+    <string name="settings_name_partner">Partner</string>
+    <string name="settings_name_right">Gegner rechts</string>
+    <!-- Names of the players while they have not been named -->
+    <string name="default_name_you">Du</string>
+    <string name="default_name_left">Links</string>
+    <string name="default_name_partner">Partner</string>
+    <string name="default_name_right">Rechts</string>
+    <string name="settings_online">Online</string>
+    <string name="settings_server_url">Server-Adresse</string>
+    <string name="settings_server_reset">Standard wiederherstellen</string>
+    <string name="settings_privacy">Datenschutz</string>
+    <string name="settings_privacy_text">Gegen den Computer bleibt alles auf dem Gerät. Online werden nur Spitzname und eine zufällige Geräte-ID an den Server übertragen.</string>
+    <string name="settings_privacy_open">Datenschutzerklärung öffnen</string>
+
+    <!-- Statistics -->
+    <string name="stats_title">Statistik</string>
+    <string name="stats_tab_all">Gesamt</string>
+    <string name="stats_tab_offline">Offline</string>
+    <string name="stats_tab_online">Online</string>
+    <string name="stats_empty">Noch keine Spiele gezählt. Gezählt wird jedes Spiel, das du bis zum Ende spielst.</string>
+    <string name="stats_reset">Statistik zurücksetzen</string>
+    <string name="stats_reset_title">Statistik zurücksetzen?</string>
+    <string name="stats_reset_text">Alle Zahlen (offline und online) werden gelöscht.</string>
+    <string name="stats_reset_confirm">Zurücksetzen</string>
+    <!-- A count with its share, e.g. "7 (35 %)" -->
+    <string name="stats_share">%1$d (%2$d %%)</string>
+    <string name="stats_no_average">–</string>
+    <string name="stats_matches">Matches</string>
+    <string name="stats_played">Gespielt</string>
+    <string name="stats_won">Gewonnen</string>
+    <string name="stats_best_streak">Längste Siegesserie</string>
+    <string name="stats_streak">Aktuelle Siegesserie</string>
+    <string name="stats_rounds">Spiele</string>
+    <string name="stats_points">Punkte geholt : abgegeben</string>
+    <string name="stats_points_value">%1$d : %2$d</string>
+    <string name="stats_best_round">Meiste Punkte in einem Spiel</string>
+    <string name="stats_won_to_nil">Zu null gewonnen (Brille)</string>
+    <string name="stats_tricks">Stiche</string>
+    <string name="stats_own_tricks">Selbst gemacht</string>
+    <string name="stats_per_round">Pro Spiel</string>
+    <string name="stats_announcements">Ansagen</string>
+    <string name="stats_schlag_called">Schlag angesagt</string>
+    <string name="stats_of_which_won">… davon gewonnen</string>
+    <string name="stats_favourite_schlag">Lieblingsschlag</string>
+    <string name="stats_farbe_called">Farbe angesagt</string>
+    <string name="stats_favourite_farbe">Lieblingsfarbe</string>
+    <string name="stats_schub">Schub</string>
+    <string name="stats_schub_called">Du hast Schub gesagt</string>
+    <string name="stats_schub_went">… Gegner gegangen</string>
+    <string name="stats_schub_stayed">… Gegner geblieben</string>
+    <string name="stats_faced">Schub der Gegner</string>
+    <string name="stats_faced_went">… ihr seid gegangen</string>
+    <string name="stats_faced_stayed">… ihr seid geblieben</string>
+    <string name="stats_faced_stayed_won">… geblieben und gewonnen</string>
+    <string name="stats_your_cards">Deine Karten</string>
+    <string name="stats_haubi_held">Haubi auf der Hand</string>
+    <string name="stats_max_held">Max auf der Hand</string>
+    <string name="stats_bello_held">Bello auf der Hand</string>
+    <string name="stats_secher_held">Secher auf der Hand</string>
+    <string name="stats_trumps_held">Trümpfe pro Spiel</string>
+
+    <!-- Online -->
+    <string name="online_title">Online spielen</string>
+    <string name="online_connecting">Verbinde mit dem Server …</string>
+    <string name="online_connected">Mit dem Server verbunden</string>
+    <string name="online_lost">Keine Verbindung – neuer Versuch läuft …</string>
+    <string name="online_server">Server: %1$s (änderbar in den Einstellungen)</string>
+    <string name="online_no_connection">Keine Verbindung zum Server.</string>
+    <string name="online_unreachable">Server nicht erreichbar.</string>
+    <string name="online_nickname_title">Dein Spitzname</string>
+    <string name="online_nickname">Spitzname</string>
+    <string name="online_nickname_placeholder">z. B. Schorsch</string>
+    <string name="online_nickname_invited">Du bist eingeladen: Gib deinen Spitznamen ein und tippe unten auf „Beitreten“.</string>
+    <string name="online_nickname_hint">Den sehen deine Mitspieler.</string>
+    <string name="online_new_room">Neuer Raum</string>
+    <string name="online_new_room_text">Du bekommst einen Code, den du deinen Mitspielern gibst. Freie Plätze übernimmt die KI.</string>
+    <string name="online_create_room">Raum erstellen</string>
+    <string name="online_join_room">Raum beitreten</string>
+    <string name="online_room_code">Raum-Code</string>
+    <string name="online_room_code_placeholder">z. B. K7QMX</string>
+    <string name="online_join">Beitreten</string>
+    <string name="online_room_code_text">Gib den Code deinen Mitspielern oder schick ihnen eine Einladung.</string>
+    <string name="online_copy">Kopieren</string>
+    <string name="online_invite">Einladen</string>
+    <string name="online_copied">Raum-Code kopiert</string>
+    <string name="online_invite_text">Spiel mit mir Waddeln! Tipp auf den Link oder gib in der App bei „Raum beitreten“ den Code %1$s ein: %2$s</string>
+    <string name="online_invite_chooser">Zu Waddeln einladen</string>
+    <string name="online_seats">Plätze</string>
+    <string name="online_seats_text">Gegenüber Sitzende spielen zusammen. Tippe auf einen KI-Platz, um dich dorthin zu setzen.</string>
+    <string name="online_seats_text_host">Gegenüber Sitzende spielen zusammen. Tippe auf einen KI-Platz, um dich dorthin zu setzen. Mit dem Stift gibst du einer KI einen anderen Namen.</string>
+    <string name="online_bot_strength">Stärke der KI</string>
+    <string name="online_start">Spiel starten</string>
+    <string name="online_waiting_for_host">KI: %1$s · Warte, bis %2$s das Spiel startet …</string>
+    <string name="online_the_host">der Gastgeber</string>
+    <string name="online_seat_free">frei</string>
+    <string name="online_tag_bot">KI</string>
+    <string name="online_tag_you">du</string>
+    <string name="online_tag_host">Gastgeber</string>
+    <string name="online_tag_offline">offline</string>
+    <string name="online_tag_partner">Partner</string>
+    <string name="online_switch_title">Einladung in Raum %1$s</string>
+    <string name="online_switch_text">Du sitzt gerade in Raum %1$s. Möchtest du in Raum %2$s wechseln?</string>
+    <string name="online_switch_text_in_game">Du sitzt gerade in Raum %1$s. Wenn du gehst, spielt dort die KI für dich weiter. Möchtest du in Raum %2$s wechseln?</string>
+    <string name="online_switch">Wechseln</string>
+    <string name="online_stay">Bleiben</string>
+    <string name="online_bot_name_title">Name der KI</string>
+    <string name="online_bot_name">Name</string>
+    <!-- Bots of an older server without names, by their place relative to us -->
+    <string name="online_bot_left">KI links</string>
+    <string name="online_bot_partner">KI Partner</string>
+    <string name="online_bot_right">KI rechts</string>
+    <string name="online_bot">KI</string>
+
+    <!-- Rules. **text** is shown in bold. -->
+    <string name="rules_title">Spielregeln</string>
+    <string name="rules_intro_title">Worum geht\'s?</string>
+    <string name="rules_intro_1">Waddeln ist ein fränkisches Kartenspiel für **4 Spieler in 2 Teams**. Wer sich gegenübersitzt, spielt zusammen – in der App sitzt dein Partner oben, die Gegner links und rechts.</string>
+    <string name="rules_intro_2">Jede Runde („ein Spiel“) gewinnt das Team, das zuerst **3 Stiche** macht. Dafür gibt es Punkte. Wer zuerst **11 Punkte** hat, gewinnt das ganze Match.</string>
+
+    <string name="rules_cards_title">Die Karten</string>
+    <string name="rules_cards_1">Gespielt wird mit 32 fränkischen Karten: den vier Farben **Schell, Herz, Eichel und Gras** mit den Werten 7, 8, 9, 10, Unter, Ober, König und Ass (aufsteigend).</string>
+    <string name="rules_cards_2">Drei Karten sind etwas Besonderes, die **Kritten**. Sie sind immer die stärksten Trümpfe:</string>
+    <string name="rules_cards_max">Max\n(Herz König)</string>
+    <string name="rules_cards_bello">Bello\n(Schell 7)</string>
+    <string name="rules_cards_secher">Secher\n(Eichel 7)</string>
+    <string name="rules_cards_3">Der Max schlägt alles, dann kommt der Bello, dann der Secher.</string>
+
+    <string name="rules_haubi_title">Der Haubi – was ist Trumpf?</string>
+    <string name="rules_haubi_1">Zu Beginn jeder Runde wird ein **Schlag** (ein Wert, z. B. Ober) und eine **Farbe** (z. B. Gras) angesagt. Zusammen ergeben sie den **Haubi**, hier also den Gras Ober.</string>
+    <string name="rules_haubi_2">Trumpf sind dann, von stark nach schwach:</string>
+    <string name="rules_haubi_bullet_1">die drei **Kritten** (Max, Bello, Secher),</string>
+    <string name="rules_haubi_bullet_2">der **Haubi** selbst,</string>
+    <string name="rules_haubi_bullet_3">die **Haubi-Schläge**: derselbe Wert in den anderen Farben – alle gleich stark,</string>
+    <string name="rules_haubi_bullet_4">die **Haubi-Farbe**: die übrigen Karten in der Farbe des Haubis, vom Ass abwärts.</string>
+    <string name="rules_haubi_card_haubi">Haubi</string>
+    <string name="rules_haubi_card_schlag">Haubi-\nSchlag</string>
+    <string name="rules_haubi_card_farbe">Haubi-\nFarbe</string>
+    <string name="rules_haubi_3">Alle anderen Karten sind kein Trumpf. Sie können einen Stich nur gewinnen, wenn sie die Farbe der ersten Karte im Stich haben und kein Trumpf liegt.</string>
+    <string name="rules_haubi_4">**Sonderfall:** Ergeben Schlag und Farbe eine Kritte (z. B. Eichel 7 = Secher), ist sie zugleich Haubi und behält ihren Kritten-Rang. Haubi-Schläge und Haubi-Farbe gelten ganz normal.</string>
+
+    <string name="rules_round_title">Ablauf einer Runde</string>
+    <string name="rules_round_1">**Geber:** Zuerst wird der Geber ausgelost, danach wandert das Amt jede Runde im Uhrzeigersinn weiter.</string>
+    <string name="rules_round_2">**Abheben:** Der Spieler vor dem Geber (der **Abheber**) hebt den Stapel ab und schaut unter den abgehobenen Teil. Liegt dort eine Kritte, **muss** er sie nehmen – und die nächste auch, solange Kritten direkt übereinander liegen. Die anderen sehen, wie viele Kritten er genommen hat, aber nicht welche.</string>
+    <string name="rules_round_3">**Ausgeben:** Jeder bekommt 5 Karten, erst 3, dann 2. Die Kritten des Abhebers zählen schon mit. 12 Karten bleiben übrig; die unterste davon liegt offen und jeder kann sie sehen.</string>
+    <string name="rules_round_4">**Haubi ansagen:** Der Spieler nach dem Geber sagt den **Schlag** an, der Geber die **Farbe**.</string>
+    <string name="rules_round_5">**Schlagwechsel:** Statt den Schlag anzusagen, darf der Spieler nach dem Geber einmal pro Runde einen Schlagwechsel vorschlagen. Stimmt der Geber zu, sagt der Geber den Schlag und der Spieler nach ihm die Farbe.</string>
+
+    <string name="rules_tricks_title">Stiche spielen</string>
+    <string name="rules_tricks_1">Der Spieler **nach dem Geber kommt raus**, er spielt also die erste Karte. Dann folgen die anderen im Uhrzeigersinn. Wer den Stich gewinnt, spielt den nächsten an.</string>
+    <string name="rules_tricks_2">Es gilt **freie Wahl**: Du musst weder Farbe bedienen noch stechen und darfst jede Karte spielen.</string>
+    <string name="rules_tricks_3">**Wer gewinnt den Stich?**</string>
+    <string name="rules_tricks_bullet_1">Liegt Trumpf im Stich, gewinnt der stärkste Trumpf.</string>
+    <string name="rules_tricks_bullet_2">Sonst gewinnt die höchste Karte in der Farbe der ersten Karte.</string>
+    <string name="rules_tricks_bullet_3">Liegen zwei gleich starke Haubi-Schläge, gewinnt der zuerst gespielte.</string>
+    <string name="rules_tricks_4">**Ausnahme – Bekennen:** Wird der Haubi als allererste Karte der Runde gespielt, müssen die anderen in diesem Stich eine Karte der Haubi-Farbe zugeben, wenn sie eine haben. Eine Kritte darf man trotzdem immer spielen – und sobald eine Kritte liegt, ist die Pflicht für den Rest des Stichs aufgehoben. Das gilt nur im ersten Stich.</string>
+
+    <string name="rules_schub_title">Schub</string>
+    <string name="rules_schub_1">Sobald der Haubi feststeht, darf jedes Team jederzeit **Schub** sagen: Es fragt die Gegner, ob sie gehen.</string>
+    <string name="rules_schub_bullet_1">**Gehen:** Die Runde ist sofort vorbei, das fragende Team bekommt den bisherigen Wert.</string>
+    <string name="rules_schub_bullet_2">**Bleiben:** Die Runde ist einen Punkt mehr wert und es wird weitergespielt.</string>
+    <string name="rules_schub_2">Die Teams fragen **abwechselnd** – zweimal hintereinander darf dasselbe Team nicht. Antworten darf jeder Spieler des gefragten Teams, die erste Antwort gilt. Solange ein Schub offen ist, wird keine Karte gespielt.</string>
+    <string name="rules_schub_3">Schub sagen darf ein Team nur, solange es mit dem Sieg in dieser Runde noch keine 11 Punkte hätte. Ein **gespanntes** Team (ab 9 Punkten) darf gar keinen Schub mehr sagen, aber antworten.</string>
+
+    <string name="rules_partner_title">Absprachen mit dem Partner</string>
+    <string name="rules_partner_1">Partner dürfen sich kurz absprechen, ohne Karten zu verraten. Die Gegner hören mit.</string>
+    <string name="rules_partner_2">**Beim Schub:** Wird dein Team gefragt, kannst du deinen Partner fragen, wie gut seine Karten sind. Er antwortet grob: gar nichts, wenig, einen Stich, zwei Stiche oder alle (noch nötigen) Stiche. Einmal pro Schub.</string>
+    <string name="rules_partner_3">**„Schadder?“:** Wer den ersten Stich eröffnet, darf vorher fragen, ob es dem Partner schadet, wenn er den Haubi ausspielt – weil er dann eine Karte der Haubi-Farbe zugeben muss. Antworten: Ja, ein bisschen, Nein. Fragen darf man auch ohne Haubi, als **Bluff**. Hat der Partner den Haubi selbst, sagt er „Ja“, damit der Bluff nicht auffliegt.</string>
+
+    <string name="rules_points_title">Punkte und Matchende</string>
+    <string name="rules_points_bullet_1">Wer 3 Stiche macht, gewinnt die Runde: **2 Punkte**, plus 1 für jedes „Bleiben“ beim Schub.</string>
+    <string name="rules_points_bullet_2">Geht ein Team beim Schub, bekommen die Fragenden den Wert vor der Frage.</string>
+    <string name="rules_points_bullet_3">Wer zuerst **11 Punkte** hat, gewinnt das Match.</string>
+    <string name="rules_points_bullet_4">Ab **9 Punkten** ist ein Team **gespannt** und darf keinen Schub mehr sagen.</string>
+    <string name="rules_points_1">**Gespannt gegen gespannt:** Sind beide Teams gespannt, legt vor dem ersten Stich jeder seine Kritten und den Haubi verdeckt vor sich hin. So sieht jeder, wer wie viele gute Karten hat – aber nicht welche. Gespielt werden sie ganz normal.</string>
 </resources>

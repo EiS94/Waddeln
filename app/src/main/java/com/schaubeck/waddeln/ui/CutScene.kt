@@ -1,5 +1,6 @@
 package com.schaubeck.waddeln.ui
 
+import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -41,12 +42,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import com.schaubeck.waddeln.R
 import com.schaubeck.waddeln.game.CutUi
 import com.schaubeck.waddeln.game.TableUi
 import com.schaubeck.waddeln.protocol.CutAnimation
@@ -77,12 +80,12 @@ fun CutScene(table: TableUi, cut: CutUi, onCut: (Int) -> Unit, onCutSeen: () -> 
         val mine = cut.abheber == table.me
         val lifted = cut.cut
         if (lifted == null) {
-            Text(if (mine) "Du hebst ab" else "$name hebt ab …", color = Highlight, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(if (mine) stringResource(R.string.cut_you_cut) else stringResource(R.string.cut_other_cuts, name), color = Highlight, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(10.dp))
             if (cut.choosing) ChooseCut(table, onCut) else Spread(selected = null, onSelect = null)
         } else {
             Text(
-                if (mine) "Du hebst $lifted Karten ab" else "$name hebt $lifted Karten ab",
+                if (mine) stringResource(R.string.cut_you_lifted, lifted) else stringResource(R.string.cut_other_lifted, name, lifted),
                 color = Highlight, fontSize = 18.sp, fontWeight = FontWeight.Bold,
             )
             Spacer(Modifier.height(10.dp))
@@ -96,17 +99,17 @@ fun CutScene(table: TableUi, cut: CutUi, onCut: (Int) -> Unit, onCutSeen: () -> 
 private fun ChooseCut(table: TableUi, onCut: (Int) -> Unit) {
     var selected by remember { mutableIntStateOf(DECK_SIZE / 2) }
     Text(
-        "Tippe oder wische auf den Stapel, wo du abheben willst.",
+        stringResource(R.string.cut_instructions),
         color = Color.White, fontSize = 13.sp, textAlign = TextAlign.Center,
     )
     Spacer(Modifier.height(8.dp))
     Spread(selected, onSelect = { selected = it })
     Spacer(Modifier.height(6.dp))
-    Text("$selected Karten abheben", color = Color.White, fontSize = 14.sp)
+    Text(stringResource(R.string.cut_selected, selected), color = Color.White, fontSize = 14.sp)
     Spacer(Modifier.height(6.dp))
-    Button(onClick = { onCut(selected) }, colors = woodButton()) { Text("Abheben", fontSize = 16.sp) }
+    Button(onClick = { onCut(selected) }, colors = woodButton()) { Text(stringResource(R.string.cut_button), fontSize = 16.sp) }
     secondsUntil(table.deadline)?.let {
-        Text("noch $it s, dann hebt die KI ab", color = Highlight, fontSize = 12.sp)
+        Text(stringResource(R.string.cut_countdown, it), color = Highlight, fontSize = 12.sp)
     }
 }
 
@@ -195,7 +198,7 @@ private fun Reveal(cut: CutUi, lifted: Int, name: String, mine: Boolean, onCutSe
             Modifier.offset(x = (-24).dp * split.value),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Pile(lifted - taken, pileWidth, "abgehoben")
+            Pile(lifted - taken, pileWidth, R.string.cut_pile_lifted)
             Spacer(Modifier.height(6.dp))
             // Below the lifted stack: what the Abheber looks at.
             Box(Modifier.size(slotWidth, slotWidth * CARD_ASPECT), contentAlignment = Alignment.Center) {
@@ -210,26 +213,26 @@ private fun Reveal(cut: CutUi, lifted: Int, name: String, mine: Boolean, onCutSe
             Modifier.offset(x = 24.dp * split.value),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Pile(DECK_SIZE - lifted, pileWidth, "Rest")
+            Pile(DECK_SIZE - lifted, pileWidth, R.string.cut_pile_rest)
         }
     }
     Spacer(Modifier.height(8.dp))
     val status = when {
-        showing != null -> "Kritte! ${if (mine) "Du musst" else "$name muss"} sie nehmen."
-        bottomShown && count == 0 -> "Keine Kritte"
-        bottomShown -> "${Texts.kritten(count)} – die nächste Karte bleibt unten liegen."
+        showing != null -> if (mine) stringResource(R.string.cut_kritte_you) else stringResource(R.string.cut_kritte_other, name)
+        bottomShown && count == 0 -> stringResource(R.string.cut_no_kritte)
+        bottomShown -> stringResource(R.string.cut_kritten_bottom, Texts.kritten(count))
         else -> " "
     }
     Text(status, color = Color.White, fontSize = 14.sp, textAlign = TextAlign.Center)
     if (count > 0) {
         Spacer(Modifier.height(6.dp))
-        Text(if (mine) "Deine Kritten" else "Kritten von $name", color = Highlight, fontSize = 12.sp)
+        Text(if (mine) stringResource(R.string.cut_your_kritten) else stringResource(R.string.cut_kritten_of, name), color = Highlight, fontSize = 12.sp)
         Row(Modifier.height(36.dp * CARD_ASPECT), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             repeat(taken) { i -> Appearing(fromAbove = true) { KritteCard(cut.kritten.getOrNull(i), 36.dp) } }
         }
     }
     if (mine && bottomShown) {
-        TextButton(onClick = onCutSeen) { Text("Weiter", color = Highlight) }
+        TextButton(onClick = onCutSeen) { Text(stringResource(R.string.cut_next), color = Highlight) }
     }
 }
 
@@ -239,9 +242,9 @@ private fun KritteCard(card: Card?, width: Dp) {
     if (card != null) CardView(card, width = width, highlight = true) else CardBack(width = width)
 }
 
-/** A face-down stack of [count] cards with a label. */
+/** A face-down stack of [count] cards with a [label] (a text with the count as placeholder). */
 @Composable
-private fun Pile(count: Int, width: Dp, label: String) {
+private fun Pile(count: Int, width: Dp, @StringRes label: Int) {
     val layers = count.coerceIn(1, 6)
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(Modifier.size(width + 6.dp, width * CARD_ASPECT + 6.dp)) {
@@ -249,7 +252,7 @@ private fun Pile(count: Int, width: Dp, label: String) {
                 CardBack(width = width, modifier = Modifier.offset(x = 1.dp * i, y = 6.dp - 1.dp * i))
             }
         }
-        Text("$count $label", color = Color.White, fontSize = 11.sp, maxLines = 1, softWrap = false, textAlign = TextAlign.Center)
+        Text(stringResource(label, count), color = Color.White, fontSize = 11.sp, maxLines = 1, softWrap = false, textAlign = TextAlign.Center)
     }
 }
 
