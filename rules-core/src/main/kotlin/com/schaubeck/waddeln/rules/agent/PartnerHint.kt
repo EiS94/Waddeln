@@ -2,8 +2,11 @@ package com.schaubeck.waddeln.rules.agent
 
 import com.schaubeck.waddeln.rules.Card
 import com.schaubeck.waddeln.rules.Observation
+import com.schaubeck.waddeln.rules.PLAYER_COUNT
 import com.schaubeck.waddeln.rules.Rank
 import com.schaubeck.waddeln.rules.TRICKS_TO_WIN
+import com.schaubeck.waddeln.rules.teamOf
+import com.schaubeck.waddeln.rules.trickWinnerIndex
 import kotlinx.serialization.Serializable
 
 /**
@@ -18,12 +21,16 @@ enum class PartnerHint { NOTHING, LITTLE, ONE_TRICK, TWO_TRICKS, ALL_TRICKS }
  * that it takes a trick, depending on how many stronger trumps are still unseen; several trumps
  * together give extra control. "All tricks" needs an estimate close to the tricks still needed;
  * if the opponents need only one more trick, every trick still needed must be sure.
+ * A trick being played that one team surely takes already counts for that team.
  */
 object PartnerHints {
 
     fun hintFor(obs: Observation): PartnerHint {
-        val needed = TRICKS_TO_WIN - obs.tricksWon[obs.team]
-        val opponentsNeed = TRICKS_TO_WIN - obs.tricksWon[1 - obs.team]
+        val current = sureWinnerOfCurrentTrick(obs)
+        val needed = TRICKS_TO_WIN - obs.tricksWon[obs.team] - (if (current == obs.team) 1 else 0)
+        val opponentsNeed = TRICKS_TO_WIN - obs.tricksWon[1 - obs.team] - (if (current == 1 - obs.team) 1 else 0)
+        if (needed <= 0) return PartnerHint.ALL_TRICKS
+        if (opponentsNeed <= 0) return PartnerHint.NOTHING
         val e = estimatedTricks(obs)
         val all = if (opponentsNeed <= 1) sureTricks(obs) >= needed else e >= needed - ALL_TRICKS_MARGIN
         return when {
@@ -33,6 +40,25 @@ object PartnerHints {
             e < TWO_TRICKS_FROM -> PartnerHint.ONE_TRICK
             else -> PartnerHint.TWO_TRICKS
         }
+    }
+
+    /**
+     * The team that surely takes the trick being played: nobody of the other team still to play can
+     * beat its best card (with an unseen card, or with a card of the own hand for [Observation.player]).
+     * Null if no trick is being played or it is still open.
+     */
+    fun sureWinnerOfCurrentTrick(obs: Observation): Int? {
+        val trump = obs.trump ?: return null
+        val trick = obs.currentTrick
+        if (trick.isEmpty()) return null
+        val cards = trick.map { it.card }
+        val winner = teamOf(trick[trickWinnerIndex(cards, trump)].player)
+        val unseen = unseen(obs)
+        val stillToPlay = (0 until PLAYER_COUNT).filter { p -> trick.none { it.player == p } }
+        val beatable = stillToPlay.any { p ->
+            teamOf(p) != winner && (if (p == obs.player) obs.hand else unseen).any { trickWinnerIndex(cards + it, trump) == cards.size }
+        }
+        return winner.takeIf { !beatable }
     }
 
     /** Trumps in the hand of [obs] that no unseen card can beat. */

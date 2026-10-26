@@ -87,6 +87,38 @@ class PartnerHintTest {
     }
 
     @Test
+    fun `a trick our partner surely takes already counts`() {
+        // Player 1 has nothing, but partner 3 leads with the Max: nobody can beat it.
+        val obs = state.observationFor(1).copy(tricksWon = listOf(0, 2), currentTrick = listOf(Play(3, Card.MAX)))
+        assertEquals(1, PartnerHints.sureWinnerOfCurrentTrick(obs))
+        assertEquals(PartnerHint.ALL_TRICKS, hint(1, obs))
+    }
+
+    @Test
+    fun `a trick the opponents surely take counts for them`() {
+        val before = state.observationFor(2).copy(tricksWon = listOf(1, 1))
+        assertEquals(PartnerHint.ALL_TRICKS, hint(2, before))
+        // Opponent 1 plays the Max: their trick, then they need only one more and nothing of 2 is sure.
+        val obs = before.copy(currentTrick = listOf(Play(1, Card.MAX)))
+        assertEquals(1, PartnerHints.sureWinnerOfCurrentTrick(obs))
+        assertEquals(PartnerHint.TWO_TRICKS, hint(2, obs))
+    }
+
+    @Test
+    fun `a trick that can still be beaten counts for nobody`() {
+        // Partner 0 leads a Haubi-Schlag; the opponents may still hold a Kritte or the Haubi.
+        val obs = state.observationFor(2).copy(currentTrick = listOf(Play(0, c("EO"))))
+        assertEquals(null, PartnerHints.sureWinnerOfCurrentTrick(obs))
+    }
+
+    @Test
+    fun `the answering player can beat the trick with his own hand`() {
+        // Opponent 1 leads the Haubi; player 2 still holds the Secher, so the trick is open.
+        val obs = state.observationFor(2).copy(currentTrick = listOf(Play(1, c("GO"))))
+        assertEquals(null, PartnerHints.sureWinnerOfCurrentTrick(obs))
+    }
+
+    @Test
     fun `nothing to tell before the Haubi is fixed`() {
         val s = roundWith(hands)
         assertEquals(0.0, PartnerHints.estimatedTricks(s.observationFor(2)))

@@ -33,6 +33,24 @@ def _unseen(obs: Observation) -> list[int]:
     return [c for c in range(32) if c not in seen]
 
 
+def sure_winner_of_current_trick(obs: Observation) -> int | None:
+    """PartnerHints.sureWinnerOfCurrentTrick: the team that surely takes the trick being played."""
+    st = obs.strengths
+    if st is None or not obs.current_trick:
+        return None
+    cards = [c for _, c in obs.current_trick]
+    winner = E.team_of(obs.current_trick[E.trick_winner_index(cards, st)][0])
+    unseen = _unseen(obs)
+    played = {p for p, _ in obs.current_trick}
+    for p in range(E.PLAYER_COUNT):
+        if p in played or E.team_of(p) == winner:
+            continue
+        candidates = obs.hand if p == obs.player else unseen
+        if any(E.trick_winner_index(cards + [c], st) == len(cards) for c in candidates):
+            return None
+    return winner
+
+
 def sure_tricks(obs: Observation) -> int:
     """PartnerHints.sureTricks: trumps in the hand that no unseen card can beat."""
     st = obs.strengths
@@ -63,8 +81,13 @@ def estimated_tricks(obs: Observation) -> float:
 
 def partner_hint(obs: Observation) -> int:
     """PartnerHints.hintFor."""
-    needed = TRICKS_TO_WIN - obs.tricks_won[obs.team]
-    opponents_need = TRICKS_TO_WIN - obs.tricks_won[1 - obs.team]
+    current = sure_winner_of_current_trick(obs)
+    needed = TRICKS_TO_WIN - obs.tricks_won[obs.team] - (1 if current == obs.team else 0)
+    opponents_need = TRICKS_TO_WIN - obs.tricks_won[1 - obs.team] - (1 if current == 1 - obs.team else 0)
+    if needed <= 0:
+        return ALL_TRICKS
+    if opponents_need <= 0:
+        return NOTHING
     e = estimated_tricks(obs)
     if opponents_need <= 1:
         all_tricks = sure_tricks(obs) >= needed
