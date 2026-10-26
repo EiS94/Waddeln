@@ -17,12 +17,29 @@ from .engine import ASS, CARD_OFFSET, A_SCHUB, KOENIG, KRITTE_SET, NO_TRUMP, OBE
 # PartnerHint ordinals
 NOTHING, LITTLE, ONE_TRICK, TWO_TRICKS, ALL_TRICKS = range(5)
 
-_STRONGER_TRUMP_PENALTY = 0.065
+_STRONGER_TRUMP_PENALTY = 0.1
 _MIN_TRUMP_VALUE = 0.1
 _NOTHING_BELOW = 0.35
 _ONE_TRICK_FROM = 0.8
 _TWO_TRICKS_FROM = 1.6
-_ALL_TRICKS_MARGIN = 0.6
+_ALL_TRICKS_MARGIN = 0.25
+
+
+def _unseen(obs: Observation) -> list[int]:
+    seen = set(obs.hand)
+    seen.update(c for _, c in obs.current_trick)
+    for plays, _ in obs.completed_tricks:
+        seen.update(c for _, c in plays)
+    return [c for c in range(32) if c not in seen]
+
+
+def sure_tricks(obs: Observation) -> int:
+    """PartnerHints.sureTricks: trumps in the hand that no unseen card can beat."""
+    st = obs.strengths
+    if st is None:
+        return 0
+    unseen = _unseen(obs)
+    return sum(1 for c in obs.hand if st[c] != NO_TRUMP and not any(st[u] > st[c] for u in unseen))
 
 
 def estimated_tricks(obs: Observation) -> float:
@@ -30,11 +47,7 @@ def estimated_tricks(obs: Observation) -> float:
     st = obs.strengths
     if st is None:
         return 0.0
-    seen = set(obs.hand)
-    seen.update(c for _, c in obs.current_trick)
-    for plays, _ in obs.completed_tricks:
-        seen.update(c for _, c in plays)
-    unseen = [c for c in range(32) if c not in seen]
+    unseen = _unseen(obs)
     trumps = [c for c in obs.hand if st[c] != NO_TRUMP]
     trump_value = 0.0
     for c in trumps:
@@ -51,10 +64,15 @@ def estimated_tricks(obs: Observation) -> float:
 def partner_hint(obs: Observation) -> int:
     """PartnerHints.hintFor."""
     needed = TRICKS_TO_WIN - obs.tricks_won[obs.team]
+    opponents_need = TRICKS_TO_WIN - obs.tricks_won[1 - obs.team]
     e = estimated_tricks(obs)
+    if opponents_need <= 1:
+        all_tricks = sure_tricks(obs) >= needed
+    else:
+        all_tricks = e >= needed - _ALL_TRICKS_MARGIN
     if e < _NOTHING_BELOW:
         return NOTHING
-    if e >= _ONE_TRICK_FROM and e >= needed - _ALL_TRICKS_MARGIN:
+    if e >= _ONE_TRICK_FROM and all_tricks:
         return ALL_TRICKS
     if e < _ONE_TRICK_FROM:
         return LITTLE

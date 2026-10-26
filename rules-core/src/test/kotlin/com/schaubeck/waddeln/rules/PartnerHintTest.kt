@@ -19,8 +19,36 @@ class PartnerHintTest {
     private fun hint(player: Int, obs: Observation = state.observationFor(player)) = PartnerHints.hintFor(obs)
 
     @Test
-    fun `two Haubi-Schlaege and a Kritte promise all tricks`() {
-        assertEquals(PartnerHint.ALL_TRICKS, hint(2))
+    fun `two Haubi-Schlaege and the Secher are two tricks, not all three`() {
+        assertEquals(PartnerHint.TWO_TRICKS, hint(2))
+    }
+
+    @Test
+    fun `two Haubi-Schlaege and the Secher are all when two tricks are missing`() {
+        val obs = state.observationFor(2).copy(tricksWon = listOf(1, 0))
+        assertEquals(PartnerHint.ALL_TRICKS, hint(2, obs))
+    }
+
+    @Test
+    fun `when the opponents need only one trick, all tricks must be sure`() {
+        // Max and Bello are still out, so the Secher and the Haubi-Schlaege can be beaten.
+        val obs = state.observationFor(2).copy(tricksWon = listOf(1, 2))
+        assertEquals(0, PartnerHints.sureTricks(obs))
+        assertEquals(PartnerHint.TWO_TRICKS, hint(2, obs))
+    }
+
+    @Test
+    fun `Max and Bello are all two missing tricks even if the opponents need only one`() {
+        val s = playingWith(listOf("HK S7 S10 H9 E9", "SK SU H10 HU E10", "E7 SO HO S9 E8", "SA EA EK H8 G9"), Rank.OBER, Suit.GRAS)
+        val obs = s.observationFor(0).copy(tricksWon = listOf(1, 2))
+        assertEquals(2, PartnerHints.sureTricks(obs))
+        assertEquals(PartnerHint.ALL_TRICKS, hint(0, obs))
+    }
+
+    @Test
+    fun `Max, Bello and the Haubi promise all three tricks`() {
+        val s = playingWith(listOf("HK S7 GO H9 E9", "SK SU H10 HU E10", "E7 SO HO S9 E8", "SA EA EK H8 G9"), Rank.OBER, Suit.GRAS)
+        assertEquals(PartnerHint.ALL_TRICKS, hint(0, s.observationFor(0)))
     }
 
     @Test
