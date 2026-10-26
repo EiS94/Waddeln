@@ -295,6 +295,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         )
         publish()
         cutJob?.cancel()
+        // Who cut by hand, or looked under the rest as dealer, closes the cut with "Weiter".
+        val confirm = (abheber == OfflineGame.HUMAN && settings.selfCut) ||
+            (game.state.dealer == OfflineGame.HUMAN && reveal.kritten.isNotEmpty())
+        if (confirm) return
         cutJob = viewModelScope.launch {
             delay(CutAnimation.durationMs(reveal.kritten.size, reveal.geberKritten.size))
             finishCut()
