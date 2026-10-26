@@ -78,6 +78,78 @@ class DealTest {
         assertEquals(HAND_SIZE, dealt.hands[abheber].size)
     }
 
+    /** Deck where the lifted stack (first [cut] cards) ends with [liftedBottom] and the rest with [restBottom]. */
+    private fun deckWithBottoms(cut: Int, liftedBottom: List<Card>, restBottom: List<Card>): List<Card> {
+        val others = Card.ALL - liftedBottom.toSet() - restBottom.toSet()
+        val inLifted = cut - liftedBottom.size
+        return others.take(inLifted) + liftedBottom + others.drop(inLifted) + restBottom
+    }
+
+    @Test
+    fun `dealer does not look under the rest if the Abheber took no Kritte`() {
+        val deck = deckWithBottoms(10, listOf(c("GA")), listOf(c("HK")))
+        val dealt = dealCards(dealer = 0, deal = Deal(deck, 10))
+        assertEquals(0, dealt.geberKritten)
+        assertEquals(null, dealt.geberCard)
+        assertFalse(c("HK") in dealt.hands[0].take(1))
+        assertEquals(CutReveal(emptyList(), c("GA")), cutReveal(deck, 10))
+    }
+
+    @Test
+    fun `dealer must take the Kritten under the rest after the Abheber took one`() {
+        for (k in 0..2) {
+            val geberKritten = listOf(c("S7"), c("E7")).take(k)
+            val deck = deckWithBottoms(10, listOf(c("GA"), c("HK")), listOf(c("G9")) + geberKritten)
+            val dealer = 2
+            val dealt = dealCards(dealer, Deal(deck, 10))
+            assertEquals(1, dealt.abheberKritten)
+            assertEquals(k, dealt.geberKritten)
+            assertEquals(geberKritten.reversed(), dealt.hands[dealer].take(k))
+            assertEquals(c("G9"), dealt.geberCard)
+            assertEquals(c("GA"), dealt.visibleBottomCard)
+            dealt.hands.forEach { assertEquals(HAND_SIZE, it.size) }
+            assertEquals(12, dealt.stock.size)
+            assertEquals(CutReveal(listOf(c("HK")), c("GA"), geberKritten.reversed(), c("G9")), cutReveal(deck, 10))
+        }
+    }
+
+    @Test
+    fun `the card the dealer saw is dealt or stays in the stock like any other`() {
+        val deck = deckWithBottoms(10, listOf(c("GA"), c("HK")), listOf(c("G9")))
+        val dealt = dealCards(dealer = 0, deal = Deal(deck, 10))
+        assertTrue(dealt.hands.any { c("G9") in it } || c("G9") in dealt.stock)
+        assertFalse(dealt.visibleBottomCard == c("G9"))
+    }
+
+    @Test
+    fun `only the dealer sees the card under the rest, everybody sees how many Kritten he took`() {
+        val deck = deckWithBottoms(10, listOf(c("GA"), c("HK")), listOf(c("G9"), c("S7")))
+        val state = Waddeln.newMatch(firstDealer = 1, deal = Deal(deck, 10))
+        assertEquals(1, state.geberKritten)
+        for (p in 0 until PLAYER_COUNT) {
+            val obs = state.observationFor(p)
+            assertEquals(1, obs.geberKritten)
+            assertEquals(if (p == 1) c("G9") else null, obs.geberCard)
+        }
+    }
+
+    @Test
+    fun `reveal and deal agree for random decks`() {
+        repeat(500) { seed ->
+            val deal = Deal.random(Random(seed))
+            val dealer = seed % 4
+            val reveal = cutReveal(deal.deck, deal.cut)
+            val dealt = dealCards(dealer, deal)
+            assertEquals(reveal.kritten.size, dealt.abheberKritten)
+            assertEquals(reveal.geberKritten.size, dealt.geberKritten)
+            assertEquals(reveal.geberCard, dealt.geberCard)
+            assertEquals(reveal.bottomCard, dealt.visibleBottomCard)
+            assertTrue(dealt.hands[dealer].containsAll(reveal.geberKritten))
+            dealt.hands.forEach { assertEquals(HAND_SIZE, it.size) }
+            assertEquals(Card.ALL.toSet(), (dealt.hands.flatten() + dealt.stock).toSet())
+        }
+    }
+
     @Test
     fun `invalid deals are rejected`() {
         assertFailsWith<IllegalArgumentException> { Deal(Card.ALL, 3) }

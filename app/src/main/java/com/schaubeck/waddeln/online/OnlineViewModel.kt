@@ -276,19 +276,23 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
             krittenCount = cut.krittenCount,
             kritten = cut.kritten,
             bottomCard = cut.bottomCard,
+            geberKrittenCount = cut.geberKrittenCount,
+            geberKritten = cut.geberKritten,
+            geberCard = cut.geberCard,
         )
         cutJob?.cancel()
         cutJob = viewModelScope.launch {
-            delay(CutAnimation.durationMs(cut.krittenCount))
+            delay(CutAnimation.durationMs(cut.krittenCount, cut.geberKrittenCount))
             finishCut()
         }
     }
 
-    /** After the cut the Abheber tells the table how many Kritten they took. */
+    /** After the cut Abheber and dealer tell the table how many Kritten they took. */
     private fun finishCut() {
         val shown = cutShown ?: return
         cutShown = null
         if (shown.krittenCount > 0) say(shown.abheber, sayings.kritten(shown.krittenCount))
+        if (shown.geberKrittenCount > 0) say(shown.geber, sayings.kritten(shown.geberKrittenCount), delayMs = ANSWER_DELAY_MS)
         refreshGame()
     }
 

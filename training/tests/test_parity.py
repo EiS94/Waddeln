@@ -46,6 +46,8 @@ def replay(match):
         assert state.hands == rnd["hands"], ctx
         assert state.stock == rnd["stock"], ctx
         assert state.abheber_kritten == rnd["abheberKritten"], ctx
+        assert state.geber_kritten == rnd["geberKritten"], ctx
+        assert state.geber_card == rnd["geberCard"], ctx
 
         for i, step in enumerate(rnd["steps"]):
             sctx = f"{ctx} step {i}"
@@ -122,7 +124,7 @@ def replay_talk(state, step, ctx, checked):
 
 def test_protocols_replay_identically():
     totals = {"steps": 0, "bot": 0, "features": 0, "discard": 0, "discard_changed": 0,
-              "hints": 0, "schadet": 0, "schlagwechsel": 0, "bluffs": 0, "laid_out": 0, "kritte_haubi": 0, "matches": 0}
+              "hints": 0, "schadet": 0, "schlagwechsel": 0, "bluffs": 0, "laid_out": 0, "kritte_haubi": 0, "geber_kritten": 0, "matches": 0}
     for match in load_matches():
         checked = replay(match)
         for k in checked:
@@ -130,6 +132,7 @@ def test_protocols_replay_identically():
         totals["matches"] += 1
         totals["laid_out"] += sum(1 for r in match["rounds"] for s in r["steps"]
                                   if "after" in s and s["after"]["laidOut"] is not None)
+        totals["geber_kritten"] += sum(1 for r in match["rounds"] if r["geberKritten"] > 0)
         for r in match["rounds"]:
             codes = [s["a"] for s in r["steps"] if "a" in s][:2]
             if len(codes) == 2 and codes[0] < 8 and 8 <= codes[1] < 12:
@@ -144,3 +147,4 @@ def test_protocols_replay_identically():
     assert totals["schadet"] > 20, "protocols should cover Schadder"
     assert totals["schlagwechsel"] > 50, "protocols should cover the Schlagwechsel"
     assert totals["bluffs"] > 5, "protocols should cover bluffing with Schadder"
+    assert totals["geber_kritten"] > 0, "protocols should cover the dealer taking Kritten under the rest"

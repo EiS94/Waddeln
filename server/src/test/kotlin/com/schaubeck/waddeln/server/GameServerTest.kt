@@ -259,13 +259,19 @@ class GameServerTest {
         assertEquals(12, mine.cut)
         assertEquals(mine.krittenCount, mine.kritten.size)
         assertTrue(host.table.game!!.observation.hand.containsAll(mine.kritten))
-        assertEquals(mine.copy(kritten = emptyList()), theirs)
+        // The guest sits after the Abheber, so is the dealer: only they see what lies under the rest.
+        assertEquals(1, guest.table.yourSeat)
+        assertEquals(mine.copy(kritten = emptyList(), geberKritten = theirs.geberKritten, geberCard = theirs.geberCard), theirs)
+        assertNull(mine.geberCard)
+        assertEquals(mine.krittenCount > 0, theirs.geberCard != null)
+        assertEquals(guest.table.game!!.observation.geberCard, theirs.geberCard)
+        assertEquals(theirs.geberKrittenCount, theirs.geberKritten.size)
         assertEquals(host.table.game!!.observation.visibleBottomCard, mine.bottomCard)
         assertEquals(mine.krittenCount, host.table.game!!.observation.abheberKritten)
 
         // The bots wait until the cut has been shown.
         val before = host.table.game!!.observation
-        advanceTimeBy(CutAnimation.durationMs(mine.krittenCount))
+        advanceTimeBy(CutAnimation.durationMs(mine.krittenCount, mine.geberKrittenCount))
         assertEquals(before, host.table.game!!.observation)
     }
 

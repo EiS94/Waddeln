@@ -401,7 +401,7 @@ class Room(
         state = round.deal(cut)
         pendingRound = null
         lastCut = RoomCut(round.abheber, cut, reveal)
-        changed(CutAnimation.durationMs(reveal.kritten.size))
+        changed(CutAnimation.durationMs(reveal.kritten.size, reveal.geberKritten.size))
     }
 
     /** After every change: maybe advance, inform everybody, let the bots continue. */
@@ -579,6 +579,9 @@ class Room(
             krittenCount = c.reveal.kritten.size,
             kritten = if (seat == c.abheber) c.reveal.kritten else emptyList(),
             bottomCard = c.reveal.bottomCard,
+            geberKrittenCount = c.reveal.geberKritten.size,
+            geberKritten = if (seat == s.dealer) c.reveal.geberKritten else emptyList(),
+            geberCard = c.reveal.geberCard.takeIf { seat == s.dealer },
         )
     }
 

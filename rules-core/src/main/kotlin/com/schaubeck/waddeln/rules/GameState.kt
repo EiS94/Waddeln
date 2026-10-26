@@ -71,6 +71,10 @@ data class GameState(
     /** The 12 undealt cards; the last one is openly visible. */
     val stock: List<Card>,
     val abheberKritten: Int,
+    /** Kritten the dealer took from the bottom of the rest (only after the Abheber took some). */
+    val geberKritten: Int = 0,
+    /** The card the dealer saw under the rest; only he may know it. Null if he did not look. */
+    val geberCard: Card? = null,
     val schlag: Rank? = null,
     val farbe: Suit? = null,
     /** Cards laid face down per player when gespannt meets gespannt (null otherwise). */

@@ -141,6 +141,8 @@ object ProtocolGenerator {
         "hands" to Json.arr(state.hands.map { hand -> Json.ints(hand.map { it.index }) }),
         "stock" to Json.ints(state.stock.map { it.index }),
         "abheberKritten" to state.abheberKritten.toString(),
+        "geberKritten" to state.geberKritten.toString(),
+        "geberCard" to (state.geberCard?.index?.toString() ?: "null"),
     )
 
     private fun roundJson(header: List<Pair<String, String>>, steps: List<String>, end: GameState): String {

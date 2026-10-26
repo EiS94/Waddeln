@@ -4,7 +4,8 @@ import kotlinx.serialization.Serializable
 
 /**
  * What [player] is allowed to know about a [GameState]: their own hand, all played cards,
- * the number (not identity) of Kritten the Abheber took, the open bottom card of the stock and,
+ * the number (not identity) of Kritten the Abheber and the dealer took, the open bottom card of the
+ * stock, the card the dealer saw under the rest (only for the dealer) and,
  * when gespannt meets gespannt, how many cards each player still has laid out, and everything
  * said at the table (Schub, partner talk, "Schadder?", Schlagwechsel).
  */
@@ -19,6 +20,10 @@ data class Observation(
     val handSizes: List<Int>,
     val abheberKritten: Int,
     val visibleBottomCard: Card,
+    /** Kritten the dealer took from the bottom of the rest. */
+    val geberKritten: Int = 0,
+    /** The card the dealer saw under the rest: only in the dealer's own observation. */
+    val geberCard: Card? = null,
     val schlag: Rank?,
     val farbe: Suit?,
     val trickLeader: Int,
@@ -66,6 +71,8 @@ data class Observation(
                 handSizes = state.hands.map { it.size },
                 abheberKritten = state.abheberKritten,
                 visibleBottomCard = state.visibleBottomCard,
+                geberKritten = state.geberKritten,
+                geberCard = state.geberCard.takeIf { player == state.dealer },
                 schlag = state.schlag,
                 farbe = state.farbe,
                 trickLeader = state.trickLeader,

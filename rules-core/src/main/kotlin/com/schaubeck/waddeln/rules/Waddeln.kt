@@ -42,6 +42,8 @@ object Waddeln {
             hands = dealt.hands,
             stock = dealt.stock,
             abheberKritten = dealt.abheberKritten,
+            geberKritten = dealt.geberKritten,
+            geberCard = dealt.geberCard,
             trickLeader = nextPlayer(dealer),
         )
     }

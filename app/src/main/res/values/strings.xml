@@ -144,6 +144,12 @@
     <string name="cut_your_kritten">Deine Kritten</string>
     <string name="cut_kritten_of">Kritten von %1$s</string>
     <string name="cut_next">Weiter</string>
+    <string name="cut_geber_looks_you">Du schaust unter den Rest …</string>
+    <string name="cut_geber_looks_other">%1$s schaut unter den Rest …</string>
+    <string name="cut_geber_no_kritte_you">Keine Kritte. Die Karte siehst nur du.</string>
+    <string name="cut_geber_no_kritte_other">Keine Kritte für %1$s. Die Karte sieht nur er.</string>
+    <string name="cut_geber_kritten">%1$s für %2$s.</string>
+    <string name="cut_geber_kritten_you">%1$s für dich.</string>
 
     <!-- Sayings: announcements -->
     <string name="say_schlag_seven">Sieben|Siebener|Die Siebener</string>
@@ -361,7 +367,8 @@
     <string name="rules_round_title">Ablauf einer Runde</string>
     <string name="rules_round_1">**Geber:** Zuerst wird der Geber ausgelost, danach wandert das Amt jede Runde im Uhrzeigersinn weiter.</string>
     <string name="rules_round_2">**Abheben:** Der Spieler vor dem Geber (der **Abheber**) hebt den Stapel ab und schaut unter den abgehobenen Teil. Liegt dort eine Kritte, **muss** er sie nehmen – und die nächste auch, solange Kritten direkt übereinander liegen. Die anderen sehen, wie viele Kritten er genommen hat, aber nicht welche.</string>
-    <string name="rules_round_3">**Ausgeben:** Jeder bekommt 5 Karten, erst 3, dann 2. Die Kritten des Abhebers zählen schon mit. 12 Karten bleiben übrig; die unterste davon liegt offen und jeder kann sie sehen.</string>
+    <string name="rules_round_2b">**Der Geber schaut nach:** Hat der Abheber mindestens eine Kritte genommen, schaut der **Geber** unter den anderen Stapel (den Rest). Liegen dort Kritten, **muss** er sie genauso nehmen. Die erste andere Karte sieht nur er; sie wird ganz normal mit ausgeteilt. Auch hier sehen die anderen nur, wie viele Kritten er genommen hat.</string>
+    <string name="rules_round_3">**Ausgeben:** Jeder bekommt 5 Karten, erst 3, dann 2. Die Kritten von Abheber und Geber zählen schon mit. 12 Karten bleiben übrig; die unterste davon liegt offen und jeder kann sie sehen.</string>
     <string name="rules_round_4">**Haubi ansagen:** Der Spieler nach dem Geber sagt den **Schlag** an, der Geber die **Farbe**.</string>
     <string name="rules_round_5">**Schlagwechsel:** Statt den Schlag anzusagen, darf der Spieler nach dem Geber einmal pro Runde einen Schlagwechsel vorschlagen. Stimmt der Geber zu, sagt der Geber den Schlag und der Spieler nach ihm die Farbe.</string>
 

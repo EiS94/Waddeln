@@ -188,6 +188,7 @@ private val RULES = listOf(
         listOf(
             Block.Text(R.string.rules_round_1),
             Block.Text(R.string.rules_round_2),
+            Block.Text(R.string.rules_round_2b),
             Block.Text(R.string.rules_round_3),
             Block.Text(R.string.rules_round_4),
             Block.Text(R.string.rules_round_5),

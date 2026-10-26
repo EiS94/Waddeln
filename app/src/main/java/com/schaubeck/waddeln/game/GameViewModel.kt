@@ -289,20 +289,24 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             krittenCount = reveal.kritten.size,
             kritten = reveal.kritten.takeIf { abheber == OfflineGame.HUMAN }.orEmpty(),
             bottomCard = reveal.bottomCard,
+            geberKrittenCount = reveal.geberKritten.size,
+            geberKritten = reveal.geberKritten.takeIf { game.state.dealer == OfflineGame.HUMAN }.orEmpty(),
+            geberCard = reveal.geberCard.takeIf { game.state.dealer == OfflineGame.HUMAN },
         )
         publish()
         cutJob?.cancel()
         cutJob = viewModelScope.launch {
-            delay(CutAnimation.durationMs(reveal.kritten.size))
+            delay(CutAnimation.durationMs(reveal.kritten.size, reveal.geberKritten.size))
             finishCut()
         }
     }
 
-    /** After the cut: the Abheber tells the table how many Kritten they took, then the game goes on. */
+    /** After the cut: Abheber and dealer tell the table how many Kritten they took, then the game goes on. */
     private fun finishCut() {
         val shown = cutShown ?: return
         cutShown = null
         if (shown.krittenCount > 0) say(shown.abheber, sayings.kritten(shown.krittenCount))
+        if (shown.geberKrittenCount > 0) say(shown.geber, sayings.kritten(shown.geberKrittenCount), delayMs = ANSWER_DELAY_MS)
         publish()
         runBots()
     }

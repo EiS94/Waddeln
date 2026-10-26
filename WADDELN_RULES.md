@@ -78,19 +78,30 @@ Ansonsten gilt immer: höherer Rang gewinnt.
   wieder ein Kritte, muss er auch diesen nehmen – usw., solange Kritten direkt untereinander liegen
   (maximal 3).
 - Die erste Karte, die **kein** Kritte ist, bleibt liegen und ist die sichtbare unterste Karte des Decks.
+- **Hat der Abheber mindestens einen Kritten genommen**, darf das gegnerische Team nachschauen:
+  Der **Geber** sieht sich die **unterste Karte des anderen Stapels** (des Rests) an – das ist die unterste
+  Karte des ursprünglichen Decks.
+  - Ist sie ein Kritte, **muss** er ihn nehmen – und ebenso jeden weiteren Kritten, der danach unten liegt
+    (solange Kritten direkt untereinander liegen).
+  - Die erste Karte, die **kein** Kritte ist, sieht **nur der Geber**. Sie bleibt im Stapel und wird ganz normal
+    mit ausgeteilt (bei wem sie landet, weiß niemand genau).
+  - Hat der Abheber keinen Kritten genommen, schaut der Geber nicht nach.
 - Anschließend wird der abgehobene Stapel wie üblich unter den Rest gelegt; das Deck wird zum Ausgeben
   an den Geber gegeben.
 
 #### Was sehen die anderen Spieler?
-- Die anderen Spieler sehen, **dass und wie viele** Kritten der Abheber genommen hat,
+- Die anderen Spieler sehen, **dass und wie viele** Kritten der Abheber und der Geber genommen haben,
   aber **nicht welche**.
-- Die sichtbare unterste Karte des Decks (erste Nicht-Kritte) ist offen sichtbar.
+- Die sichtbare unterste Karte des Decks (erste Nicht-Kritte des abgehobenen Stapels) ist offen sichtbar.
+- Die Karte, die der Geber unter dem Rest gesehen hat, kennt nur er.
 
 ### 3. Ausgeben
 - Jeder Spieler hat am Ende genau **5 Karten**. Ausgegeben wird in zwei Durchgängen: erst 3, dann 2 Karten pro Spieler.
 - Hat der Abheber *k* Kritten genommen, zählen diese als seine ersten Karten:
   Er erhält im ersten Durchgang nur **3 − k** Karten (bei 3 Kritten keine), im zweiten Durchgang wie gewohnt 2.
+- Für die Kritten des Gebers gilt dasselbe: Er erhält im ersten Durchgang nur **3 − k** Karten.
 - Die restlichen **12 Karten** bleiben verdeckt als Deck neben dem Spielfeld liegen.
+  (Die vom Geber gesehene Karte kann dabei auch im Deck landen.)
 - Die **unterste Karte** des Decks ist offen sichtbar (siehe Abheben).
 
 ### 4. Haubi festlegen
@@ -211,8 +222,9 @@ Das gegnerische Team hört dabei mit.
 ```
 1. Geber bestimmen (zufällig beim ersten Spiel, dann rotierend)
 2. Spieler vor Geber hebt ab; liegen unten am abgehobenen Stapel Kritten,
-   muss er sie nehmen (andere sehen nur die Anzahl, nicht welche)
-3. Ausgeben (3 + 2), bis jeder 5 Karten hat; der Abheber bekommt entsprechend weniger;
+   muss er sie nehmen (andere sehen nur die Anzahl, nicht welche);
+   hat er welche genommen, schaut der Geber unter den Rest und muss dort liegende Kritten ebenfalls nehmen
+3. Ausgeben (3 + 2), bis jeder 5 Karten hat; Abheber und Geber bekommen entsprechend weniger;
    12 Karten bleiben im Deck, die unterste ist offen
 4. Spieler nach Geber sagt Schlag an (oder schlägt einen Schlagwechsel vor; stimmt der Geber zu,
    sagt der Geber den Schlag und der Spieler nach ihm die Farbe an)

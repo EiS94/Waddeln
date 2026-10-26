@@ -146,26 +146,38 @@ def random_deal(rng: _random.Random) -> tuple[list[int], int]:
 
 
 def deal_cards(dealer: int, deck: list[int], cut: int):
-    """Returns (hands, stock, abheber_kritten); see Deal.kt."""
+    """Returns (hands, stock, abheber_kritten, geber_kritten, geber_card); see Deal.kt."""
     assert len(deck) == 32 and len(set(deck)) == 32
     assert MIN_CUT <= cut <= 32 - MIN_CUT
     abheber = abheber_of(dealer)
     lifted = list(deck[:cut])
-    rest = deck[cut:]
+    rest = list(deck[cut:])
     taken = []
     while lifted[-1] in KRITTE_SET:
         taken.append(lifted.pop())
+    # The dealer looks under the rest only after the Abheber took Kritten.
+    geber_taken = []
+    if taken:
+        while rest[-1] in KRITTE_SET:
+            geber_taken.append(rest.pop())
+    geber_card = rest[-1] if taken else None
     pile = rest + lifted
     pos = 0
     hands = [[] for _ in range(PLAYER_COUNT)]
     hands[abheber].extend(taken)
+    hands[dealer].extend(geber_taken)
     order = [(dealer + 1 + i) % PLAYER_COUNT for i in range(PLAYER_COUNT)]
     for rnd in (3, 2):
         for p in order:
-            count = 3 - len(taken) if (rnd == 3 and p == abheber) else rnd
+            if rnd == 3 and p == abheber:
+                count = 3 - len(taken)
+            elif rnd == 3 and p == dealer:
+                count = 3 - len(geber_taken)
+            else:
+                count = rnd
             hands[p].extend(pile[pos:pos + count])
             pos += count
-    return hands, pile[pos:], len(taken)
+    return hands, pile[pos:], len(taken), len(geber_taken), geber_card
 
 
 # ---- State --------------------------------------------------------------------------------
@@ -180,6 +192,8 @@ class State:
     stock: list[int]
     abheber_kritten: int
     trick_leader: int
+    geber_kritten: int = 0
+    geber_card: int | None = None  # what the dealer saw under the rest
     schlag: int | None = None
     farbe: int | None = None
     laid_out: list[set[int]] | None = None
@@ -247,9 +261,10 @@ class State:
 
 
 def _start_round(scores, dealer, round_number, deck, cut) -> State:
-    hands, stock, k = deal_cards(dealer, deck, cut)
+    hands, stock, k, gk, gc = deal_cards(dealer, deck, cut)
     return State(scores=list(scores), dealer=dealer, round_number=round_number, phase=SCHLAG,
-                 hands=hands, stock=stock, abheber_kritten=k, trick_leader=next_player(dealer))
+                 hands=hands, stock=stock, abheber_kritten=k, trick_leader=next_player(dealer),
+                 geber_kritten=gk, geber_card=gc)
 
 
 def new_match(first_dealer: int, deck: list[int], cut: int) -> State:
@@ -497,6 +512,8 @@ class Observation:
     last_schub_team: int | None
     pending_schub: int | None
     laid_out_counts: list[int] | None
+    geber_kritten: int = 0
+    geber_card: int | None = None  # only in the dealer's own observation
     schubs: list[tuple[int, int]] = field(default_factory=list)
     hints: list[tuple[int, int, int]] = field(default_factory=list)
     schadet: tuple[int, int | None] | None = None
@@ -522,6 +539,8 @@ def observe(state: State, player: int) -> Observation:
         player=player, phase=state.phase, scores=state.scores, dealer=state.dealer,
         hand=state.hands[player], hand_sizes=[len(h) for h in state.hands],
         abheber_kritten=state.abheber_kritten, visible_bottom_card=state.visible_bottom_card,
+        geber_kritten=state.geber_kritten,
+        geber_card=state.geber_card if player == state.dealer else None,
         schlag=state.schlag, farbe=state.farbe, trick_leader=state.trick_leader,
         current_trick=state.current_trick, completed_tricks=state.completed_tricks,
         tricks_won=state.tricks_won, game_value=state.game_value,

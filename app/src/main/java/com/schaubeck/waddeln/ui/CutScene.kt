@@ -63,7 +63,8 @@ private const val DECK_SIZE = 32
  * The Abheber cuts before the deal, in the middle of the table. While they choose, the deck lies
  * spread out (we choose by tapping or dragging, [onCut]); then the lifted stack is set apart, the
  * Kritten at its bottom are taken one after the other (face down for everybody but the Abheber)
- * and the first other card is turned over. [onCutSeen] skips the rest of the animation.
+ * and the first other card is turned over. If the Abheber took Kritten, the dealer then looks under
+ * the rest in the same way (only he sees the cards). [onCutSeen] skips the rest of the animation.
  */
 @Composable
 fun CutScene(table: TableUi, cut: CutUi, onCut: (Int) -> Unit, onCutSeen: () -> Unit, modifier: Modifier = Modifier) {
@@ -89,7 +90,7 @@ fun CutScene(table: TableUi, cut: CutUi, onCut: (Int) -> Unit, onCutSeen: () -> 
                 color = Highlight, fontSize = 18.sp, fontWeight = FontWeight.Bold,
             )
             Spacer(Modifier.height(10.dp))
-            Reveal(cut, lifted, name, mine, onCutSeen)
+            Reveal(cut, lifted, name, mine, table.names[cut.geber], cut.geber == table.me, onCutSeen)
         }
     }
 }
@@ -165,15 +166,33 @@ private fun Spread(selected: Int?, onSelect: ((Int) -> Unit)?) {
     }
 }
 
-/** After the cut: the two stacks, the Kritten taken one by one and the open bottom card. */
+/**
+ * After the cut: the two stacks, the Kritten taken one by one and the open bottom card; then, if
+ * the Abheber took Kritten, the dealer ([geberName], [geberMine] if that is us) does the same under the rest.
+ */
 @Composable
-private fun Reveal(cut: CutUi, lifted: Int, name: String, mine: Boolean, onCutSeen: () -> Unit) {
+private fun Reveal(
+    cut: CutUi,
+    lifted: Int,
+    name: String,
+    mine: Boolean,
+    geberName: String,
+    geberMine: Boolean,
+    onCutSeen: () -> Unit,
+) {
     val count = cut.krittenCount
+    val geberCount = cut.geberKrittenCount
+    val geberLooks = count > 0
     val split = remember(cut) { Animatable(0f) }
     /** Kritten taken so far; the one at index [taken] lies face up below the lifted stack meanwhile. */
     var taken by remember(cut) { mutableIntStateOf(0) }
     var showing by remember(cut) { mutableStateOf<Int?>(null) }
     var bottomShown by remember(cut) { mutableStateOf(false) }
+    // The same for the dealer below the rest.
+    var geberLooking by remember(cut) { mutableStateOf(false) }
+    var geberTaken by remember(cut) { mutableIntStateOf(0) }
+    var geberShowing by remember(cut) { mutableStateOf<Int?>(null) }
+    var geberCardShown by remember(cut) { mutableStateOf(false) }
     LaunchedEffect(cut) {
         split.animateTo(1f, tween((CutAnimation.SPLIT_MS * 0.7).toInt(), easing = FastOutSlowInEasing))
         delay((CutAnimation.SPLIT_MS * 0.3).toLong())
@@ -186,7 +205,21 @@ private fun Reveal(cut: CutUi, lifted: Int, name: String, mine: Boolean, onCutSe
         }
         delay(CutAnimation.BOTTOM_MS / 2)
         bottomShown = true
+        if (!geberLooks) return@LaunchedEffect
+        delay(CutAnimation.BOTTOM_MS / 2 + CutAnimation.GEBER_MS / 2)
+        geberLooking = true
+        delay(CutAnimation.GEBER_MS / 2)
+        repeat(geberCount) { i ->
+            geberShowing = i
+            delay(CutAnimation.KRITTE_MS * 2 / 3)
+            geberShowing = null
+            geberTaken = i + 1
+            delay(CutAnimation.KRITTE_MS / 3)
+        }
+        delay(CutAnimation.BOTTOM_MS / 2)
+        geberCardShown = true
     }
+    val done = if (geberLooks) geberCardShown else bottomShown
     val pileWidth = 44.dp
     val slotWidth = 58.dp
     Row(
@@ -213,12 +246,36 @@ private fun Reveal(cut: CutUi, lifted: Int, name: String, mine: Boolean, onCutSe
             Modifier.offset(x = 24.dp * split.value),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Pile(DECK_SIZE - lifted, pileWidth, R.string.cut_pile_rest)
+            Pile(DECK_SIZE - lifted - geberTaken, pileWidth, R.string.cut_pile_rest)
+            if (geberLooks) {
+                Spacer(Modifier.height(6.dp))
+                // Below the rest: what the dealer looks at; only he sees the faces.
+                Box(Modifier.size(slotWidth, slotWidth * CARD_ASPECT), contentAlignment = Alignment.Center) {
+                    val index = geberShowing
+                    when {
+                        index != null -> key(index) { Appearing { KritteCard(cut.geberKritten.getOrNull(index), slotWidth) } }
+                        geberCardShown -> Appearing {
+                            val card = cut.geberCard
+                            if (card != null) CardView(card, width = slotWidth) else CardBack(width = slotWidth)
+                        }
+                    }
+                }
+            }
         }
     }
     Spacer(Modifier.height(8.dp))
     val status = when {
         showing != null -> if (mine) stringResource(R.string.cut_kritte_you) else stringResource(R.string.cut_kritte_other, name)
+        geberShowing != null -> if (geberMine) stringResource(R.string.cut_kritte_you) else stringResource(R.string.cut_kritte_other, geberName)
+        geberCardShown && geberCount == 0 ->
+            if (geberMine) stringResource(R.string.cut_geber_no_kritte_you) else stringResource(R.string.cut_geber_no_kritte_other, geberName)
+        geberCardShown || geberTaken > 0 ->
+            if (geberMine) {
+                stringResource(R.string.cut_geber_kritten_you, Texts.kritten(geberTaken))
+            } else {
+                stringResource(R.string.cut_geber_kritten, Texts.kritten(geberTaken), geberName)
+            }
+        geberLooking -> if (geberMine) stringResource(R.string.cut_geber_looks_you) else stringResource(R.string.cut_geber_looks_other, geberName)
         bottomShown && count == 0 -> stringResource(R.string.cut_no_kritte)
         bottomShown -> stringResource(R.string.cut_kritten_bottom, Texts.kritten(count))
         else -> " "
@@ -231,7 +288,14 @@ private fun Reveal(cut: CutUi, lifted: Int, name: String, mine: Boolean, onCutSe
             repeat(taken) { i -> Appearing(fromAbove = true) { KritteCard(cut.kritten.getOrNull(i), 36.dp) } }
         }
     }
-    if (mine && bottomShown) {
+    if (geberTaken > 0) {
+        Spacer(Modifier.height(6.dp))
+        Text(if (geberMine) stringResource(R.string.cut_your_kritten) else stringResource(R.string.cut_kritten_of, geberName), color = Highlight, fontSize = 12.sp)
+        Row(Modifier.height(36.dp * CARD_ASPECT), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            repeat(geberTaken) { i -> Appearing(fromAbove = true) { KritteCard(cut.geberKritten.getOrNull(i), 36.dp) } }
+        }
+    }
+    if ((mine || geberMine) && done) {
         TextButton(onClick = onCutSeen) { Text(stringResource(R.string.cut_next), color = Highlight) }
     }
 }

@@ -216,19 +216,30 @@ data class CutView(
     val kritten: List<Card> = emptyList(),
     /** The open bottom card of the lifted stack; null before the cut. */
     val bottomCard: Card? = null,
+    /** Kritten the dealer took from under the rest (only after the Abheber took some). */
+    val geberKrittenCount: Int = 0,
+    /** Which Kritten: only in the dealer's own view. */
+    val geberKritten: List<Card> = emptyList(),
+    /** The card the dealer saw under the rest: only in the dealer's own view. */
+    val geberCard: Card? = null,
 )
 
 /**
  * How long the cut is shown: the stacks part, every Kritte is taken, the bottom card is turned
- * over and then stays a moment. The app animates it so; the server lets the bots wait that long.
+ * over; if the Abheber took Kritten, the dealer then looks under the rest and takes his Kritten.
+ * Then it stays a moment. The app animates it so; the server lets the bots wait that long.
  */
 object CutAnimation {
     const val SPLIT_MS = 900L
     const val KRITTE_MS = 1100L
     const val BOTTOM_MS = 700L
+    const val GEBER_MS = 900L
     const val HOLD_MS = 1800L
 
-    fun durationMs(kritten: Int): Long = SPLIT_MS + kritten * KRITTE_MS + BOTTOM_MS + HOLD_MS
+    fun durationMs(kritten: Int, geberKritten: Int): Long {
+        val geber = if (kritten > 0) GEBER_MS + geberKritten * KRITTE_MS + BOTTOM_MS else 0
+        return SPLIT_MS + kritten * KRITTE_MS + BOTTOM_MS + geber + HOLD_MS
+    }
 }
 
 @Serializable

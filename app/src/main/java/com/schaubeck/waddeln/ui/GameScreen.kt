@@ -413,6 +413,7 @@ private fun SeatChip(table: TableUi, seat: Int, modifier: Modifier = Modifier) {
         if (leads) add(stringResource(R.string.badge_leads))
         if (cut != null && seat == cut.abheber) add(stringResource(R.string.badge_abheber))
         if (cut == null && seat == s.abheber && s.abheberKritten > 0) add(stringResource(R.string.badge_kritten_taken, Texts.kritten(s.abheberKritten)))
+        if (cut == null && seat == s.dealer && s.geberKritten > 0) add(stringResource(R.string.badge_kritten_taken, Texts.kritten(s.geberKritten)))
         s.laidOutCounts?.get(seat)?.takeIf { it > 0 }?.let { add(stringResource(R.string.badge_laid_out, it)) }
         if (seat in table.absent) add(stringResource(R.string.badge_absent))
         if (seat in table.bots) add(stringResource(R.string.badge_bot))

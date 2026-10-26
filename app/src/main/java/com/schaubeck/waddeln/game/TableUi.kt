@@ -34,7 +34,16 @@ data class CutUi(
     val kritten: List<Card> = emptyList(),
     /** The open bottom card of the lifted stack, once cut. */
     val bottomCard: Card? = null,
-)
+    /** Kritten the dealer took from under the rest (he looks only if the Abheber took some). */
+    val geberKrittenCount: Int = 0,
+    /** Which Kritten, if we may see them (we are the dealer); otherwise empty. */
+    val geberKritten: List<Card> = emptyList(),
+    /** The card the dealer saw under the rest, if we are the dealer. */
+    val geberCard: Card? = null,
+) {
+    /** The dealer: the player after the Abheber. */
+    val geber: Int get() = (abheber + 1) % PLAYER_COUNT
+}
 
 /** How long after a question its immediate answer is said. */
 const val ANSWER_DELAY_MS = 1300L
