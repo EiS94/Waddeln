@@ -179,6 +179,22 @@
     <!-- "All tricks", by the number of tricks the team still needs -->
     <string name="say_hint_all_3">Ich mach alle 3 Stiche!|Die mach ich alle!</string>
     <string name="say_hint_all_2">Die zwei Stiche mach ich!|Die zwei hab ich!</string>
+    <string name="say_hint_with_little">Den vielleicht, sonst nicht viel.|Den könnt ich holen, mehr nicht viel.</string>
+    <string name="say_hint_with_one">Mit dem einen.|Den hol ich, mehr nicht.</string>
+    <string name="say_hint_with_two">Mit dem noch 2.|Den und noch einen.</string>
+    <string name="say_hint_with_all">Mit dem alle!|Den und den Rest auch!</string>
+    <string name="say_hint_with_all_1">Den hol ich, dann haben wir\'s!|Den mach ich, das reicht!</string>
+    <string name="say_hint_after_nothing">Nach dem nix mehr.|Den haben wir, danach nix.</string>
+    <string name="say_hint_after_little">Nach dem nicht mehr viel.|Den haben wir, danach nicht viel.</string>
+    <string name="say_hint_after_one">Nach dem noch 1.|Den haben wir, danach noch einen.</string>
+    <string name="say_hint_after_two">Nach dem noch 2.|Den haben wir, danach noch zwei.</string>
+    <string name="say_hint_after_all">Nach dem den Rest auch!|Den haben wir, und den Rest mach ich!</string>
+    <string name="say_hint_after_all_done">Mit dem haben wir\'s!|Der reicht uns!</string>
+    <string name="say_hint_not_nothing">Den nicht, und danach auch nix.|Den nicht und sonst auch nix.</string>
+    <string name="say_hint_not_little">Den nicht, danach nicht viel.|Den nicht, und danach schaut\'s mau aus.</string>
+    <string name="say_hint_not_one">Den nicht, aber danach noch 1.|Den nicht, aber danach einen.</string>
+    <string name="say_hint_not_two">Den nicht, aber danach noch 2.|Den nicht, aber danach zwei.</string>
+    <string name="say_hint_not_all">Den nicht, aber danach alle!|Den nicht, aber den Rest mach ich!</string>
     <string name="say_hint_all_1">Den letzten Stich mach ich!|Den letzten hab ich!</string>
 
     <!-- Sayings: "Schadder?" before leading the Haubi into the first trick -->

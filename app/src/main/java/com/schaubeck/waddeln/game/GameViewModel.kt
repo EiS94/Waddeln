@@ -162,9 +162,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     /** During a Schub against us: the partner tells roughly how good their cards are. */
     fun onAskPartner() {
         if (partnerHint() != null) return
-        val hint = game.askPartner() ?: return
+        val answer = game.askPartner() ?: return
         val s = game.state
-        val text = sayings.partnerHint(hint, s.tricksWon[teamOf(OfflineGame.HUMAN)])
+        val text = sayings.partnerHint(answer.hint, s.tricksWon[teamOf(OfflineGame.HUMAN)], answer.trick)
         givenHint = s.gameValue to text
         say(OfflineGame.HUMAN, sayings.partnerQuestion())
         say(OfflineGame.PARTNER, text, delayMs = ANSWER_DELAY_MS)
@@ -263,7 +263,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                         // The opponents talk aloud: question by the bot, answer by its partner right after.
                         say(bot, sayings.partnerQuestion())
                         val partner = partnerOf(bot)
-                        say(partner, sayings.partnerHint(step.hint, game.state.tricksWon[teamOf(partner)]), delayMs = ANSWER_DELAY_MS)
+                        val text = sayings.partnerHint(step.answer.hint, game.state.tricksWon[teamOf(partner)], step.answer.trick)
+                        say(partner, text, delayMs = ANSWER_DELAY_MS)
                         true
                     }
                 }

@@ -5,6 +5,7 @@ import com.schaubeck.waddeln.rules.Observation
 import com.schaubeck.waddeln.rules.PLAYER_COUNT
 import com.schaubeck.waddeln.rules.Rank
 import com.schaubeck.waddeln.rules.TRICKS_TO_WIN
+import com.schaubeck.waddeln.rules.Trump
 import com.schaubeck.waddeln.rules.teamOf
 import com.schaubeck.waddeln.rules.trickWinnerIndex
 import kotlinx.serialization.Serializable
@@ -17,49 +18,98 @@ import kotlinx.serialization.Serializable
 enum class PartnerHint { NOTHING, LITTLE, ONE_TRICK, TWO_TRICKS, ALL_TRICKS }
 
 /**
+ * How the trick being played is meant in a [PartnerHint], so it can be said:
+ * [WITH] "with this one" (I can still take it myself, it is part of my count),
+ * [AFTER] "after this one" (our team probably has it already; I count what comes after),
+ * [NOT] "not this one, but after it" (the opponents probably have it),
+ * [NONE] no trick is being played, or it is unclear.
+ */
+@Serializable
+enum class HintTrick { NONE, WITH, AFTER, NOT }
+
+/** A partner's answer: the [hint] and how the trick being played is meant in it. */
+data class PartnerAnswer(val hint: PartnerHint, val trick: HintTrick = HintTrick.NONE)
+
+/**
  * Turns a hand into a [PartnerHint]. A plain heuristic (no ML): every card is worth the chance
  * that it takes a trick, depending on how many stronger trumps are still unseen; several trumps
  * together give extra control. "All tricks" needs an estimate close to the tricks still needed;
  * if the opponents need only one more trick, every trick still needed must be sure.
- * A trick being played that one team surely takes already counts for that team.
+ * A trick being played that one team probably takes already counts for that team ([trickFor]).
  */
 object PartnerHints {
 
-    fun hintFor(obs: Observation): PartnerHint {
-        val current = sureWinnerOfCurrentTrick(obs)
-        val needed = TRICKS_TO_WIN - obs.tricksWon[obs.team] - (if (current == obs.team) 1 else 0)
-        val opponentsNeed = TRICKS_TO_WIN - obs.tricksWon[1 - obs.team] - (if (current == 1 - obs.team) 1 else 0)
-        if (needed <= 0) return PartnerHint.ALL_TRICKS
-        if (opponentsNeed <= 0) return PartnerHint.NOTHING
+    fun hintFor(obs: Observation): PartnerHint = answerFor(obs).hint
+
+    fun answerFor(obs: Observation): PartnerAnswer {
+        val trick = trickFor(obs)
+        val needed = TRICKS_TO_WIN - obs.tricksWon[obs.team] - (if (trick == HintTrick.AFTER) 1 else 0)
+        val opponentsNeed = TRICKS_TO_WIN - obs.tricksWon[1 - obs.team] - (if (trick == HintTrick.NOT) 1 else 0)
+        if (needed <= 0) return PartnerAnswer(PartnerHint.ALL_TRICKS, trick)
+        if (opponentsNeed <= 0) return PartnerAnswer(PartnerHint.NOTHING, trick)
         val e = estimatedTricks(obs)
         val all = if (opponentsNeed <= 1) sureTricks(obs) >= needed else e >= needed - ALL_TRICKS_MARGIN
-        return when {
+        val hint = when {
             e < NOTHING_BELOW -> PartnerHint.NOTHING
             e >= ONE_TRICK_FROM && all -> PartnerHint.ALL_TRICKS
             e < ONE_TRICK_FROM -> PartnerHint.LITTLE
             e < TWO_TRICKS_FROM -> PartnerHint.ONE_TRICK
             else -> PartnerHint.TWO_TRICKS
         }
+        return PartnerAnswer(hint, trick)
     }
 
     /**
-     * The team that surely takes the trick being played: nobody of the other team still to play can
-     * beat its best card (with an unseen card, or with a card of the own hand for [Observation.player]).
-     * Null if no trick is being played or it is still open.
+     * How [Observation.player] sees the trick being played: [HintTrick.WITH] if the opponents lead it
+     * but he is still to play and can beat it; otherwise [HintTrick.AFTER] or [HintTrick.NOT] if our
+     * team takes it with a chance of at least [LIKELY] or at most 1 − [LIKELY] ([ourChance]).
      */
-    fun sureWinnerOfCurrentTrick(obs: Observation): Int? {
-        val trump = obs.trump ?: return null
+    fun trickFor(obs: Observation): HintTrick {
+        val trump = obs.trump ?: return HintTrick.NONE
         val trick = obs.currentTrick
-        if (trick.isEmpty()) return null
+        if (trick.isEmpty()) return HintTrick.NONE
         val cards = trick.map { it.card }
         val winner = teamOf(trick[trickWinnerIndex(cards, trump)].player)
-        val unseen = unseen(obs)
-        val stillToPlay = (0 until PLAYER_COUNT).filter { p -> trick.none { it.player == p } }
-        val beatable = stillToPlay.any { p ->
-            teamOf(p) != winner && (if (p == obs.player) obs.hand else unseen).any { trickWinnerIndex(cards + it, trump) == cards.size }
+        val toPlay = trick.none { it.player == obs.player }
+        if (winner != obs.team && toPlay && obs.hand.any { beats(cards, it, trump) }) return HintTrick.WITH
+        val chance = ourChance(obs)
+        return when {
+            chance >= LIKELY -> HintTrick.AFTER
+            chance <= 1 - LIKELY -> HintTrick.NOT
+            else -> HintTrick.NONE
         }
-        return winner.takeIf { !beatable }
     }
+
+    /**
+     * Chance that our team takes the trick being played, as far as the others still to play decide it:
+     * leading, that no opponent still to play holds a card that beats it; behind, that the partner (if
+     * still to play) holds one. Unseen cards are spread evenly over the other hands and the hidden stock.
+     */
+    fun ourChance(obs: Observation): Double {
+        val trump = obs.trump ?: return 0.5
+        val trick = obs.currentTrick
+        if (trick.isEmpty()) return 0.5
+        val cards = trick.map { it.card }
+        val winner = teamOf(trick[trickWinnerIndex(cards, trump)].player)
+        val unknown = unseen(obs) - obs.visibleBottomCard
+        val beaters = unknown.count { beats(cards, it, trump) }
+        val others = (0 until PLAYER_COUNT).filter { p -> p != obs.player && trick.none { it.player == p } && teamOf(p) != winner }
+        val slots = others.sumOf { obs.handSizes[it] }
+        val noneThere = chanceNoneAmong(unknown.size, beaters, slots)
+        return if (winner == obs.team) noneThere else 1.0 - noneThere
+    }
+
+    /** Chance that none of [special] cards among [total] unknown ones is in [drawn] of them. */
+    private fun chanceNoneAmong(total: Int, special: Int, drawn: Int): Double {
+        var p = 1.0
+        for (i in 0 until drawn) {
+            if (total - i <= 0) break
+            p *= (total - special - i).coerceAtLeast(0).toDouble() / (total - i)
+        }
+        return p
+    }
+
+    private fun beats(cards: List<Card>, card: Card, trump: Trump): Boolean = trickWinnerIndex(cards + card, trump) == cards.size
 
     /** Trumps in the hand of [obs] that no unseen card can beat. */
     fun sureTricks(obs: Observation): Int {
@@ -96,6 +146,9 @@ object PartnerHints {
         Rank.KOENIG -> 0.1
         else -> 0.0
     }
+
+    /** From this chance on, the trick being played counts as ours (or, below 1 − it, as theirs). */
+    private const val LIKELY = 0.6
 
     private const val STRONGER_TRUMP_PENALTY = 0.1
     private const val MIN_TRUMP_VALUE = 0.1

@@ -1,5 +1,7 @@
 package com.schaubeck.waddeln.rules
 
+import com.schaubeck.waddeln.rules.agent.HintTrick
+import com.schaubeck.waddeln.rules.agent.PartnerAnswer
 import com.schaubeck.waddeln.rules.agent.PartnerHint
 import com.schaubeck.waddeln.rules.agent.PartnerHints
 import kotlin.test.Test
@@ -90,8 +92,8 @@ class PartnerHintTest {
     fun `a trick our partner surely takes already counts`() {
         // Player 1 has nothing, but partner 3 leads with the Max: nobody can beat it.
         val obs = state.observationFor(1).copy(tricksWon = listOf(0, 2), currentTrick = listOf(Play(3, Card.MAX)))
-        assertEquals(1, PartnerHints.sureWinnerOfCurrentTrick(obs))
-        assertEquals(PartnerHint.ALL_TRICKS, hint(1, obs))
+        assertEquals(1.0, PartnerHints.ourChance(obs))
+        assertEquals(PartnerAnswer(PartnerHint.ALL_TRICKS, HintTrick.AFTER), PartnerHints.answerFor(obs))
     }
 
     @Test
@@ -100,22 +102,36 @@ class PartnerHintTest {
         assertEquals(PartnerHint.ALL_TRICKS, hint(2, before))
         // Opponent 1 plays the Max: their trick, then they need only one more and nothing of 2 is sure.
         val obs = before.copy(currentTrick = listOf(Play(1, Card.MAX)))
-        assertEquals(1, PartnerHints.sureWinnerOfCurrentTrick(obs))
-        assertEquals(PartnerHint.TWO_TRICKS, hint(2, obs))
+        assertEquals(0.0, PartnerHints.ourChance(obs))
+        assertEquals(PartnerAnswer(PartnerHint.TWO_TRICKS, HintTrick.NOT), PartnerHints.answerFor(obs))
     }
 
     @Test
-    fun `a trick that can still be beaten counts for nobody`() {
-        // Partner 0 leads a Haubi-Schlag; the opponents may still hold a Kritte or the Haubi.
+    fun `the Bello of the partner is probably ours if only one opponent can still hold the Max`() {
+        // Opponent 3 led, partner 0 put the Bello on it; only opponent 1 (5 cards) may still have the Max.
+        val obs = state.observationFor(2).copy(currentTrick = listOf(Play(3, c("H8")), Play(0, Card.BELLO)))
+        assertEquals(19.0 / 24, PartnerHints.ourChance(obs), 1e-9) // 24 unknown cards, 5 of them with player 1
+        assertEquals(HintTrick.AFTER, PartnerHints.trickFor(obs))
+    }
+
+    @Test
+    fun `a Haubi-Schlag of the partner is probably lost with three stronger trumps out`() {
+        // Partner 0 leads a Haubi-Schlag; both opponents may hold Max, Bello or the Haubi.
         val obs = state.observationFor(2).copy(currentTrick = listOf(Play(0, c("EO"))))
-        assertEquals(null, PartnerHints.sureWinnerOfCurrentTrick(obs))
+        assertTrue(PartnerHints.ourChance(obs) in 0.1..0.3)
+        assertEquals(HintTrick.NOT, PartnerHints.trickFor(obs))
     }
 
     @Test
-    fun `the answering player can beat the trick with his own hand`() {
-        // Opponent 1 leads the Haubi; player 2 still holds the Secher, so the trick is open.
+    fun `the answering player can take the trick with his own hand`() {
+        // Opponent 1 leads the Haubi; player 2 still holds the Secher.
         val obs = state.observationFor(2).copy(currentTrick = listOf(Play(1, c("GO"))))
-        assertEquals(null, PartnerHints.sureWinnerOfCurrentTrick(obs))
+        assertEquals(HintTrick.WITH, PartnerHints.trickFor(obs))
+    }
+
+    @Test
+    fun `no trick being played means nothing to say about it`() {
+        assertEquals(HintTrick.NONE, PartnerHints.trickFor(state.observationFor(2)))
     }
 
     @Test

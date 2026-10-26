@@ -7,6 +7,7 @@ import com.schaubeck.waddeln.rules.Action
 import com.schaubeck.waddeln.rules.Rank
 import com.schaubeck.waddeln.rules.Suit
 import com.schaubeck.waddeln.rules.TRICKS_TO_WIN
+import com.schaubeck.waddeln.rules.agent.HintTrick
 import com.schaubeck.waddeln.rules.agent.PartnerHint
 import com.schaubeck.waddeln.rules.agent.SchadetAnswer
 import kotlin.random.Random
@@ -44,21 +45,49 @@ class Sayings(private val res: Resources) {
     fun partnerQuestion(random: Random = Random.Default): String = pick(R.string.say_partner_question, random)
 
     /** A random variant of [hint]; [tricksWon] are the tricks the partner's team already has. */
-    fun partnerHint(hint: PartnerHint, tricksWon: Int, random: Random = Random.Default): String = pick(
-        when (hint) {
-            PartnerHint.NOTHING -> R.string.say_hint_nothing
-            PartnerHint.LITTLE -> R.string.say_hint_little
-            PartnerHint.ONE_TRICK -> R.string.say_hint_one_trick
-            PartnerHint.TWO_TRICKS -> R.string.say_hint_two_tricks
-            // By the number of tricks our team still needs (3, 2 or 1).
-            PartnerHint.ALL_TRICKS -> when ((TRICKS_TO_WIN - tricksWon).coerceIn(1, TRICKS_TO_WIN)) {
-                1 -> R.string.say_hint_all_1
-                2 -> R.string.say_hint_all_2
-                else -> R.string.say_hint_all_3
+    /**
+     * The partner's answer; [tricksWon] by the own team so far, [trick] how the trick being
+     * played is meant ("with this one", "after this one", "not this one").
+     */
+    fun partnerHint(hint: PartnerHint, tricksWon: Int, trick: HintTrick = HintTrick.NONE, random: Random = Random.Default): String {
+        val needed = (TRICKS_TO_WIN - tricksWon).coerceIn(1, TRICKS_TO_WIN)
+        val id = when (trick) {
+            HintTrick.NONE -> when (hint) {
+                PartnerHint.NOTHING -> R.string.say_hint_nothing
+                PartnerHint.LITTLE -> R.string.say_hint_little
+                PartnerHint.ONE_TRICK -> R.string.say_hint_one_trick
+                PartnerHint.TWO_TRICKS -> R.string.say_hint_two_tricks
+                // By the number of tricks our team still needs (3, 2 or 1).
+                PartnerHint.ALL_TRICKS -> when (needed) {
+                    1 -> R.string.say_hint_all_1
+                    2 -> R.string.say_hint_all_2
+                    else -> R.string.say_hint_all_3
+                }
             }
-        },
-        random,
-    )
+            HintTrick.WITH -> when (hint) {
+                PartnerHint.NOTHING, PartnerHint.LITTLE -> R.string.say_hint_with_little
+                PartnerHint.ONE_TRICK -> R.string.say_hint_with_one
+                PartnerHint.TWO_TRICKS -> R.string.say_hint_with_two
+                PartnerHint.ALL_TRICKS -> if (needed == 1) R.string.say_hint_with_all_1 else R.string.say_hint_with_all
+            }
+            HintTrick.AFTER -> when (hint) {
+                PartnerHint.NOTHING -> R.string.say_hint_after_nothing
+                PartnerHint.LITTLE -> R.string.say_hint_after_little
+                PartnerHint.ONE_TRICK -> R.string.say_hint_after_one
+                PartnerHint.TWO_TRICKS -> R.string.say_hint_after_two
+                // This trick may already be the last one we need.
+                PartnerHint.ALL_TRICKS -> if (needed == 1) R.string.say_hint_after_all_done else R.string.say_hint_after_all
+            }
+            HintTrick.NOT -> when (hint) {
+                PartnerHint.NOTHING -> R.string.say_hint_not_nothing
+                PartnerHint.LITTLE -> R.string.say_hint_not_little
+                PartnerHint.ONE_TRICK -> R.string.say_hint_not_one
+                PartnerHint.TWO_TRICKS -> R.string.say_hint_not_two
+                PartnerHint.ALL_TRICKS -> R.string.say_hint_not_all
+            }
+        }
+        return pick(id, random)
+    }
 
     fun schlagwechselQuestion(random: Random = Random.Default): String = pick(R.string.say_schlagwechsel_question, random)
 

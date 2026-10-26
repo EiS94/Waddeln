@@ -13,7 +13,7 @@ import com.schaubeck.waddeln.rules.Trick
 import com.schaubeck.waddeln.rules.Waddeln
 import com.schaubeck.waddeln.rules.agent.Agent
 import com.schaubeck.waddeln.rules.agent.BotTalk
-import com.schaubeck.waddeln.rules.agent.PartnerHint
+import com.schaubeck.waddeln.rules.agent.PartnerAnswer
 import com.schaubeck.waddeln.rules.agent.PartnerHints
 import com.schaubeck.waddeln.rules.agent.Schadet
 import com.schaubeck.waddeln.rules.agent.SchadetAnswer
@@ -45,7 +45,7 @@ sealed interface BotStep {
     data class AnsweredSchlagwechsel(override val bot: Int, val accept: Boolean) : BotStep
 
     /** Before answering a Schub the bot asked its partner, who answered with [hint] at once. */
-    data class AskedPartner(override val bot: Int, val hint: PartnerHint) : BotStep
+    data class AskedPartner(override val bot: Int, val answer: PartnerAnswer) : BotStep
 }
 
 /** Something that happened in the game, shown to the human as a message. */
@@ -132,9 +132,9 @@ class OfflineGame(
         // Only the opponents' bots answer a Schub (the human answers for their team), so the partner is a bot.
         val partner = partnerOf(bot)
         if (Waddeln.canGiveHint(state, partner)) {
-            val hint = PartnerHints.hintFor(state.observationFor(partner))
-            state = Waddeln.giveHint(state, partner, hint)
-            return BotStep.AskedPartner(bot, hint)
+            val answer = PartnerHints.answerFor(state.observationFor(partner))
+            state = Waddeln.giveHint(state, partner, answer.hint, answer.trick)
+            return BotStep.AskedPartner(bot, answer)
         }
         val legal = Schadet.allowedActions(state, bot, Waddeln.legalActions(state, bot))
         val action = bots[bot].chooseAction(state.observationFor(bot), legal)
@@ -182,11 +182,11 @@ class OfflineGame(
      * The human asks the partner bot about their cards; it answers at once and everybody hears it.
      * Null if asking is not possible now.
      */
-    fun askPartner(): PartnerHint? {
+    fun askPartner(): PartnerAnswer? {
         if (!canAskPartner()) return null
-        val hint = PartnerHints.hintFor(state.observationFor(PARTNER))
-        state = Waddeln.giveHint(state, PARTNER, hint)
-        return hint
+        val answer = PartnerHints.answerFor(state.observationFor(PARTNER))
+        state = Waddeln.giveHint(state, PARTNER, answer.hint, answer.trick)
+        return answer
     }
 
     /**
