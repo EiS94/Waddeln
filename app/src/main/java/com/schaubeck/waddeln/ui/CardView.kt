@@ -33,9 +33,9 @@ import com.schaubeck.waddeln.rules.Trump
 const val CARD_ASPECT = 1.75f
 
 fun suitColor(suit: Suit): Color = when (suit) {
-    Suit.SCHELL -> Color(0xFFC88A00)
+    Suit.SCHELL -> Color(0xFFC8641E)
     Suit.HERZ -> Color(0xFFC62828)
-    Suit.EICHEL -> Color(0xFF6D4C41)
+    Suit.EICHEL -> Color(0xFF9C7430)
     Suit.GRAS -> Color(0xFF2E7D32)
 }
 

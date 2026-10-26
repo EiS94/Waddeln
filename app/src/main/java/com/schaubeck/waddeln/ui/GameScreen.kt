@@ -670,12 +670,14 @@ private fun ActionArea(
         actions.any { it is Action.AnnounceSchlag } -> {
             {
                 PanelTitle(stringResource(R.string.action_announce_schlag))
+                // Values we hold none of are greyed out, but can still be announced (as at a real table).
+                val held = s.hand.map { it.rank }.toSet()
                 Rank.entries.chunked(4).forEach { row ->
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         row.forEach { rank ->
                             Button(
                                 onClick = { onAction(Action.AnnounceSchlag(rank)) },
-                                colors = woodButton(),
+                                colors = if (rank in held) woodButton() else notHeldButton(),
                                 contentPadding = CompactPadding,
                                 modifier = Modifier.weight(1f),
                             ) { Text(stringResource(Texts.rank(rank)), maxLines = 1) }

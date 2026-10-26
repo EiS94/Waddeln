@@ -33,6 +33,10 @@ val WoodBrown = Color(0xFF6D4C2F)
 @Composable
 fun woodButton() = ButtonDefaults.buttonColors(containerColor = WoodBrown)
 
+/** A choice that is allowed but probably not meant, e.g. a Schlag without a card of that value. */
+@Composable
+fun notHeldButton() = ButtonDefaults.buttonColors(containerColor = Color(0xFF5E5A57), contentColor = Color.White.copy(alpha = 0.7f))
+
 /** The table chosen in the settings; provided once for all screens. */
 val LocalTableStyle = staticCompositionLocalOf { TableStyle.DARK }
 
