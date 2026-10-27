@@ -227,8 +227,8 @@
     <string name="table_light">Helles Holz</string>
     <string name="settings_self_cut">Selbst abheben</string>
     <string name="settings_self_cut_description">Aus: Die App hebt für dich zufällig ab</string>
-    <string name="settings_trick_advice">„Was soll ich machen?“</string>
-    <string name="settings_trick_advice_description">Im Solo-Spiel darf der Zweite im Stich seinen Partner fragen. Aus: Niemand fragt, auch die Bots nicht</string>
+    <string name="settings_trick_advice">Unterhaltungen während des Spiels</string>
+    <string name="settings_trick_advice_description">Unterhaltungen mit Partner während des Spiels aktivieren (auch für Bots)</string>
     <string name="settings_sound">Ton</string>
     <string name="settings_sound_effects">Geräusche</string>
     <string name="settings_sound_effects_description">Mischen, Karten und Stiche</string>
