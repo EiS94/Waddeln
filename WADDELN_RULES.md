@@ -178,7 +178,7 @@ Der Gewinner des Stichs spielt die erste Karte des nächsten Stichs.
 
 ## Absprachen mit dem Partner
 
-Partner dürfen sich in zwei Situationen kurz absprechen, **ohne ihre Karten zu verraten**.
+Partner dürfen sich in drei Situationen kurz absprechen, **ohne ihre Karten zu verraten**.
 Das gegnerische Team hört dabei mit.
 
 ### Beim Schub
@@ -200,6 +200,21 @@ Das gegnerische Team hört dabei mit.
   die niedrigste davon (die abgegeben würde): hoch (Ober, König, Ass) → ja, mittel (Unter, 10) → ein bisschen,
   niedrig (7–9) → nein.
 - Gefragt werden darf einmal pro Spiel, nur bevor die erste Karte gespielt ist.
+
+### „Was soll ich machen?“ (nach dem Anspiel eines Gegners)
+- Hat ein Gegner einen Stich eröffnet, darf der nächste Spieler (als Zweiter im Stich) vor dem Zugeben
+  seinen Partner fragen, was er machen soll. Der Partner spielt in diesem Stich als Letzter.
+- Egal, was ausgespielt wurde (Farbe oder Trumpf). Fragen darf man in jedem Stich, also unbegrenzt oft
+  pro Spiel – aber nur, solange der Partner noch Karten hat.
+- Antworten:
+  - *Nichts*: nicht stechen.
+  - *Sticheln*: stechen, aber nicht zu hoch. So soll der Gegner danach eine gute Karte opfern, die der
+    Partner zum Schluss noch übersticht.
+  - *Machen*: eine Karte spielen, mit der man den Stich ziemlich sicher macht (ungefähr ab Haubi-Schlag).
+    Das muss nicht die höchste sein: Wer z.B. einen Haubi-Schlag und den Max hat, spielt oft besser den
+    Haubi-Schlag – mit einem Haubi-Schlag kann der Gegner ihn nicht überstechen (gleich stark, der frühere
+    gewinnt), und den Max hebt man sich auf.
+- Die Antwort ist ein Rat, keine Pflicht.
 
 ---
 

@@ -9,6 +9,7 @@ import com.schaubeck.waddeln.rules.Suit
 import com.schaubeck.waddeln.rules.TRICKS_TO_WIN
 import com.schaubeck.waddeln.rules.agent.PartnerHint
 import com.schaubeck.waddeln.rules.agent.SchadetAnswer
+import com.schaubeck.waddeln.rules.agent.TrickAdvice
 import kotlin.random.Random
 
 /**
@@ -72,6 +73,17 @@ class Sayings(private val res: Resources) {
             SchadetAnswer.YES -> R.string.say_schadet_yes
             SchadetAnswer.A_LITTLE -> R.string.say_schadet_a_little
             SchadetAnswer.NO -> R.string.say_schadet_no
+        },
+        random,
+    )
+
+    fun adviceQuestion(random: Random = Random.Default): String = pick(R.string.say_advice_question, random)
+
+    fun adviceAnswer(answer: TrickAdvice, random: Random = Random.Default): String = pick(
+        when (answer) {
+            TrickAdvice.NICHTS -> R.string.say_advice_nichts
+            TrickAdvice.STICHELN -> R.string.say_advice_sticheln
+            TrickAdvice.MACHEN -> R.string.say_advice_machen
         },
         random,
     )

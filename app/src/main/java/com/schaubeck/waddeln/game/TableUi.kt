@@ -82,6 +82,14 @@ data class TableUi(
     val schadetAnswer: String? = null,
     /** The partner asked us "Schadder?"; we answer with a [com.schaubeck.waddeln.rules.agent.SchadetAnswer]. */
     val partnerAsksSchadet: Boolean = false,
+    /** Second in a trick after an opponent led: we may ask the partner "Was soll ich machen?". */
+    val canAskAdvice: Boolean = false,
+    /** We asked "Was soll ich machen?" and wait for the partner's answer. */
+    val waitingForAdvice: Boolean = false,
+    /** The partner's answer to our "Was soll ich machen?", shown until we play. */
+    val adviceAnswer: String? = null,
+    /** The partner asked us "Was soll ich machen?"; we answer with a [com.schaubeck.waddeln.rules.agent.TrickAdvice]. */
+    val partnerAsksAdvice: Boolean = false,
     /** We announce the Schlag and may propose a Schlagwechsel first. */
     val canProposeSchlagwechsel: Boolean = false,
     /** A Schlagwechsel waits for the dealer's answer (we proposed it or just watch). */

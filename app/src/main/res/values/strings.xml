@@ -98,6 +98,8 @@
     <string name="action_gehen">Gehen (−%1$d)</string>
     <string name="action_partner_asks_schadet">%1$s will den Haubi spielen: Schadet er dir?</string>
     <string name="action_ask_schadet">Schadder? – %1$s fragen, ob der Haubi schadet</string>
+    <string name="action_partner_asks_advice">%1$s fragt: Was soll ich machen?</string>
+    <string name="action_ask_advice">Was soll ich machen? – %1$s fragen</string>
 
     <!-- Game: answer buttons -->
     <string name="hint_label_nothing">Gar nichts</string>
@@ -108,6 +110,9 @@
     <string name="schadet_label_yes">Ja</string>
     <string name="schadet_label_a_little">Ein bisschen</string>
     <string name="schadet_label_no">Nein</string>
+    <string name="advice_label_nichts">Nichts</string>
+    <string name="advice_label_sticheln">Sticheln</string>
+    <string name="advice_label_machen">Machen</string>
 
     <!-- Game: end of round / match -->
     <string name="end_match_won_title">Gewonnen!</string>
@@ -187,6 +192,12 @@
     <string name="say_schadet_a_little">Ein bisschen.|A bissl.|Geht scho.</string>
     <string name="say_schadet_no">Nein.|Schadet net.|Kannst spielen.</string>
 
+    <!-- Sayings: "Was soll ich machen?" second in a trick after an opponent led -->
+    <string name="say_advice_question">Wie schaut\'s aus?|Was soll ich machen?|Soll ich was machen?</string>
+    <string name="say_advice_nichts">Mach nix.|Lass ihn.|Nichts rein!|Durchlassen</string>
+    <string name="say_advice_sticheln">Sticheln.|Stichel mal.|Sticheln, wenn\'s geht</string>
+    <string name="say_advice_machen">Mach ihn!|Wenn du kannst, mach ihn</string>
+
     <!-- Sayings: Schlagwechsel before the Schlag is announced -->
     <string name="say_schlagwechsel_question">Schlagwechsel?</string>
     <string name="say_schlagwechsel_accept">Können wir machen.|Machen wir.|Ja</string>
@@ -216,6 +227,8 @@
     <string name="table_light">Helles Holz</string>
     <string name="settings_self_cut">Selbst abheben</string>
     <string name="settings_self_cut_description">Aus: Die App hebt für dich zufällig ab</string>
+    <string name="settings_trick_advice">„Was soll ich machen?“</string>
+    <string name="settings_trick_advice_description">Im Solo-Spiel darf der Zweite im Stich seinen Partner fragen. Aus: Niemand fragt, auch die Bots nicht</string>
     <string name="settings_sound">Ton</string>
     <string name="settings_sound_effects">Geräusche</string>
     <string name="settings_sound_effects_description">Mischen, Karten und Stiche</string>
@@ -392,6 +405,8 @@
     <string name="rules_partner_1">Partner dürfen sich kurz absprechen, ohne Karten zu verraten. Die Gegner hören mit.</string>
     <string name="rules_partner_2">**Beim Schub:** Wird dein Team gefragt, kannst du deinen Partner fragen, wie gut seine Karten sind. Er antwortet grob: gar nichts, wenig, einen Stich, zwei Stiche oder alle (noch nötigen) Stiche. Einmal pro Schub.</string>
     <string name="rules_partner_3">**„Schadder?“:** Wer den ersten Stich eröffnet, darf vorher fragen, ob es dem Partner schadet, wenn er den Haubi ausspielt – weil er dann eine Karte der Haubi-Farbe zugeben muss. Antworten: Ja, ein bisschen, Nein. Fragen darf man auch ohne Haubi, als **Bluff**. Hat der Partner den Haubi selbst, sagt er „Ja“, damit der Bluff nicht auffliegt.</string>
+
+    <string name="rules_partner_4">**„Was soll ich machen?“:** Spielt ein Gegner einen Stich an, darf der Nächste vor dem Zugeben seinen Partner fragen, der als Letzter spielt – in jedem Stich, solange der Partner noch Karten hat. Antworten: **Nichts** (nicht stechen), **Sticheln** (stechen, aber nicht zu hoch, damit der Gegner danach eine gute Karte opfert, die der Partner übersticht) oder **Machen** (den Stich ziemlich sicher machen, etwa ab Haubi-Schlag – das muss nicht die höchste Karte sein).</string>
 
     <string name="rules_points_title">Punkte und Matchende</string>
     <string name="rules_points_bullet_1">Wer 3 Stiche macht, gewinnt die Runde: **2 Punkte**, plus 1 für jedes „Bleiben“ beim Schub.</string>

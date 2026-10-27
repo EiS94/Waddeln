@@ -1,9 +1,13 @@
-"""Table talk of bots – mirror of PartnerHint.kt (PartnerHints), Schadet.kt, Schlagwechsel.kt and BotTalk.kt.
+"""Table talk of bots – mirror of PartnerHint.kt (PartnerHints), Schadet.kt, Advice.kt, Schlagwechsel.kt and
+BotTalk.kt.
 
 - Before a bot answers a Schub it always asks its partner, who answers with partner_hint().
 - Before leading the Haubi into the first trick it asks "Schadder?", the partner answers with
   schadet_answer(), and the bot decides again knowing the answer (see allowed_actions()).
   Without the Haubi it sometimes asks as a bluff (bluffs_schadet()).
+- Second in a trick after an opponent led, it sometimes asks "Was soll ich machen?" if it could take the
+  trick (advice_before_turn()); the partner answers with advice_answer() and the answer restricts the cards
+  (allowed_actions()).
 - Before announcing the Schlag the player after the dealer may propose a Schlagwechsel; the dealer
   answers at once (schlagwechsel_before_turn(), called before the actor is chosen).
 """
@@ -235,11 +239,103 @@ def actions_after(answer: int, state: E.State, player: int, legal: list[int]) ->
     return others or legal
 
 
-def allowed_actions(state: E.State, player: int, legal: list[int]) -> list[int]:
+def schadet_allowed_actions(state: E.State, player: int, legal: list[int]) -> list[int]:
     """Schadet.allowedActions: restricted once the player's own "Schadder?" was answered."""
     if state.schadet is None or state.schadet[0] != player or state.schadet[1] is None:
         return legal
     return actions_after(state.schadet[1], state, player, legal)
+
+
+def allowed_actions(state: E.State, player: int, legal: list[int]) -> list[int]:
+    """BotTalk.allowedActions: restricted by the answers to "Schadder?" and "Was soll ich machen?"."""
+    return advice_allowed_actions(state, player, schadet_allowed_actions(state, player, legal))
+
+
+# ---- "Was soll ich machen?" (Advice.kt) ----
+
+MACHEN_SAFE = 0.5
+ASK_CHANCE = 0.6
+NICHTS_FROM = 0.6
+
+
+def _beats(cards: list[int], card: int, st) -> bool:
+    return E.trick_winner_index(cards + [card], st) == len(cards)
+
+
+def may_ask_advice(state: E.State, player: int) -> bool:
+    """Advice.mayAsk: the bot could take the trick and has a choice of cards."""
+    st = state.strengths
+    if st is None or not E.can_ask_advice(state, player):
+        return False
+    lead = [c for _, c in state.current_trick]
+    playable = E.playable_cards(state, player)
+    return len(playable) > 1 and any(_beats(lead, c, st) for c in playable)
+
+
+def advice_answer(obs: Observation) -> int:
+    """Advice.answerFor: the partner, who plays last in the trick, says how to play."""
+    st = obs.strengths
+    if st is None or not obs.current_trick:
+        return E.ADVICE_NICHTS
+    lead = [c for _, c in obs.current_trick]
+    unknown = [c for c in _unseen(obs) if c != obs.visible_bottom_card]
+    lead_beaters = [u for u in unknown if _beats(lead, u, st)]
+    opponent = (obs.player + E.PLAYER_COUNT - 1) % E.PLAYER_COUNT
+    chance = 0.0
+    for c in obs.hand:
+        if _beats(lead, c, st):
+            unanswered = sum(1 for u in lead_beaters if not _beats(lead + [u], c, st))
+            chance = max(chance, _chance_none_among(len(unknown), unanswered, obs.hand_sizes[opponent]))
+    if chance >= 1.0:
+        return E.ADVICE_STICHELN if lead_beaters else E.ADVICE_NICHTS
+    if chance >= NICHTS_FROM or not lead_beaters:
+        return E.ADVICE_NICHTS
+    return E.ADVICE_MACHEN
+
+
+def _hold_chance(obs: Observation, lead: list[int], card: int, st) -> float:
+    """Advice.holdChance: the next opponent holds no unseen card that beats the card."""
+    unknown = [c for c in _unseen(obs) if c != obs.visible_bottom_card]
+    beaters = sum(1 for u in unknown if _beats(lead + [card], u, st))
+    return _chance_none_among(len(unknown), beaters, obs.hand_sizes[E.next_player(obs.player)])
+
+
+def advice_allowed_actions(state: E.State, player: int, legal: list[int]) -> list[int]:
+    """Advice.allowedActions: restricted once the player's own "Was soll ich machen?" was answered."""
+    answer = E.advice_for(state, player)
+    st = state.strengths
+    if answer is None or st is None:
+        return legal
+    obs = E.observe(state, player)
+    lead = [c for _, c in obs.current_trick]
+    cards = [a - CARD_OFFSET for a in legal if CARD_OFFSET <= a < A_SCHUB]
+    beaters = [c for c in cards if _beats(lead, c, st)]
+    if answer == E.ADVICE_NICHTS:
+        chosen = [c for c in cards if c not in beaters]
+        if not chosen and beaters:
+            chosen = [min(beaters, key=lambda c: E.rank_of(c) if st[c] == NO_TRUMP else 100 + st[c])]
+    elif answer == E.ADVICE_STICHELN:
+        chosen = [c for c in beaters if _hold_chance(obs, lead, c, st) < 1.0] or beaters
+    else:
+        haubi = state.haubi
+        strong = [c for c in beaters if c in KRITTE_SET or c == haubi or E.rank_of(c) == state.schlag]
+        if not strong:
+            chosen = beaters
+        else:
+            safe = [c for c in strong if _hold_chance(obs, lead, c, st) >= MACHEN_SAFE]
+            chosen = [min(safe, key=lambda c: st[c])] if safe else strong
+    if not chosen:
+        return legal
+    return [a for a in legal if not (CARD_OFFSET <= a < A_SCHUB) or a - CARD_OFFSET in chosen]
+
+
+def advice_before_turn(state: E.State, actor: int, rng: _random.Random) -> None:
+    """BotTalk.adviceBeforeTurn (in place): asks with ASK_CHANCE if the bot may ask."""
+    if not may_ask_advice(state, actor) or rng.random() >= ASK_CHANCE:
+        return
+    E.ask_advice(state, actor)
+    partner = E.partner_of(actor)
+    E.answer_advice(state, partner, advice_answer(E.observe(state, partner)))
 
 
 def hint_before_answer(state: E.State, actor: int) -> None:

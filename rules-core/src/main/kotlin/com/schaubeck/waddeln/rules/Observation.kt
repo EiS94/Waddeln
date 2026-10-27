@@ -7,7 +7,7 @@ import kotlinx.serialization.Serializable
  * the number (not identity) of Kritten the Abheber and the dealer took, the open bottom card of the
  * stock, the card the dealer saw under the rest (only for the dealer) and,
  * when gespannt meets gespannt, how many cards each player still has laid out, and everything
- * said at the table (Schub, partner talk, "Schadder?", Schlagwechsel).
+ * said at the table (Schub, partner talk, "Schadder?", "Was soll ich machen?", Schlagwechsel).
  */
 @Serializable
 data class Observation(
@@ -42,6 +42,7 @@ data class Observation(
     val schubs: List<SchubCall> = emptyList(),
     val hints: List<HintCall> = emptyList(),
     val schadet: SchadetTalk? = null,
+    val advice: List<AdviceTalk> = emptyList(),
     val schlagwechsel: SchlagwechselTalk? = null,
 ) {
     val team: Int get() = teamOf(player)
@@ -53,6 +54,13 @@ data class Observation(
     /** The dealer while a proposed Schlagwechsel waits for the answer (as [Waddeln.schlagwechselAnswerer]). */
     val schlagwechselAnswerer: Int?
         get() = dealer.takeIf { phase == Phase.SCHLAG && schlagwechsel != null && schlagwechsel.accepted == null }
+
+    /** The "Was soll ich machen?" of the trick being played while its asker is still to play (as [Waddeln.adviceAnswerer]). */
+    val currentAdvice: AdviceTalk?
+        get() = advice.lastOrNull()?.takeIf {
+            it.trick == completedTricks.size && phase == Phase.PLAYING && pendingSchub == null &&
+                currentTrick.size == 1 && playerToMove == it.asker
+        }
 
     /** Winning team of the match, or null while it is still running. */
     val matchWinner: Int? get() = if (phase == Phase.MATCH_OVER) scores.indexOfFirst { it >= MATCH_POINTS } else null
@@ -89,6 +97,7 @@ data class Observation(
                 schubs = state.schubs,
                 hints = state.hints,
                 schadet = state.schadet,
+                advice = state.advice,
                 schlagwechsel = state.schlagwechsel,
             )
         }

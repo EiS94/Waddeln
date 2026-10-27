@@ -92,6 +92,8 @@ data class GameState(
     val hints: List<HintCall> = emptyList(),
     /** "Schadder?" of this round, if somebody asked. */
     val schadet: SchadetTalk? = null,
+    /** "Was soll ich machen?" of this round, in order (at most one per trick). */
+    val advice: List<AdviceTalk> = emptyList(),
     /** Schlagwechsel of this round, if the forehand proposed one. */
     val schlagwechsel: SchlagwechselTalk? = null,
     val result: RoundResult? = null,

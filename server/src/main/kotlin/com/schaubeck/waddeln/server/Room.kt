@@ -18,6 +18,7 @@ import com.schaubeck.waddeln.rules.PLAYER_COUNT
 import com.schaubeck.waddeln.rules.PendingRound
 import com.schaubeck.waddeln.rules.Phase
 import com.schaubeck.waddeln.rules.Waddeln
+import com.schaubeck.waddeln.rules.agent.Advice
 import com.schaubeck.waddeln.rules.agent.Agent
 import com.schaubeck.waddeln.rules.agent.BotTalk
 import com.schaubeck.waddeln.rules.agent.PartnerHint
@@ -25,6 +26,7 @@ import com.schaubeck.waddeln.rules.agent.PartnerHints
 import com.schaubeck.waddeln.rules.agent.Schadet
 import com.schaubeck.waddeln.rules.agent.SchadetAnswer
 import com.schaubeck.waddeln.rules.agent.Schlagwechsel
+import com.schaubeck.waddeln.rules.agent.TrickAdvice
 import com.schaubeck.waddeln.rules.nextPlayer
 import com.schaubeck.waddeln.rules.observationFor
 import com.schaubeck.waddeln.rules.partnerOf
@@ -322,10 +324,34 @@ class Room(
         changed(timing.speechPauseMs)
     }
 
+    /** Second in a trick after an opponent led: asks the partner "Was soll ich machen?". */
+    fun askAdvice(playerId: String): String? {
+        val seat = seatOf(playerId) ?: return null
+        val s = state ?: return null
+        if (!Waddeln.canAskAdvice(s, seat)) return null
+        state = Waddeln.askAdvice(s, seat)
+        changed()
+        return null
+    }
+
+    fun answerAdvice(playerId: String, answer: TrickAdvice): String? {
+        val seat = seatOf(playerId) ?: return null
+        val s = state ?: return null
+        if (Waddeln.adviceAnswerer(s) != seat) return null
+        state = Waddeln.answerAdvice(s, seat, answer)
+        changed(timing.speechPauseMs)
+        return null
+    }
+
+    private fun botAnswersAdvice(s: GameState, seat: Int) {
+        state = Waddeln.answerAdvice(s, seat, Advice.answerFor(s.observationFor(seat)))
+        changed(timing.speechPauseMs)
+    }
+
     /**
      * Lets the bot [actor] act, talking like [BotTalk]: before announcing the Schlag it may propose
      * a Schlagwechsel, before answering a Schub it asks its partner, before leading the Haubi it asks
-     * "Schadder?" and then decides knowing the answer.
+     * "Schadder?" and then decides knowing the answer, second in a trick it sometimes asks "Was soll ich machen?" first.
      */
     private fun botAct(s: GameState, actor: Int) {
         if (Waddeln.canProposeSchlagwechsel(s, actor) && Schlagwechsel.proposes(s.observationFor(actor))) {
@@ -338,7 +364,12 @@ class Room(
             changed(timing.speechPauseMs)
             return
         }
-        val legal = Schadet.allowedActions(s, actor, Waddeln.legalActions(s, actor))
+        if (Advice.asks(s, actor, random)) {
+            state = Waddeln.askAdvice(s, actor)
+            changed(timing.speechPauseMs)
+            return
+        }
+        val legal = BotTalk.allowedActions(s, actor, Waddeln.legalActions(s, actor))
         val action = agents[actor].chooseAction(s.observationFor(actor), legal)
         if (BotTalk.talksSchadet(s, actor, action, random)) {
             state = Waddeln.askSchadet(s, actor)
@@ -463,8 +494,8 @@ class Room(
             return
         }
         if (s.playerToMove == null) return stopTimer()
-        // An open "Schadder?" or Schlagwechsel is answered first.
-        val answerer = Waddeln.schadetAnswerer(s) ?: Waddeln.schlagwechselAnswerer(s)
+        // An open "Schadder?", "Was soll ich machen?" or Schlagwechsel is answered first.
+        val answerer = Waddeln.schadetAnswerer(s) ?: Waddeln.adviceAnswerer(s) ?: Waddeln.schlagwechselAnswerer(s)
         if (answerer != null) {
             if (answerer in humans) return startTimer(s)
             stopTimer()
@@ -503,7 +534,7 @@ class Room(
                 log.info("Room {}: time is up for {}, the bot cuts", code, seatName(round.abheber))
                 return@launch cut(round, Deal.randomCut(random))
             }
-            (Waddeln.schadetAnswerer(current) ?: Waddeln.schlagwechselAnswerer(current))?.let { seat ->
+            (Waddeln.schadetAnswerer(current) ?: Waddeln.adviceAnswerer(current) ?: Waddeln.schlagwechselAnswerer(current))?.let { seat ->
                 timeoutJob = null
                 log.info("Room {}: time is up for {}, the bot answers", code, seatName(seat))
                 return@launch botAnswers(current, seat)
@@ -512,16 +543,17 @@ class Room(
             val actor = nextBotActor(current, humanSeats = emptySet()) ?: return@launch
             timeoutJob = null
             log.info("Room {}: time is up for {}, the bot decides", code, seatName(actor))
-            val legal = Schadet.allowedActions(current, actor, Waddeln.legalActions(current, actor))
+            val legal = BotTalk.allowedActions(current, actor, Waddeln.legalActions(current, actor))
             val action = agents[actor].chooseAction(current.observationFor(actor), legal)
             apply(actor, action)
         }
     }
 
-    /** The bot answers the open "Schadder?" or Schlagwechsel of [seat], if it is still open. */
+    /** The bot answers the open "Schadder?", "Was soll ich machen?" or Schlagwechsel of [seat], if it is still open. */
     private fun botAnswers(s: GameState, seat: Int) {
         when (seat) {
             Waddeln.schadetAnswerer(s) -> botAnswersSchadet(s, seat)
+            Waddeln.adviceAnswerer(s) -> botAnswersAdvice(s, seat)
             Waddeln.schlagwechselAnswerer(s) -> botAnswersSchlagwechsel(s, seat)
         }
     }
@@ -592,6 +624,7 @@ class Room(
             partnerQuestion = question,
             partnerHint = currentHint(s),
             canAskSchadet = Waddeln.canAskSchadet(s, seat),
+            canAskAdvice = Waddeln.canAskAdvice(s, seat),
             canProposeSchlagwechsel = Waddeln.canProposeSchlagwechsel(s, seat),
             schadetQuestion = s.schadet?.asker,
             schadetAnswer = s.schadet?.let { talk -> talk.answer?.let { SeatSchadet(partnerOf(talk.asker), it) } },

@@ -6,8 +6,8 @@ produced by the Kotlin engine (./gradlew :rules-core:generateProtocols) and comp
 Cards are ints 0..31: suit * 8 + rank.
 Suits: SCHELL, HERZ, EICHEL, GRAS. Ranks: 7, 8, 9, 10, UNTER, OBER, KOENIG, ASS.
 Action codes (see ActionCodec.kt): 0..7 Schlag, 8..11 Farbe, 12..43 play card, 44 Schub,
-45 Bleiben, 46 Gehen. Table talk (partner hints, "Schadder?", Schlagwechsel) is no action but part of
-the state.
+45 Bleiben, 46 Gehen. Table talk (partner hints, "Schadder?", "Was soll ich machen?", Schlagwechsel) is
+no action but part of the state.
 """
 from __future__ import annotations
 
@@ -206,6 +206,7 @@ class State:
     schubs: list[tuple[int, int]] = field(default_factory=list)  # (player, cards played before)
     hints: list[tuple[int, int, int]] = field(default_factory=list)  # (player, hint, schub index)
     schadet: tuple[int, int | None] | None = None  # (asker, answer)
+    advice: list[tuple[int, int, int | None]] = field(default_factory=list)  # (asker, trick, answer)
     schlagwechsel_proposed: bool = False
     schlagwechsel_accepted: bool | None = None  # the dealer's answer
     result: tuple[int, int, str] | None = None  # (winning team, points, reason)
@@ -366,6 +367,8 @@ def apply(state: State, player: int, action: int, check: bool = True) -> None:
 HINT_COUNT = 5
 # SchadetAnswer ordinals
 SCHADET_NO, SCHADET_A_LITTLE, SCHADET_YES = range(3)
+# TrickAdvice ordinals
+ADVICE_NICHTS, ADVICE_STICHELN, ADVICE_MACHEN = range(3)
 
 
 def can_give_hint(state: State, player: int) -> bool:
@@ -416,6 +419,50 @@ def answer_schadet(state: State, player: int, answer: int) -> None:
     if schadet_answerer(state) != player:
         raise IllegalAction(f"player {player} may not answer Schadder now")
     state.schadet = (state.schadet[0], answer)
+
+
+def _plays_second(state: State, player: int) -> bool:
+    return (state.phase == PLAYING and state.pending_schub is None
+            and len(state.current_trick) == 1 and state.player_to_move == player)
+
+
+def can_ask_advice(state: State, player: int) -> bool:
+    """The second player of a trick asks the partner "Was soll ich machen?", once per trick."""
+    trick = len(state.completed_tricks)
+    return (_plays_second(state, player) and len(state.hands[partner_of(player)]) > 0
+            and not any(a[1] == trick for a in state.advice))
+
+
+def ask_advice(state: State, player: int) -> None:
+    if not can_ask_advice(state, player):
+        raise IllegalAction(f"player {player} may not ask for advice now")
+    state.advice.append((player, len(state.completed_tricks), None))
+
+
+def advice_answerer(state: State) -> int | None:
+    if not state.advice:
+        return None
+    asker, trick, answer = state.advice[-1]
+    if answer is not None or trick != len(state.completed_tricks) or not _plays_second(state, asker):
+        return None
+    return partner_of(asker)
+
+
+def answer_advice(state: State, player: int, answer: int) -> None:
+    if advice_answerer(state) != player:
+        raise IllegalAction(f"player {player} may not give advice now")
+    asker, trick, _ = state.advice[-1]
+    state.advice[-1] = (asker, trick, answer)
+
+
+def advice_for(state: State, player: int) -> int | None:
+    """Waddeln.adviceFor: the answer to the player's question in the trick being played."""
+    if not state.advice:
+        return None
+    asker, trick, answer = state.advice[-1]
+    if asker != player or trick != len(state.completed_tricks) or not _plays_second(state, player):
+        return None
+    return answer
 
 
 def can_propose_schlagwechsel(state: State, player: int) -> bool:
@@ -518,6 +565,7 @@ class Observation:
     schubs: list[tuple[int, int]] = field(default_factory=list)
     hints: list[tuple[int, int, int]] = field(default_factory=list)
     schadet: tuple[int, int | None] | None = None
+    advice: list[tuple[int, int, int | None]] = field(default_factory=list)
     schlagwechsel_proposed: bool = False
     schlagwechsel_accepted: bool | None = None
 
@@ -547,5 +595,6 @@ def observe(state: State, player: int) -> Observation:
         tricks_won=state.tricks_won, game_value=state.game_value,
         last_schub_team=state.last_schub_team, pending_schub=state.pending_schub,
         laid_out_counts=laid, schubs=state.schubs, hints=state.hints, schadet=state.schadet,
+        advice=state.advice,
         schlagwechsel_proposed=state.schlagwechsel_proposed, schlagwechsel_accepted=state.schlagwechsel_accepted,
     )

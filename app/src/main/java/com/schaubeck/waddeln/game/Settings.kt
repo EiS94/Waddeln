@@ -49,6 +49,8 @@ data class Settings(
     val table: TableStyle = TableStyle.DARK,
     /** As Abheber the player chooses where to cut; otherwise the app cuts at random for them. */
     val selfCut: Boolean = true,
+    /** Offline the second player of a trick may ask the partner "Was soll ich machen?" (bots too). */
+    val trickAdvice: Boolean = true,
 ) {
     companion object {
         /** Names of the seats while the player has not named them. */
@@ -80,6 +82,7 @@ class SettingsStore(context: Context) {
         voices = prefs.getBoolean(KEY_VOICES, true),
         table = enumOrDefault(prefs.getString(KEY_TABLE, null), TableStyle.DARK),
         selfCut = prefs.getBoolean(KEY_SELF_CUT, true),
+        trickAdvice = prefs.getBoolean(KEY_TRICK_ADVICE, true),
     )
 
     /**
@@ -114,6 +117,7 @@ class SettingsStore(context: Context) {
             putBoolean(KEY_VOICES, settings.voices)
             putString(KEY_TABLE, settings.table.name)
             putBoolean(KEY_SELF_CUT, settings.selfCut)
+            putBoolean(KEY_TRICK_ADVICE, settings.trickAdvice)
         }.apply()
     }
 
@@ -132,5 +136,6 @@ class SettingsStore(context: Context) {
         const val KEY_VOICES = "voices"
         const val KEY_TABLE = "table"
         const val KEY_SELF_CUT = "self_cut"
+        const val KEY_TRICK_ADVICE = "trick_advice"
     }
 }

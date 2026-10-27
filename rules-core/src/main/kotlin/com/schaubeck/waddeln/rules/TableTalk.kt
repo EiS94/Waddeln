@@ -2,6 +2,7 @@ package com.schaubeck.waddeln.rules
 
 import com.schaubeck.waddeln.rules.agent.PartnerHint
 import com.schaubeck.waddeln.rules.agent.SchadetAnswer
+import com.schaubeck.waddeln.rules.agent.TrickAdvice
 import kotlinx.serialization.Serializable
 
 /** A Schub as it was said: by [player], after [cardsPlayed] cards of the round. */
@@ -28,3 +29,10 @@ data class SchadetTalk(val asker: Int, val answer: SchadetAnswer? = null)
  */
 @Serializable
 data class SchlagwechselTalk(val accepted: Boolean? = null)
+
+/**
+ * "Was soll ich machen?" asked by [asker], second in trick number [trick] (0-based) after an opponent
+ * led; [answer] by the partner, who plays last in it, once given. Heard by everybody.
+ */
+@Serializable
+data class AdviceTalk(val asker: Int, val trick: Int, val answer: TrickAdvice? = null)

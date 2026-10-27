@@ -27,6 +27,7 @@ import com.schaubeck.waddeln.rules.Phase
 import com.schaubeck.waddeln.rules.teamOf
 import com.schaubeck.waddeln.rules.agent.PartnerHint
 import com.schaubeck.waddeln.rules.agent.SchadetAnswer
+import com.schaubeck.waddeln.rules.agent.TrickAdvice
 import com.schaubeck.waddeln.ui.Sayings
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -71,6 +72,9 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
 
     /** The variant picked for the partner's answer to our "Schadder?". */
     private var schadetText: String? = null
+
+    /** The variant picked for the partner's answer to our "Was soll ich machen?". */
+    private var adviceText: String? = null
 
     /** Local time at which the server decides for us (from [com.schaubeck.waddeln.protocol.GameView.timeLeftMs]). */
     private var deadline: Long? = null
@@ -154,6 +158,8 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
     fun answerSchlagwechsel(accept: Boolean) = send(ClientMessage.AnswerSchlagwechsel(accept))
     fun askSchadet() = send(ClientMessage.AskSchadet)
     fun answerSchadet(answer: SchadetAnswer) = send(ClientMessage.AnswerSchadet(answer))
+    fun askAdvice() = send(ClientMessage.AskAdvice)
+    fun answerAdvice(answer: TrickAdvice) = send(ClientMessage.AnswerAdvice(answer))
     fun showLastTrick(show: Boolean) = send(ClientMessage.ShowLastTrick(show))
     fun cut(cut: Int) = send(ClientMessage.Cut(cut))
 
@@ -265,6 +271,19 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
             if (schadetAsker == now.yourSeat) schadetText = text
             say(schadet.seat, text)
         }
+        val oldAdvice = old.observation.advice.takeIf { obs.roundNumber == old.observation.roundNumber }.orEmpty()
+        val advice = obs.advice.lastOrNull()
+        if (advice != null) {
+            val asked = obs.advice.size > oldAdvice.size
+            if (asked) say(advice.asker, sayings.adviceQuestion())
+            val answer = advice.answer
+            if (answer != null && (asked || oldAdvice.lastOrNull()?.answer == null)) {
+                val text = sayings.adviceAnswer(answer)
+                if (advice.asker == now.yourSeat) adviceText = text
+                // An answer that came with the question still follows it.
+                say((advice.asker + 2) % PLAYER_COUNT, text, delayMs = if (asked) ANSWER_DELAY_MS else 0)
+            }
+        }
     }
 
     /** The Abheber has just cut: show it like the server lets the bots wait. */
@@ -342,6 +361,10 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
             waitingForSchadet = game.schadetQuestion == me && game.schadetAnswer == null && beforeFirstLead,
             schadetAnswer = schadetText.takeIf { game.schadetQuestion == me && beforeFirstLead && obs.playerToMove == me },
             partnerAsksSchadet = game.schadetQuestion == (me + 2) % PLAYER_COUNT && game.schadetAnswer == null && beforeFirstLead,
+            canAskAdvice = game.canAskAdvice,
+            waitingForAdvice = obs.currentAdvice?.let { it.asker == me && it.answer == null } == true,
+            adviceAnswer = adviceText.takeIf { obs.currentAdvice?.let { it.asker == me && it.answer != null } == true },
+            partnerAsksAdvice = obs.currentAdvice?.let { it.asker == (me + 2) % PLAYER_COUNT && it.answer == null } == true,
             canProposeSchlagwechsel = game.canProposeSchlagwechsel,
             waitingForSchlagwechsel = obs.schlagwechselAnswerer.let { it != null && it != me },
             schlagwechselAsksUs = obs.schlagwechselAnswerer == me,

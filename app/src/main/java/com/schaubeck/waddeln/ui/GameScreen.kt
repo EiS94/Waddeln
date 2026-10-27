@@ -72,6 +72,7 @@ import com.schaubeck.waddeln.rules.Suit
 import com.schaubeck.waddeln.rules.Trump
 import com.schaubeck.waddeln.rules.agent.PartnerHint
 import com.schaubeck.waddeln.rules.agent.SchadetAnswer
+import com.schaubeck.waddeln.rules.agent.TrickAdvice
 import com.schaubeck.waddeln.rules.nextPlayer
 import com.schaubeck.waddeln.rules.teamOf
 import com.schaubeck.waddeln.sound.LocalTableSound
@@ -82,6 +83,7 @@ import kotlinx.coroutines.delay
  * [onContinue] starts the next round or match after the result; [onAskPartner] asks the partner
  * about their cards during a Schub, [onAnswerPartner] (online only) answers such a question;
  * [onAskSchadet] asks the partner "Schadder?" before leading the Haubi, [onAnswerSchadet] answers it;
+ * [onAskAdvice] asks the partner "Was soll ich machen?" second in a trick, [onAnswerAdvice] answers it;
  * [onShowLastTrick] shows or hides the last completed trick; [onProposeSchlagwechsel] proposes a
  * Schlagwechsel before the Schlag, [onAnswerSchlagwechsel] answers it as dealer;
  * [onCut] cuts as Abheber before the deal, [onCutSeen] skips the rest of the cut animation;
@@ -99,6 +101,8 @@ fun GameScreen(
     onAnswerPartner: (PartnerHint) -> Unit = {},
     onAskSchadet: () -> Unit = {},
     onAnswerSchadet: (SchadetAnswer) -> Unit = {},
+    onAskAdvice: () -> Unit = {},
+    onAnswerAdvice: (TrickAdvice) -> Unit = {},
     onShowLastTrick: (Boolean) -> Unit = {},
     onProposeSchlagwechsel: () -> Unit = {},
     onAnswerSchlagwechsel: (Boolean) -> Unit = {},
@@ -126,7 +130,7 @@ fun GameScreen(
                 }
                 ActionArea(
                     table, onAction, onNoticeConfirmed, onAskPartner, onAnswerPartner, onAskSchadet, onAnswerSchadet,
-                    onProposeSchlagwechsel, onAnswerSchlagwechsel,
+                    onAskAdvice, onAnswerAdvice, onProposeSchlagwechsel, onAnswerSchlagwechsel,
                 )
                 Hand(table, onAction)
             }
@@ -638,6 +642,8 @@ private fun ActionArea(
     onAnswerPartner: (PartnerHint) -> Unit,
     onAskSchadet: () -> Unit,
     onAnswerSchadet: (SchadetAnswer) -> Unit,
+    onAskAdvice: () -> Unit,
+    onAnswerAdvice: (TrickAdvice) -> Unit,
     onProposeSchlagwechsel: () -> Unit,
     onAnswerSchlagwechsel: (Boolean) -> Unit,
 ) {
@@ -773,6 +779,35 @@ private fun ActionArea(
                     }
                     table.waitingForSchadet -> Text(stringResource(R.string.action_wait_for, partner), color = Highlight, fontSize = 14.sp)
                     else -> Text(stringResource(R.string.action_partner_said, partner, table.schadetAnswer.orEmpty()), color = Highlight, fontSize = 15.sp)
+                }
+            }
+        }
+
+        table.partnerAsksAdvice -> {
+            {
+                PanelTitle(stringResource(R.string.action_partner_asks_advice, table.names[table.seatAt(2)]))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    TrickAdvice.entries.forEach { answer ->
+                        Button(
+                            onClick = { onAnswerAdvice(answer) },
+                            colors = woodButton(),
+                            contentPadding = CompactPadding,
+                            modifier = Modifier.weight(1f),
+                        ) { Text(stringResource(Texts.adviceLabel(answer)), maxLines = 1) }
+                    }
+                }
+            }
+        }
+
+        table.canAskAdvice || table.waitingForAdvice || table.adviceAnswer != null -> {
+            {
+                val partner = table.names[table.seatAt(2)]
+                when {
+                    table.canAskAdvice -> OutlinedButton(onClick = onAskAdvice) {
+                        Text(stringResource(R.string.action_ask_advice, partner), color = Color.White)
+                    }
+                    table.waitingForAdvice -> Text(stringResource(R.string.action_wait_for, partner), color = Highlight, fontSize = 14.sp)
+                    else -> Text(stringResource(R.string.action_partner_said, partner, table.adviceAnswer.orEmpty()), color = Highlight, fontSize = 15.sp)
                 }
             }
         }

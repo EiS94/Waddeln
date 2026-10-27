@@ -15,6 +15,9 @@ import kotlin.random.Random
  * - Before leading the Haubi into the first trick it asks "Schadder?", the partner answers with
  *   [Schadet.answerFor], and the bot decides again knowing the answer (see [Schadet.allowedActions]).
  *   Without the Haubi it sometimes asks as a bluff ([bluffsSchadet]).
+ * - Second in a trick after an opponent led, it sometimes asks "Was soll ich machen?" if it could take
+ *   the trick ([Advice.asks]); the partner answers with [Advice.answerFor] before the bot decides
+ *   ([adviceBeforeTurn], see [Advice.allowedActions]).
  * - Before announcing the Schlag the player after the dealer may propose a Schlagwechsel
  *   ([Schlagwechsel.proposes]); the dealer answers with [Schlagwechsel.accepts]. This is talked
  *   about before the actor is chosen ([schlagwechselBeforeTurn]), since it changes who announces.
@@ -42,6 +45,21 @@ object BotTalk {
         return Waddeln.answerSchlagwechsel(proposed, state.dealer, Schlagwechsel.accepts(proposed.observationFor(state.dealer)))
     }
 
+    /**
+     * [actor] asks "Was soll ich machen?" if [Advice.asks] ([random] decides) and the partner answers
+     * with [Advice.answerFor]. Unchanged if the bot does not ask.
+     */
+    fun adviceBeforeTurn(state: GameState, actor: Int, random: Random): GameState {
+        if (!Advice.asks(state, actor, random)) return state
+        val asked = Waddeln.askAdvice(state, actor)
+        val partner = partnerOf(actor)
+        return Waddeln.answerAdvice(asked, partner, Advice.answerFor(asked.observationFor(partner)))
+    }
+
+    /** The actions [actor] chooses from, restricted by the answers to their "Schadder?" and "Was soll ich machen?". */
+    fun allowedActions(state: GameState, actor: Int, legalActions: List<Action>): List<Action> =
+        Advice.allowedActions(state, actor, Schadet.allowedActions(state, actor, legalActions))
+
     /** True if [actor] wants to play [action] and should ask "Schadder?" first. */
     fun asksSchadet(state: GameState, actor: Int, action: Action): Boolean =
         Schadet.leadsHaubi(state, actor, action) && Waddeln.canAskSchadet(state, actor)
@@ -66,15 +84,15 @@ object BotTalk {
 
     /**
      * Lets [agent] choose for [actor] including the table talk around the decision; [random] decides
-     * about bluffs. Returns the state after the talk (the action is not applied yet) and the chosen action.
+     * about bluffs and whether to ask "Was soll ich machen?". Returns the state after the talk (the action is not applied yet) and the chosen action.
      */
     fun decide(state: GameState, actor: Int, agent: Agent, random: Random = Random.Default): Pair<GameState, Action> {
-        var s = hintBeforeAnswer(state, actor)
+        var s = adviceBeforeTurn(hintBeforeAnswer(state, actor), actor, random)
         val legal = Waddeln.legalActions(s, actor)
-        var action = agent.chooseAction(s.observationFor(actor), Schadet.allowedActions(s, actor, legal))
+        var action = agent.chooseAction(s.observationFor(actor), allowedActions(s, actor, legal))
         if (talksSchadet(s, actor, action, random)) {
             s = askAndAnswerSchadet(s, actor)
-            action = agent.chooseAction(s.observationFor(actor), Schadet.allowedActions(s, actor, legal))
+            action = agent.chooseAction(s.observationFor(actor), allowedActions(s, actor, legal))
         }
         return s to action
     }

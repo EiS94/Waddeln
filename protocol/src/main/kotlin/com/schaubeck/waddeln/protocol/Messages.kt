@@ -6,6 +6,7 @@ import com.schaubeck.waddeln.rules.Observation
 import com.schaubeck.waddeln.rules.PLAYER_COUNT
 import com.schaubeck.waddeln.rules.agent.PartnerHint
 import com.schaubeck.waddeln.rules.agent.SchadetAnswer
+import com.schaubeck.waddeln.rules.agent.TrickAdvice
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -17,7 +18,7 @@ import kotlinx.serialization.json.Json
  * [ServerMessage.Table] if the player still has a seat in a room, otherwise with [ServerMessage.NoRoom].
  * From then on the server sends a fresh [ServerMessage.Table] after every change.
  */
-const val PROTOCOL_VERSION = 2
+const val PROTOCOL_VERSION = 3
 
 /** Path of the WebSocket endpoint. */
 const val WS_PATH = "/ws"
@@ -117,6 +118,14 @@ sealed interface ClientMessage {
     @Serializable @SerialName("answer_schadet")
     data class AnswerSchadet(val answer: SchadetAnswer) : ClientMessage
 
+    /** Second in a trick after an opponent led: ask the partner "Was soll ich machen?". */
+    @Serializable @SerialName("ask_advice")
+    data object AskAdvice : ClientMessage
+
+    /** Answer to the partner's [AskAdvice]. */
+    @Serializable @SerialName("answer_advice")
+    data class AnswerAdvice(val answer: TrickAdvice) : ClientMessage
+
     /** Shows ([show] = true) or hides the last completed trick for the whole table; only allowed for the player to move. */
     @Serializable @SerialName("show_last_trick")
     data class ShowLastTrick(val show: Boolean) : ClientMessage
@@ -195,6 +204,8 @@ data class GameView(
     val schadetQuestion: Int? = null,
     /** The partner's answer to it, or null. */
     val schadetAnswer: SeatSchadet? = null,
+    /** True if we may ask "Was soll ich machen?" ([ClientMessage.AskAdvice]); the talk itself is in the observation. */
+    val canAskAdvice: Boolean = false,
     /** True if we may propose a Schlagwechsel ([ClientMessage.ProposeSchlagwechsel]); the talk itself is in the observation. */
     val canProposeSchlagwechsel: Boolean = false,
     /** True if we may show the last completed trick ([ClientMessage.ShowLastTrick]) now. */

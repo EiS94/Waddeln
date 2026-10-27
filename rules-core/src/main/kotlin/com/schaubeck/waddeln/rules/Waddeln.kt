@@ -2,6 +2,7 @@ package com.schaubeck.waddeln.rules
 
 import com.schaubeck.waddeln.rules.agent.PartnerHint
 import com.schaubeck.waddeln.rules.agent.SchadetAnswer
+import com.schaubeck.waddeln.rules.agent.TrickAdvice
 import kotlin.random.Random
 
 /** The rules engine: pure functions from state + action to new state. */
@@ -191,6 +192,39 @@ object Waddeln {
         if (schadetAnswerer(state) != player) throw IllegalActionException("Player $player may not answer Schadder now")
         return state.copy(schadet = state.schadet!!.copy(answer = answer))
     }
+
+    /**
+     * "Was soll ich machen?": after an opponent led, the second player of the trick may ask the partner
+     * (who plays last in it) how to play, once per trick and only while the partner holds cards.
+     */
+    fun canAskAdvice(state: GameState, player: Int): Boolean =
+        playsSecond(state, player) && state.hands[partnerOf(player)].isNotEmpty() &&
+            state.advice.none { it.trick == state.completedTricks.size }
+
+    fun askAdvice(state: GameState, player: Int): GameState {
+        if (!canAskAdvice(state, player)) throw IllegalActionException("Player $player may not ask for advice now")
+        return state.copy(advice = state.advice + AdviceTalk(player, state.completedTricks.size))
+    }
+
+    /** The partner who still has to answer an open "Was soll ich machen?" (none once the asker played). */
+    fun adviceAnswerer(state: GameState): Int? = state.advice.lastOrNull()
+        ?.takeIf { it.answer == null && it.trick == state.completedTricks.size && playsSecond(state, it.asker) }
+        ?.let { partnerOf(it.asker) }
+
+    fun answerAdvice(state: GameState, player: Int, answer: TrickAdvice): GameState {
+        if (adviceAnswerer(state) != player) throw IllegalActionException("Player $player may not give advice now")
+        return state.copy(advice = state.advice.dropLast(1) + state.advice.last().copy(answer = answer))
+    }
+
+    /** The answer to the "Was soll ich machen?" of [player] in the trick being played, if given. */
+    fun adviceFor(state: GameState, player: Int): TrickAdvice? = state.advice.lastOrNull()
+        ?.takeIf { it.asker == player && it.trick == state.completedTricks.size && playsSecond(state, player) }
+        ?.answer
+
+    /** True while [player] is to play the second card of a trick (the first one came from an opponent). */
+    private fun playsSecond(state: GameState, player: Int): Boolean =
+        state.phase == Phase.PLAYING && state.pendingSchub == null &&
+            state.currentTrick.size == 1 && state.playerToMove == player
 
     /** Before announcing the Schlag, the player after the dealer may propose a Schlagwechsel once per round. */
     fun canProposeSchlagwechsel(state: GameState, player: Int): Boolean =

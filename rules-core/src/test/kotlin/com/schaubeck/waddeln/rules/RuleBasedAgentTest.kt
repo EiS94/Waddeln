@@ -73,6 +73,7 @@ class RuleBasedAgentTest {
             val end = MatchRunner(agents, random).playMatch()
             if (Waddeln.matchWinner(end) == 0) wins++
         }
-        assertTrue(wins > matches * 0.8, "Rule-based team won only $wins of $matches")
+        // About 81 %: random players ask "Was soll ich machen?" too and then only play fitting cards.
+        assertTrue(wins > matches * 0.75, "Rule-based team won only $wins of $matches")
     }
 }

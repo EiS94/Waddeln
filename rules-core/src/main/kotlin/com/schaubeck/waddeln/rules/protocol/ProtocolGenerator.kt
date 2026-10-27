@@ -6,9 +6,9 @@ import com.schaubeck.waddeln.rules.GameState
 import com.schaubeck.waddeln.rules.PLAYER_COUNT
 import com.schaubeck.waddeln.rules.Phase
 import com.schaubeck.waddeln.rules.Waddeln
+import com.schaubeck.waddeln.rules.agent.Advice
 import com.schaubeck.waddeln.rules.agent.BotTalk
 import com.schaubeck.waddeln.rules.agent.DiscardRule
-import com.schaubeck.waddeln.rules.agent.Schadet
 import com.schaubeck.waddeln.rules.agent.RuleBasedAgent
 import com.schaubeck.waddeln.rules.ml.ActionCodec
 import com.schaubeck.waddeln.rules.ml.FeatureEncoder
@@ -55,9 +55,9 @@ object ProtocolGenerator {
             val (player, action, byBot) = when (mode) {
                 Mode.AGENTS -> {
                     val actor = seatedActor(state)
-                    state = talkHint(state, actor, steps)
+                    state = talkAdvice(talkHint(state, actor, steps), actor, steps, random)
                     val choose = { s: GameState ->
-                        val allowed = Schadet.allowedActions(s, actor, Waddeln.legalActions(s, actor))
+                        val allowed = BotTalk.allowedActions(s, actor, Waddeln.legalActions(s, actor))
                         if (ruleSeats[actor]) bot.chooseAction(s.observationFor(actor), allowed) else allowed.random(random)
                     }
                     var chosen = choose(state)
@@ -71,9 +71,13 @@ object ProtocolGenerator {
                     val options = (0 until PLAYER_COUNT).flatMap { p -> Waddeln.legalActions(state, p).map { p to it } }
                     var (p, a) = options.random(random)
                     if (a == Action.Bleiben || a == Action.Gehen) state = talkHint(state, p, steps)
+                    if (a is Action.PlayCard && Advice.mayAsk(state, p)) {
+                        state = talkAdvice(state, p, steps, random)
+                        a = BotTalk.allowedActions(state, p, Waddeln.legalActions(state, p)).random(random)
+                    }
                     if (BotTalk.talksSchadet(state, p, a, random)) {
                         state = talkSchadet(state, p, steps)
-                        a = Schadet.allowedActions(state, p, Waddeln.legalActions(state, p)).random(random)
+                        a = BotTalk.allowedActions(state, p, Waddeln.legalActions(state, p)).random(random)
                     }
                     Triple(p, a, false)
                 }
@@ -121,6 +125,15 @@ object ProtocolGenerator {
         val next = BotTalk.askAndAnswerSchadet(state, actor)
         steps += Json.obj("talk" to Json.str("ask"), "p" to actor.toString())
         steps += Json.obj("talk" to Json.str("answer"), "p" to partnerOf(actor).toString(), "v" to next.schadet!!.answer!!.ordinal.toString())
+        return next
+    }
+
+    /** [BotTalk.adviceBeforeTurn], written as two talk steps if the actor asked. */
+    private fun talkAdvice(state: GameState, actor: Int, steps: MutableList<String>, random: Random): GameState {
+        val next = BotTalk.adviceBeforeTurn(state, actor, random)
+        if (next === state) return state
+        steps += Json.obj("talk" to Json.str("advice"), "p" to actor.toString())
+        steps += Json.obj("talk" to Json.str("adviceAnswer"), "p" to partnerOf(actor).toString(), "v" to next.advice.last().answer!!.ordinal.toString())
         return next
     }
 
@@ -187,7 +200,7 @@ object ProtocolGenerator {
         )
         if (action is Action.PlayCard) {
             // What the Abwurf-Regel makes of this card choice (checked against the Python port)
-            val allowed = Schadet.allowedActions(before, player, legal[player])
+            val allowed = BotTalk.allowedActions(before, player, legal[player])
             val ruled = DiscardRule.apply(before.observationFor(player), allowed, action)
             fields += "dr" to ActionCodec.encode(ruled).toString()
         }

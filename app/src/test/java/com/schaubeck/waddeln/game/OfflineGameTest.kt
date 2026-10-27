@@ -2,14 +2,17 @@ package com.schaubeck.waddeln.game
 
 import com.schaubeck.waddeln.game.OfflineGame.Companion.HUMAN
 import com.schaubeck.waddeln.rules.Action
+import com.schaubeck.waddeln.rules.Card
 import com.schaubeck.waddeln.rules.Observation
 import com.schaubeck.waddeln.rules.Phase
 import com.schaubeck.waddeln.rules.Waddeln
 import com.schaubeck.waddeln.rules.agent.Agent
 import com.schaubeck.waddeln.rules.agent.RuleBasedAgent
 import com.schaubeck.waddeln.rules.agent.SchadetAnswer
+import com.schaubeck.waddeln.rules.agent.TrickAdvice
 import com.schaubeck.waddeln.rules.observationFor
 import com.schaubeck.waddeln.rules.teamOf
+import com.schaubeck.waddeln.rules.trickWinnerIndex
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -40,6 +43,7 @@ class OfflineGameTest {
                 game.botToAct() != null && game.abheberToCut != null -> game.stepBot()
                 game.state.phase == Phase.ROUND_OVER -> game.nextRound()
                 game.humanMustAnswerSchadet() -> game.answerSchadet(SchadetAnswer.entries.random())
+                game.humanMustAnswerAdvice() -> game.answerAdvice(TrickAdvice.entries.random())
                 game.humanMustAnswerSchlagwechsel() -> game.answerSchlagwechsel(Random.nextBoolean())
                 game.botToAct() != null -> game.stepBot()
                 else -> {
@@ -51,11 +55,16 @@ class OfflineGameTest {
         }
     }
 
-    /** One step towards the card play: the human declines a Schlagwechsel and otherwise takes the first action. */
+    /**
+     * One step of the game: the human declines a Schlagwechsel, answers the partner's questions and
+     * otherwise takes the first action.
+     */
     private fun step(game: OfflineGame) {
         when {
             game.humanMustCut() -> game.cut(16)
             game.humanMustAnswerSchlagwechsel() -> game.answerSchlagwechsel(false)
+            game.humanMustAnswerAdvice() -> game.answerAdvice(TrickAdvice.NICHTS)
+            game.humanMustAnswerSchadet() -> game.answerSchadet(SchadetAnswer.NO)
             game.botToAct() != null -> game.stepBot()
             else -> game.applyHuman(game.humanActions().first())
         }
@@ -110,6 +119,7 @@ class OfflineGameTest {
                 }
                 when {
                     game.humanMustAnswerSchlagwechsel() -> game.answerSchlagwechsel(false)
+                    game.humanMustAnswerAdvice() -> game.answerAdvice(TrickAdvice.NICHTS)
                     game.botToAct() != null -> game.stepBot()
                     else -> game.applyHuman(game.humanActions().first { it != Action.Schub })
                 }
@@ -134,6 +144,74 @@ class OfflineGameTest {
             return
         }
         error("the human never led with the Haubi")
+    }
+
+    @Test
+    fun `the partner bot answers the human's Was soll ich machen`() {
+        repeat(300) { seed ->
+            val game = dealt(OfflineGame(Random(seed)))
+            while (game.state.phase != Phase.ROUND_OVER && !game.humanCanAskAdvice()) step(game)
+            if (!game.humanCanAskAdvice()) return@repeat
+            game.askAdvice()
+            assertEquals(OfflineGame.PARTNER, game.botToAct())
+            assertTrue(game.stepBot() is BotStep.AnsweredAdvice)
+            assertNotNull(game.state.advice.last().answer)
+            assertTrue("asked once per trick", !game.humanCanAskAdvice())
+            return
+        }
+        error("the human never played second in a trick")
+    }
+
+    @Test
+    fun `a bot asks the human partner and waits for the answer`() {
+        repeat(300) { seed ->
+            val game = dealt(OfflineGame(Random(seed)))
+            while (game.state.phase != Phase.ROUND_OVER) {
+                if (game.humanMustAnswerAdvice()) {
+                    assertNull("the game waits for the human", game.botToAct())
+                    game.answerAdvice(TrickAdvice.MACHEN)
+                    assertTrue(game.stepBot() is BotStep.Acted)
+                    return
+                }
+                step(game)
+            }
+        }
+        error("the partner bot never asked")
+    }
+
+    @Test
+    fun `without the setting nobody asks Was soll ich machen`() {
+        repeat(30) { seed ->
+            val game = dealt(OfflineGame(Random(seed)).apply { adviceEnabled = false })
+            while (game.state.phase == Phase.SCHLAG || game.state.phase == Phase.FARBE || game.state.phase == Phase.PLAYING) {
+                assertTrue("the human cannot ask", !game.humanCanAskAdvice())
+                step(game)
+            }
+            assertTrue("no bot asked", game.state.advice.isEmpty())
+        }
+    }
+
+    @Test
+    fun `a bot told Nichts only takes the trick if every card would`() {
+        var checked = 0
+        repeat(300) { seed ->
+            val game = dealt(OfflineGame(Random(seed)))
+            while (game.state.phase == Phase.SCHLAG || game.state.phase == Phase.FARBE || game.state.phase == Phase.PLAYING) {
+                if (!game.humanMustAnswerAdvice()) {
+                    step(game)
+                    continue
+                }
+                game.answerAdvice(TrickAdvice.NICHTS)
+                val s = game.state
+                val lead = s.currentTrick.map { it.card }
+                fun beats(card: Card) = trickWinnerIndex(lead + card, s.trump!!) == lead.size
+                val playable = Waddeln.playableCards(s, OfflineGame.PARTNER)
+                val played = (game.stepBot() as? BotStep.Acted)?.action as? Action.PlayCard ?: continue
+                if (beats(played.card)) assertTrue("only if every card takes the trick", playable.all(::beats))
+                checked++
+            }
+        }
+        assertTrue("the partner bot asked often enough", checked > 20)
     }
 
     @Test

@@ -9,6 +9,7 @@ import com.schaubeck.waddeln.rules.RoundEndReason
 import com.schaubeck.waddeln.rules.Suit
 import com.schaubeck.waddeln.rules.agent.PartnerHint
 import com.schaubeck.waddeln.rules.agent.SchadetAnswer
+import com.schaubeck.waddeln.rules.agent.TrickAdvice
 import com.schaubeck.waddeln.rules.teamOf
 
 /** UI texts built from string resources. "Wir"/"Du" always refer to the player [me] the table is shown for. */
@@ -63,6 +64,14 @@ object Texts {
         SchadetAnswer.YES -> R.string.schadet_label_yes
         SchadetAnswer.A_LITTLE -> R.string.schadet_label_a_little
         SchadetAnswer.NO -> R.string.schadet_label_no
+    }
+
+    /** Label of the buttons a human answers "Was soll ich machen?" with. */
+    @StringRes
+    fun adviceLabel(answer: TrickAdvice): Int = when (answer) {
+        TrickAdvice.NICHTS -> R.string.advice_label_nichts
+        TrickAdvice.STICHELN -> R.string.advice_label_sticheln
+        TrickAdvice.MACHEN -> R.string.advice_label_machen
     }
 
     /** Short label of a hint level for the buttons a human partner answers with. */

@@ -50,6 +50,7 @@ def sample_inputs(count: int, seed: int = 7) -> list[np.ndarray]:
             T.schlagwechsel_before_turn(state)
             actor = E.seated_actor(state)
             T.hint_before_answer(state, actor)
+            T.advice_before_turn(state, actor, rng)
             legal = T.allowed_actions(state, actor, E.legal_actions(state, actor))
             obs = E.observe(state, actor)
             if len(legal) > 1:

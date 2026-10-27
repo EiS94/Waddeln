@@ -34,7 +34,7 @@ def replay(match):
     bot = RuleBot()
     state = None
     checked = {"steps": 0, "bot": 0, "features": 0, "discard": 0, "discard_changed": 0,
-               "hints": 0, "schadet": 0, "schlagwechsel": 0, "bluffs": 0}
+               "hints": 0, "schadet": 0, "schlagwechsel": 0, "bluffs": 0, "advice0": 0, "advice1": 0, "advice2": 0}
     for r, rnd in enumerate(match["rounds"]):
         if r == 0:
             state = E.new_match(rnd["dealer"], rnd["deck"], rnd["cut"])
@@ -109,6 +109,13 @@ def replay_talk(state, step, ctx, checked):
         assert T.schadet_answer(E.observe(state, p)) == step["v"], f"{ctx} Schadder answer"
         E.answer_schadet(state, p, step["v"])
         checked["schadet"] += 1
+    elif kind == "advice":
+        assert T.may_ask_advice(state, p), f"{ctx} asks for advice"
+        E.ask_advice(state, p)
+    elif kind == "adviceAnswer":
+        assert T.advice_answer(E.observe(state, p)) == step["v"], f"{ctx} advice"
+        E.answer_advice(state, p, step["v"])
+        checked[f"advice{step['v']}"] += 1
     elif kind == "swap":
         assert E.can_propose_schlagwechsel(state, p), f"{ctx} Schlagwechsel"
         assert T.proposes_schlagwechsel(E.observe(state, p)) == bool(step["v"]), f"{ctx} Schlagwechsel proposal"
@@ -124,7 +131,7 @@ def replay_talk(state, step, ctx, checked):
 
 def test_protocols_replay_identically():
     totals = {"steps": 0, "bot": 0, "features": 0, "discard": 0, "discard_changed": 0,
-              "hints": 0, "schadet": 0, "schlagwechsel": 0, "bluffs": 0, "laid_out": 0, "kritte_haubi": 0, "geber_kritten": 0, "matches": 0}
+              "hints": 0, "schadet": 0, "schlagwechsel": 0, "bluffs": 0, "advice0": 0, "advice1": 0, "advice2": 0, "laid_out": 0, "kritte_haubi": 0, "geber_kritten": 0, "matches": 0}
     for match in load_matches():
         checked = replay(match)
         for k in checked:
@@ -145,6 +152,7 @@ def test_protocols_replay_identically():
     assert totals["discard_changed"] > 100, "protocols should cover the Abwurf-Regel changing a card"
     assert totals["hints"] > 100, "protocols should cover partner hints"
     assert totals["schadet"] > 20, "protocols should cover Schadder"
+    assert min(totals[f"advice{v}"] for v in range(3)) > 20, "protocols should cover every answer to \"Was soll ich machen?\""
     assert totals["schlagwechsel"] > 50, "protocols should cover the Schlagwechsel"
     assert totals["bluffs"] > 5, "protocols should cover bluffing with Schadder"
     assert totals["geber_kritten"] > 0, "protocols should cover the dealer taking Kritten under the rest"

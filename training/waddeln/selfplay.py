@@ -28,6 +28,7 @@ def play_match(agents, rng: random.Random, record_seats=(), max_rounds: int = 20
             T.schlagwechsel_before_turn(state)
             actor = E.seated_actor(state)
             T.hint_before_answer(state, actor)
+            T.advice_before_turn(state, actor, rng)
             legal = T.allowed_actions(state, actor, E.legal_actions(state, actor))
             obs = E.observe(state, actor)
             agent = agents[actor]
@@ -140,6 +141,7 @@ class BatchedSelfPlay:
                 T.schlagwechsel_before_turn(st)
                 actor = E.seated_actor(st)
                 T.hint_before_answer(st, actor)
+                T.advice_before_turn(st, actor, self.rng)
                 legal = T.allowed_actions(st, actor, E.legal_actions(st, actor))
                 obs = E.observe(st, actor)
                 agent = slot.agents[actor]

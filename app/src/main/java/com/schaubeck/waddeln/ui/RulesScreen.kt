@@ -230,6 +230,7 @@ private val RULES = listOf(
             Block.Text(R.string.rules_partner_1),
             Block.Text(R.string.rules_partner_2),
             Block.Text(R.string.rules_partner_3),
+            Block.Text(R.string.rules_partner_4),
         ),
     ),
     Rules(

@@ -11,6 +11,7 @@ import com.schaubeck.waddeln.rules.RoundResult
 import com.schaubeck.waddeln.rules.SchadetTalk
 import com.schaubeck.waddeln.rules.Trick
 import com.schaubeck.waddeln.rules.Waddeln
+import com.schaubeck.waddeln.rules.agent.Advice
 import com.schaubeck.waddeln.rules.agent.Agent
 import com.schaubeck.waddeln.rules.agent.BotTalk
 import com.schaubeck.waddeln.rules.agent.PartnerHint
@@ -19,6 +20,7 @@ import com.schaubeck.waddeln.rules.agent.Schadet
 import com.schaubeck.waddeln.rules.agent.SchadetAnswer
 import com.schaubeck.waddeln.rules.agent.Schlagwechsel
 import com.schaubeck.waddeln.rules.agent.RuleBasedAgent
+import com.schaubeck.waddeln.rules.agent.TrickAdvice
 import com.schaubeck.waddeln.rules.nextPlayer
 import com.schaubeck.waddeln.rules.observationFor
 import com.schaubeck.waddeln.rules.partnerOf
@@ -38,6 +40,11 @@ sealed interface BotStep {
     data class AskedSchadet(override val bot: Int) : BotStep
 
     data class AnsweredSchadet(override val bot: Int, val answer: SchadetAnswer) : BotStep
+
+    /** Second in a trick the bot asks its partner "Was soll ich machen?". */
+    data class AskedAdvice(override val bot: Int) : BotStep
+
+    data class AnsweredAdvice(override val bot: Int, val answer: TrickAdvice) : BotStep
 
     /** Before announcing the Schlag the bot proposes a Schlagwechsel to the dealer. */
     data class ProposedSchlagwechsel(override val bot: Int) : BotStep
@@ -64,6 +71,9 @@ class OfflineGame(
     /** The bot players per seat; may be replaced, e.g. once the ML model has been loaded. */
     var bots: List<Agent> = List(PLAYER_COUNT) { RuleBasedAgent() },
 ) {
+    /** "Was soll ich machen?" is played (setting); otherwise neither bots nor the human ask. */
+    var adviceEnabled: Boolean = true
+
     /** The next round waits for the Abheber to cut; meanwhile [state] is its preview without cards. */
     private var pending: PendingRound? = Waddeln.prepareMatch(random)
 
@@ -88,11 +98,11 @@ class OfflineGame(
     /**
      * The bot that has to act next, or null if the game waits for the human (or a new round).
      * An open Schub against the human's team is always answered by the human; an open
-     * "Schadder?" or Schlagwechsel is answered by the asked player first.
+     * "Schadder?", "Was soll ich machen?" or Schlagwechsel is answered by the asked player first.
      */
     fun botToAct(): Int? {
         abheberToCut?.let { return it.takeIf { it != HUMAN } }
-        (Waddeln.schadetAnswerer(state) ?: Waddeln.schlagwechselAnswerer(state))?.let { return it.takeIf { it != HUMAN } }
+        (Waddeln.schadetAnswerer(state) ?: Waddeln.adviceAnswerer(state) ?: Waddeln.schlagwechselAnswerer(state))?.let { return it.takeIf { it != HUMAN } }
         val toMove = state.playerToMove ?: return null
         val pending = state.pendingSchub
         val actor = if (pending == null) {
@@ -107,7 +117,8 @@ class OfflineGame(
     /**
      * Lets the next bot act and returns what it did. The bots talk like [BotTalk]: before announcing
      * the Schlag a bot may propose a Schlagwechsel, before answering a Schub it asks its partner,
-     * before leading the Haubi it asks "Schadder?" and then decides knowing the answer.
+     * before leading the Haubi it asks "Schadder?" and then decides knowing the answer, second in a trick
+     * it sometimes asks "Was soll ich machen?" first.
      */
     fun stepBot(): BotStep {
         val bot = checkNotNull(botToAct()) { "No bot to act" }
@@ -119,6 +130,11 @@ class OfflineGame(
             val answer = Schadet.answerFor(state.observationFor(bot))
             state = Waddeln.answerSchadet(state, bot, answer)
             return BotStep.AnsweredSchadet(bot, answer)
+        }
+        if (Waddeln.adviceAnswerer(state) == bot) {
+            val answer = Advice.answerFor(state.observationFor(bot))
+            state = Waddeln.answerAdvice(state, bot, answer)
+            return BotStep.AnsweredAdvice(bot, answer)
         }
         if (Waddeln.schlagwechselAnswerer(state) == bot) {
             val accept = Schlagwechsel.accepts(state.observationFor(bot))
@@ -136,7 +152,11 @@ class OfflineGame(
             state = Waddeln.giveHint(state, partner, hint)
             return BotStep.AskedPartner(bot, hint)
         }
-        val legal = Schadet.allowedActions(state, bot, Waddeln.legalActions(state, bot))
+        if (adviceEnabled && Advice.asks(state, bot, random)) {
+            state = Waddeln.askAdvice(state, bot)
+            return BotStep.AskedAdvice(bot)
+        }
+        val legal = BotTalk.allowedActions(state, bot, Waddeln.legalActions(state, bot))
         val action = bots[bot].chooseAction(state.observationFor(bot), legal)
         if (BotTalk.talksSchadet(state, bot, action, random)) {
             state = Waddeln.askSchadet(state, bot)
@@ -173,6 +193,21 @@ class OfflineGame(
 
     fun answerSchadet(answer: SchadetAnswer) {
         if (humanMustAnswerSchadet()) state = Waddeln.answerSchadet(state, HUMAN, answer)
+    }
+
+    /** Second in a trick after an opponent led, the human may ask the partner "Was soll ich machen?". */
+    fun humanCanAskAdvice(): Boolean = adviceEnabled && Waddeln.canAskAdvice(state, HUMAN)
+
+    /** The human asks; the partner bot answers in its next step. */
+    fun askAdvice() {
+        if (humanCanAskAdvice()) state = Waddeln.askAdvice(state, HUMAN)
+    }
+
+    /** True while the partner bot waits for the human's answer to its "Was soll ich machen?". */
+    fun humanMustAnswerAdvice(): Boolean = Waddeln.adviceAnswerer(state) == HUMAN
+
+    fun answerAdvice(answer: TrickAdvice) {
+        if (humanMustAnswerAdvice()) state = Waddeln.answerAdvice(state, HUMAN, answer)
     }
 
     /** During a Schub against the human's team the partner can be asked (once per Schub). */

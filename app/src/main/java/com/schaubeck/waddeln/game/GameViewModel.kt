@@ -15,6 +15,7 @@ import com.schaubeck.waddeln.rules.Waddeln
 import com.schaubeck.waddeln.rules.observationFor
 import com.schaubeck.waddeln.rules.partnerOf
 import com.schaubeck.waddeln.rules.agent.SchadetAnswer
+import com.schaubeck.waddeln.rules.agent.TrickAdvice
 import com.schaubeck.waddeln.rules.teamOf
 import com.schaubeck.waddeln.ui.Sayings
 import kotlinx.coroutines.Dispatchers
@@ -42,7 +43,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private val store = SettingsStore(application)
     private val sayings = Sayings(application.resources)
     private var settings = store.load()
-    private val game = OfflineGame()
+    private val game = OfflineGame().apply { adviceEnabled = settings.trickAdvice }
     private val statsStore = StatsStore(application)
     private val statsTracker = StatsTracker { statsStore.add(StatsMode.OFFLINE, it) }
     private var notice: SchubNotice? = null
@@ -53,6 +54,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     /** The variant picked for the partner bot's answer to the human's "Schadder?". */
     private var schadetText: String? = null
+
+    /** The variant picked for the partner bot's answer to the human's "Was soll ich machen?". */
+    private var adviceText: String? = null
     private var matchStarted = false
 
     /** The human looks at the last completed trick (until they act). */
@@ -159,6 +163,24 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         runBots()
     }
 
+    /** Second in a trick: ask the partner "Was soll ich machen?"; the partner bot answers in its next step. */
+    fun onAskAdvice() {
+        if (!game.humanCanAskAdvice()) return
+        game.askAdvice()
+        say(OfflineGame.HUMAN, sayings.adviceQuestion())
+        publish()
+        runBots()
+    }
+
+    /** Answer to the partner bot's "Was soll ich machen?". */
+    fun onAnswerAdvice(answer: TrickAdvice) {
+        if (!game.humanMustAnswerAdvice()) return
+        game.answerAdvice(answer)
+        say(OfflineGame.HUMAN, sayings.adviceAnswer(answer))
+        publish()
+        runBots()
+    }
+
     /** During a Schub against us: the partner tells roughly how good their cards are. */
     fun onAskPartner() {
         if (partnerHint() != null) return
@@ -181,6 +203,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         val difficultyChanged = newSettings.difficulty != settings.difficulty
         settings = newSettings
         store.save(newSettings)
+        game.adviceEnabled = newSettings.trickAdvice
         botFactory?.takeIf { difficultyChanged }?.let { game.bots = it.createBots(newSettings.difficulty) }
         publish()
         // The human may have switched off cutting themselves while it is their turn to cut.
@@ -197,6 +220,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         speech = emptyList()
         givenHint = null
         schadetText = null
+        adviceText = null
         game.nextRound()
         publish()
         runBots()
@@ -209,6 +233,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         speech = emptyList()
         givenHint = null
         schadetText = null
+        adviceText = null
         game.newMatch()
         publish()
         runBots()
@@ -248,6 +273,16 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     is BotStep.AnsweredSchadet -> {
                         val text = sayings.schadetAnswer(step.answer)
                         if (game.schadet?.asker == OfflineGame.HUMAN) schadetText = text
+                        say(bot, text)
+                        true
+                    }
+                    is BotStep.AskedAdvice -> {
+                        say(bot, sayings.adviceQuestion())
+                        true
+                    }
+                    is BotStep.AnsweredAdvice -> {
+                        val text = sayings.adviceAnswer(step.answer)
+                        if (partnerOf(bot) == OfflineGame.HUMAN) adviceText = text
                         say(bot, text)
                         true
                     }
@@ -358,6 +393,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             waitingForSchadet = game.schadet?.let { it.asker == OfflineGame.HUMAN && it.answer == null } == true,
             schadetAnswer = schadetText?.takeIf { Waddeln.leadsFirstTrick(game.state, OfflineGame.HUMAN) },
             partnerAsksSchadet = game.humanMustAnswerSchadet(),
+            canAskAdvice = notice == null && game.humanCanAskAdvice(),
+            waitingForAdvice = Waddeln.adviceAnswerer(game.state) == OfflineGame.PARTNER,
+            adviceAnswer = adviceText?.takeIf { Waddeln.adviceFor(game.state, OfflineGame.HUMAN) != null },
+            partnerAsksAdvice = game.humanMustAnswerAdvice(),
             canProposeSchlagwechsel = notice == null && game.humanCanProposeSchlagwechsel(),
             waitingForSchlagwechsel = Waddeln.schlagwechselAnswerer(game.state).let { it != null && it != OfflineGame.HUMAN },
             schlagwechselAsksUs = game.humanMustAnswerSchlagwechsel(),

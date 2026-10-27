@@ -75,6 +75,9 @@ fun SettingsScreen(settings: Settings, onChange: (Settings) -> Unit, onBack: () 
                     Toggle(stringResource(R.string.settings_self_cut), stringResource(R.string.settings_self_cut_description), settings.selfCut) {
                         onChange(settings.copy(selfCut = it))
                     }
+                    Toggle(stringResource(R.string.settings_trick_advice), stringResource(R.string.settings_trick_advice_description), settings.trickAdvice) {
+                        onChange(settings.copy(trickAdvice = it))
+                    }
                 }
                 Section(stringResource(R.string.settings_sound)) {
                     Toggle(stringResource(R.string.settings_sound_effects), stringResource(R.string.settings_sound_effects_description), settings.soundEffects) {

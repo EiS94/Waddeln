@@ -15,6 +15,7 @@ import com.schaubeck.waddeln.rules.Phase
 import com.schaubeck.waddeln.rules.agent.PartnerHint
 import com.schaubeck.waddeln.rules.agent.RuleBasedAgent
 import com.schaubeck.waddeln.rules.agent.SchadetAnswer
+import com.schaubeck.waddeln.rules.agent.TrickAdvice
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -71,12 +72,15 @@ class GameServerTest {
 
         /**
          * Answers what the bots asked us (until then nobody can act): declines a Schlagwechsel as
-         * dealer and says "no" to the partner's "Schadder?".
+         * dealer, says "no" to the partner's "Schadder?" and "Machen" to their "Was soll ich machen?".
          */
         fun answerTalk() {
             val game = table.game ?: return
             if (game.observation.schlagwechselAnswerer == seat) send(ClientMessage.AnswerSchlagwechsel(false))
             if (game.schadetQuestion == (seat + 2) % 4 && game.schadetAnswer == null) send(ClientMessage.AnswerSchadet(SchadetAnswer.NO))
+            if (game.observation.currentAdvice?.let { it.asker == (seat + 2) % 4 && it.answer == null } == true) {
+                send(ClientMessage.AnswerAdvice(TrickAdvice.MACHEN))
+            }
         }
     }
 
@@ -746,6 +750,35 @@ class GameServerTest {
             return@runTest
         }
         error("the host never led the first trick with the Haubi")
+    }
+
+    @Test
+    fun `the bot partner answers Was soll ich machen`() = runTest {
+        for (seed in 0 until 50) {
+            val server = newServer(seed = seed)
+            val host = player(server, "host")
+            host.send(ClientMessage.CreateRoom)
+            host.send(ClientMessage.StartMatch)
+            repeat(200) {
+                advanceUntilIdle()
+                val game = host.table.game!!
+                if (game.canAskAdvice) {
+                    host.send(ClientMessage.AskAdvice)
+                    val asked = host.table.game!!.observation.currentAdvice
+                    assertEquals(0, asked?.asker)
+                    assertNull(asked?.answer)
+                    assertFalse(host.table.game!!.canAskAdvice, "once per trick")
+                    advanceTimeBy(Timing().botDelayMs + 1)
+                    assertNotNull(host.table.game!!.observation.currentAdvice?.answer, "the partner bot answered")
+                    return@runTest
+                }
+                val phase = game.observation.phase
+                if (phase == Phase.ROUND_OVER || phase == Phase.MATCH_OVER) return@repeat
+                host.answerTalk()
+                game.legalActions.firstOrNull { it != Action.Schub }?.let { host.send(ClientMessage.Act(it)) }
+            }
+        }
+        error("the host never played second in a trick")
     }
 
     @Test
