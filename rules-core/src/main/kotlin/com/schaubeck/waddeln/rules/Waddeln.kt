@@ -1,6 +1,5 @@
 package com.schaubeck.waddeln.rules
 
-import com.schaubeck.waddeln.rules.agent.HintTrick
 import com.schaubeck.waddeln.rules.agent.PartnerHint
 import com.schaubeck.waddeln.rules.agent.SchadetAnswer
 import kotlin.random.Random
@@ -153,9 +152,9 @@ object Waddeln {
         return teamOf(player) == pending.answeringTeam && state.hints.none { it.schub == state.schubs.lastIndex }
     }
 
-    fun giveHint(state: GameState, player: Int, hint: PartnerHint, trick: HintTrick = HintTrick.NONE): GameState {
+    fun giveHint(state: GameState, player: Int, hint: PartnerHint): GameState {
         if (!canGiveHint(state, player)) throw IllegalActionException("Player $player may not give a hint now")
-        return state.copy(hints = state.hints + HintCall(player, hint, state.schubs.lastIndex, trick))
+        return state.copy(hints = state.hints + HintCall(player, hint, state.schubs.lastIndex))
     }
 
     /** True while [player] is about to lead the first trick holding the Haubi (the moment for "Schadder?"). */

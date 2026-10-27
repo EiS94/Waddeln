@@ -98,7 +98,6 @@ def replay_talk(state, step, ctx, checked):
     p, kind = step["p"], step["talk"]
     if kind == "hint":
         assert T.partner_hint(E.observe(state, p)) == step["v"], f"{ctx} partner hint"
-        assert T.hint_trick(E.observe(state, p)) == step["t"], f"{ctx} partner hint trick"
         E.give_hint(state, p, step["v"])
         checked["hints"] += 1
     elif kind == "ask":

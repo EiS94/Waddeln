@@ -4,7 +4,6 @@ import com.schaubeck.waddeln.rules.Action
 import com.schaubeck.waddeln.rules.Card
 import com.schaubeck.waddeln.rules.Observation
 import com.schaubeck.waddeln.rules.PLAYER_COUNT
-import com.schaubeck.waddeln.rules.agent.HintTrick
 import com.schaubeck.waddeln.rules.agent.PartnerHint
 import com.schaubeck.waddeln.rules.agent.SchadetAnswer
 import kotlinx.serialization.SerialName
@@ -246,9 +245,8 @@ object CutAnimation {
 @Serializable
 data class SeatAction(val seat: Int, val action: Action)
 
-/** A partner's answer during a Schub; [trick] says how the trick being played is meant (bots only). */
 @Serializable
-data class SeatHint(val seat: Int, val hint: PartnerHint, val trick: HintTrick = HintTrick.NONE)
+data class SeatHint(val seat: Int, val hint: PartnerHint)
 
 @Serializable
 data class SeatSchadet(val seat: Int, val answer: SchadetAnswer)

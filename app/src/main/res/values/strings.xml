@@ -179,20 +179,6 @@
     <!-- "All tricks", by the number of tricks the team still needs -->
     <string name="say_hint_all_3">Ich mach alle 3 Stiche!|Die mach ich alle!</string>
     <string name="say_hint_all_2">Die zwei Stiche mach ich!|Die zwei hab ich!</string>
-    <string name="say_hint_with_little">Das halt, sonst nicht viel.|Den könnt ich holen, mehr nicht.</string>
-    <string name="say_hint_with_one">Ich hab nur das.|Ich hol wenn dann nur den.</string>
-    <string name="say_hint_with_two">Das und noch 2.|Den und noch einen.</string>
-    <string name="say_hint_with_all">Ich bin stark!|Den und den Rest auch!</string>
-    <string name="say_hint_after_nothing">Nach dem nix mehr.</string>
-    <string name="say_hint_after_little">Nach dem nicht mehr viel.</string>
-    <string name="say_hint_after_one">Nach dem noch 1</string>
-    <string name="say_hint_after_two">Nach dem noch 2</string>
-    <string name="say_hint_after_all">Ich bin stark!|Den und den Rest auch</string>
-    <string name="say_hint_not_nothing">Ich hab gar nichts.|Nix.|Bei mir schaut\'s schlecht aus.</string>
-    <string name="say_hint_not_little">Den nicht, danach nicht viel.|Den nicht, und danach schaut\'s mau aus.</string>
-    <string name="say_hint_not_one">Danach noch 1.|Den nicht, aber danach einen.</string>
-    <string name="say_hint_not_two">Danach noch 2.|Den nicht, aber danach zwei.</string>
-    <string name="say_hint_not_all">Den nicht, aber danach alle!|Den Rest mach ich!</string>
     <string name="say_hint_all_1">Den letzten Stich mach ich!|Den letzten hab ich!</string>
 
     <!-- Sayings: "Schadder?" before leading the Haubi into the first trick -->
@@ -327,7 +313,7 @@
     <string name="online_invite_chooser">Zu Waddeln einladen</string>
     <string name="online_seats">Plätze</string>
     <string name="online_seats_text">Gegenüber Sitzende spielen zusammen. Tippe auf einen KI-Platz, um dich dorthin zu setzen.</string>
-    <string name="online_seats_text_host">Gegenüber Sitzende spielen zusammen. Tippe auf einen KI-Platz, um dich dorthin zu setzen. Mit dem Stift gibst du einer KI einen anderen Namen.</string>
+    <string name="online_seats_text_host">Gegenüber Sitzende spielen zusammen. Tippe auf einen Platz, um dich dorthin zu setzen – sitzt dort jemand, tauscht ihr die Plätze. Mit dem Stift gibst du einer KI einen anderen Namen.</string>
     <string name="online_bot_strength">Stärke der KI</string>
     <string name="online_start">Spiel starten</string>
     <string name="online_waiting_for_host">KI: %1$s · Warte, bis %2$s das Spiel startet …</string>

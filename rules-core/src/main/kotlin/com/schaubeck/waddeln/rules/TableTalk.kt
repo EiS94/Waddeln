@@ -1,6 +1,5 @@
 package com.schaubeck.waddeln.rules
 
-import com.schaubeck.waddeln.rules.agent.HintTrick
 import com.schaubeck.waddeln.rules.agent.PartnerHint
 import com.schaubeck.waddeln.rules.agent.SchadetAnswer
 import kotlinx.serialization.Serializable
@@ -10,12 +9,11 @@ import kotlinx.serialization.Serializable
 data class SchubCall(val player: Int, val cardsPlayed: Int)
 
 /**
- * Partner talk during a Schub: [player] of the asked team told how good their cards are, and how
- * the trick being played is meant in it ([trick]; bots only). [schub] is the index of that Schub in
- * [GameState.schubs]. Everybody at the table hears it.
+ * Partner talk during a Schub: [player] of the asked team told how good their cards are.
+ * [schub] is the index of that Schub in [GameState.schubs]. Everybody at the table hears it.
  */
 @Serializable
-data class HintCall(val player: Int, val hint: PartnerHint, val schub: Int, val trick: HintTrick = HintTrick.NONE)
+data class HintCall(val player: Int, val hint: PartnerHint, val schub: Int)
 
 /**
  * "Schadder?" asked by [asker] before leading the first trick (with the Haubi, or as a bluff without it);

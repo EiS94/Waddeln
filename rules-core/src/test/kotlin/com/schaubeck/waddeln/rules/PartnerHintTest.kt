@@ -1,7 +1,6 @@
 package com.schaubeck.waddeln.rules
 
 import com.schaubeck.waddeln.rules.agent.HintTrick
-import com.schaubeck.waddeln.rules.agent.PartnerAnswer
 import com.schaubeck.waddeln.rules.agent.PartnerHint
 import com.schaubeck.waddeln.rules.agent.PartnerHints
 import kotlin.test.Test
@@ -93,7 +92,8 @@ class PartnerHintTest {
         // Player 1 has nothing, but partner 3 leads with the Max: nobody can beat it.
         val obs = state.observationFor(1).copy(tricksWon = listOf(0, 2), currentTrick = listOf(Play(3, Card.MAX)))
         assertEquals(1.0, PartnerHints.ourChance(obs))
-        assertEquals(PartnerAnswer(PartnerHint.ALL_TRICKS, HintTrick.AFTER), PartnerHints.answerFor(obs))
+        assertEquals(HintTrick.AFTER, PartnerHints.trickFor(obs))
+        assertEquals(PartnerHint.ALL_TRICKS, hint(1, obs))
     }
 
     @Test
@@ -103,7 +103,8 @@ class PartnerHintTest {
         // Opponent 1 plays the Max: their trick, then they need only one more and nothing of 2 is sure.
         val obs = before.copy(currentTrick = listOf(Play(1, Card.MAX)))
         assertEquals(0.0, PartnerHints.ourChance(obs))
-        assertEquals(PartnerAnswer(PartnerHint.TWO_TRICKS, HintTrick.NOT), PartnerHints.answerFor(obs))
+        assertEquals(HintTrick.NOT, PartnerHints.trickFor(obs))
+        assertEquals(PartnerHint.TWO_TRICKS, hint(2, obs))
     }
 
     @Test
@@ -127,6 +128,20 @@ class PartnerHintTest {
         // Opponent 1 leads the Haubi; player 2 still holds the Secher.
         val obs = state.observationFor(2).copy(currentTrick = listOf(Play(1, c("GO"))))
         assertEquals(HintTrick.WITH, PartnerHints.trickFor(obs))
+    }
+
+    @Test
+    fun `a Kritte played in the last trick counts even with an empty hand`() {
+        // Last trick at 2 : 2. Player 1 has led the Secher and holds no card any more; Max and Bello
+        // are unseen, and each opponent still to play holds one card.
+        val obs = state.observationFor(1).copy(
+            hand = emptyList(),
+            handSizes = listOf(1, 0, 1, 1),
+            tricksWon = listOf(2, 2),
+            currentTrick = listOf(Play(1, Card.SECHER)),
+        )
+        assertEquals(HintTrick.AFTER, PartnerHints.trickFor(obs))
+        assertEquals(PartnerHint.ALL_TRICKS, hint(1, obs))
     }
 
     @Test

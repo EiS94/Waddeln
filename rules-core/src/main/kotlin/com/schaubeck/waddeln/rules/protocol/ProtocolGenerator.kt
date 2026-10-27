@@ -96,12 +96,7 @@ object ProtocolGenerator {
     private fun talkHint(state: GameState, actor: Int, steps: MutableList<String>): GameState {
         val next = BotTalk.hintBeforeAnswer(state, actor)
         next.hints.drop(state.hints.size).forEach { h ->
-            steps += Json.obj(
-                "talk" to Json.str("hint"),
-                "p" to h.player.toString(),
-                "v" to h.hint.ordinal.toString(),
-                "t" to h.trick.ordinal.toString(),
-            )
+            steps += Json.obj("talk" to Json.str("hint"), "p" to h.player.toString(), "v" to h.hint.ordinal.toString())
         }
         return next
     }

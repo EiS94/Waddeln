@@ -244,7 +244,7 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
         val newQuestion = asking != null && old.partnerQuestion == null
         if (newQuestion) say(asking, sayings.partnerQuestion())
         if (hint != null && old.partnerHint == null) {
-            val text = sayings.partnerHint(hint.hint, obs.tricksWon[teamOf(hint.seat)], hint.trick)
+            val text = sayings.partnerHint(hint.hint, obs.tricksWon[teamOf(hint.seat)])
             hintText = text
             // A bot partner answers at once; the answer still follows the question.
             say(hint.seat, text, delayMs = if (newQuestion) ANSWER_DELAY_MS else 0)

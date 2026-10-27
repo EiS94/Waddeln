@@ -25,8 +25,7 @@ object BotTalk {
     fun hintBeforeAnswer(state: GameState, actor: Int): GameState {
         val partner = partnerOf(actor)
         if (!Waddeln.canGiveHint(state, partner)) return state
-        val answer = PartnerHints.answerFor(state.observationFor(partner))
-        return Waddeln.giveHint(state, partner, answer.hint, answer.trick)
+        return Waddeln.giveHint(state, partner, PartnerHints.hintFor(state.observationFor(partner)))
     }
 
     /**

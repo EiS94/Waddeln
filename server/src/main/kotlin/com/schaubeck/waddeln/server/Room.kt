@@ -247,14 +247,13 @@ class Room(
         val s = state ?: return
         val partner = partnerOf(question ?: return)
         if (partner in humanSeats() || !Waddeln.canGiveHint(s, partner)) return
-        val answer = PartnerHints.answerFor(s.observationFor(partner))
-        state = Waddeln.giveHint(s, partner, answer.hint, answer.trick)
+        state = Waddeln.giveHint(s, partner, PartnerHints.hintFor(s.observationFor(partner)))
     }
 
     /** The partner's answer during the open Schub, if given. */
     private fun currentHint(s: GameState): SeatHint? = s.hints.lastOrNull()
         ?.takeIf { s.pendingSchub != null && it.schub == s.schubs.lastIndex }
-        ?.let { SeatHint(it.player, it.hint, it.trick) }
+        ?.let { SeatHint(it.player, it.hint) }
 
     /** Before announcing the Schlag: the player after the dealer proposes a Schlagwechsel. */
     fun proposeSchlagwechsel(playerId: String): String? {

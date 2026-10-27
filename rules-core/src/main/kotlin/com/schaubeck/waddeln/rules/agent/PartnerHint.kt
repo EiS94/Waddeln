@@ -18,17 +18,13 @@ import kotlinx.serialization.Serializable
 enum class PartnerHint { NOTHING, LITTLE, ONE_TRICK, TWO_TRICKS, ALL_TRICKS }
 
 /**
- * How the trick being played is meant in a [PartnerHint], so it can be said:
- * [WITH] "with this one" (I can still take it myself, it is part of my count),
- * [AFTER] "after this one" (our team probably has it already; I count what comes after),
- * [NOT] "not this one, but after it" (the opponents probably have it),
+ * How the trick being played counts in a [PartnerHint]:
+ * [WITH] I can still take it myself, so it is part of my own count;
+ * [AFTER] our team probably has it already, so one trick less is needed (also with an empty hand);
+ * [NOT] the opponents probably have it, so they need one less;
  * [NONE] no trick is being played, or it is unclear.
  */
-@Serializable
 enum class HintTrick { NONE, WITH, AFTER, NOT }
-
-/** A partner's answer: the [hint] and how the trick being played is meant in it. */
-data class PartnerAnswer(val hint: PartnerHint, val trick: HintTrick = HintTrick.NONE)
 
 /**
  * Turns a hand into a [PartnerHint]. A plain heuristic (no ML): every card is worth the chance
@@ -39,24 +35,21 @@ data class PartnerAnswer(val hint: PartnerHint, val trick: HintTrick = HintTrick
  */
 object PartnerHints {
 
-    fun hintFor(obs: Observation): PartnerHint = answerFor(obs).hint
-
-    fun answerFor(obs: Observation): PartnerAnswer {
+    fun hintFor(obs: Observation): PartnerHint {
         val trick = trickFor(obs)
         val needed = TRICKS_TO_WIN - obs.tricksWon[obs.team] - (if (trick == HintTrick.AFTER) 1 else 0)
         val opponentsNeed = TRICKS_TO_WIN - obs.tricksWon[1 - obs.team] - (if (trick == HintTrick.NOT) 1 else 0)
-        if (needed <= 0) return PartnerAnswer(PartnerHint.ALL_TRICKS, trick)
-        if (opponentsNeed <= 0) return PartnerAnswer(PartnerHint.NOTHING, trick)
+        if (needed <= 0) return PartnerHint.ALL_TRICKS
+        if (opponentsNeed <= 0) return PartnerHint.NOTHING
         val e = estimatedTricks(obs)
         val all = if (opponentsNeed <= 1) sureTricks(obs) >= needed else e >= needed - ALL_TRICKS_MARGIN
-        val hint = when {
+        return when {
             e < NOTHING_BELOW -> PartnerHint.NOTHING
             e >= ONE_TRICK_FROM && all -> PartnerHint.ALL_TRICKS
             e < ONE_TRICK_FROM -> PartnerHint.LITTLE
             e < TWO_TRICKS_FROM -> PartnerHint.ONE_TRICK
             else -> PartnerHint.TWO_TRICKS
         }
-        return PartnerAnswer(hint, trick)
     }
 
     /**
