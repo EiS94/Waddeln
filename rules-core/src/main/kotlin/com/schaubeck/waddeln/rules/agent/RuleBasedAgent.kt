@@ -27,7 +27,8 @@ class RuleBasedAgent : Agent {
         return when {
             first is Action.AnnounceSchlag -> Action.AnnounceSchlag(chooseSchlag(observation.hand))
             first is Action.AnnounceFarbe -> Action.AnnounceFarbe(chooseFarbe(observation.hand, observation.schlag!!))
-            Action.Bleiben in legalActions -> if (shouldStay(observation)) Action.Bleiben else Action.Gehen
+            Action.Bleiben in legalActions ->
+                if (LastTrick.shouldStay(observation) ?: shouldStay(observation)) Action.Bleiben else Action.Gehen
             else -> {
                 val cards = legalActions.filterIsInstance<Action.PlayCard>().map { it.card }
                 if (Action.Schub in legalActions && shouldSchub(observation)) return Action.Schub

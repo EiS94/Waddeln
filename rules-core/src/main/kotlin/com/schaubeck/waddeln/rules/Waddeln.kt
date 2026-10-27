@@ -147,9 +147,11 @@ object Waddeln {
      * During a Schub, [player] of the asked team may tell (once per Schub, on the partner's
      * question) how good their cards are.
      */
+    /** [player] may tell how good his cards are: during a Schub against his team, once, and only while he holds cards. */
     fun canGiveHint(state: GameState, player: Int): Boolean {
         val pending = state.pendingSchub ?: return false
-        return teamOf(player) == pending.answeringTeam && state.hints.none { it.schub == state.schubs.lastIndex }
+        return teamOf(player) == pending.answeringTeam && state.hints.none { it.schub == state.schubs.lastIndex } &&
+            state.hands[player].isNotEmpty()
     }
 
     fun giveHint(state: GameState, player: Int, hint: PartnerHint): GameState {

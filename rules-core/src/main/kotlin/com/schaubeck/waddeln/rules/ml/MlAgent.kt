@@ -4,6 +4,7 @@ import com.schaubeck.waddeln.rules.Action
 import com.schaubeck.waddeln.rules.Observation
 import com.schaubeck.waddeln.rules.agent.Agent
 import com.schaubeck.waddeln.rules.agent.DiscardRule
+import com.schaubeck.waddeln.rules.agent.LastTrick
 import com.schaubeck.waddeln.rules.agent.RuleBasedAgent
 import kotlin.math.exp
 import kotlin.random.Random
@@ -36,6 +37,10 @@ class MlAgent(
     override fun chooseAction(observation: Observation, legalActions: List<Action>): Action {
         require(legalActions.isNotEmpty())
         if (legalActions.size == 1 && legalActions.single() != Action.Schub) return legalActions.single()
+        // With the partner's last card on the table the trick itself decides (as for the rule bot).
+        if (Action.Bleiben in legalActions) {
+            LastTrick.shouldStay(observation)?.let { return if (it) Action.Bleiben else Action.Gehen }
+        }
         val values = try {
             val state = FeatureEncoder.encodeState(observation)
             q.evaluate(Array(legalActions.size) { FeatureEncoder.encodeFor(q.inputSize, state, FeatureEncoder.encodeAction(observation, legalActions[it])) })

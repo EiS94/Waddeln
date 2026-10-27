@@ -81,6 +81,30 @@ def hint_trick(obs: Observation) -> int:
     return TRICK_NONE
 
 
+_STAY_FROM = 0.5
+
+
+def last_trick_chance(obs: Observation) -> float | None:
+    """LastTrick.ourChance: once the partner played his last card, the chance to take the trick."""
+    st = obs.strengths
+    if st is None or obs.hand_sizes[E.partner_of(obs.player)] > 0 or not obs.current_trick:
+        return None
+    cards = [c for _, c in obs.current_trick] + obs.hand[:1]
+    players = [p for p, _ in obs.current_trick] + [obs.player][:min(len(obs.hand), 1)]
+    if E.team_of(players[E.trick_winner_index(cards, st)]) != obs.team:
+        return 0.0
+    unknown = [c for c in _unseen(obs) if c != obs.visible_bottom_card]
+    beaters = sum(1 for c in unknown if E.trick_winner_index(cards + [c], st) == len(cards))
+    slots = sum(obs.hand_sizes[p] for p in range(E.PLAYER_COUNT) if p not in players and E.team_of(p) != obs.team)
+    return _chance_none_among(len(unknown), beaters, slots)
+
+
+def last_trick_should_stay(obs: Observation) -> bool | None:
+    """LastTrick.shouldStay."""
+    chance = last_trick_chance(obs)
+    return None if chance is None else chance >= _STAY_FROM
+
+
 def sure_tricks(obs: Observation) -> int:
     """PartnerHints.sureTricks: trumps in the hand that no unseen card can beat."""
     st = obs.strengths

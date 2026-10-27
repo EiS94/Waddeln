@@ -7,6 +7,7 @@ from .engine import (
     A_BLEIBEN, A_GEHEN, A_SCHUB, ASS, CARD_OFFSET, FARBE_OFFSET, KOENIG, KRITTE_SET, MATCH_POINTS, NO_TRUMP,
     PLAYER_COUNT, STRENGTHS, TRICKS_TO_WIN, Observation, rank_of, team_of, trick_winner_index,
 )
+from .talk import last_trick_should_stay
 
 
 class RandomBot:
@@ -30,7 +31,9 @@ class RuleBot:
         if first < CARD_OFFSET:
             return FARBE_OFFSET + self.choose_farbe(obs.hand, obs.schlag)
         if A_BLEIBEN in legal:
-            return A_BLEIBEN if self._should_stay(obs) else A_GEHEN
+            last = last_trick_should_stay(obs)
+            stay = self._should_stay(obs) if last is None else last
+            return A_BLEIBEN if stay else A_GEHEN
         cards = [a - CARD_OFFSET for a in legal if CARD_OFFSET <= a < A_SCHUB]
         if A_SCHUB in legal and self._should_schub(obs):
             return A_SCHUB

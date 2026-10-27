@@ -372,7 +372,8 @@ def can_give_hint(state: State, player: int) -> bool:
     if state.pending_schub is None:
         return False
     current = len(state.schubs) - 1
-    return team_of(player) != team_of(state.pending_schub) and not any(h[2] == current for h in state.hints)
+    return (team_of(player) != team_of(state.pending_schub) and not any(h[2] == current for h in state.hints)
+            and len(state.hands[player]) > 0)
 
 
 def give_hint(state: State, player: int, hint: int) -> None:

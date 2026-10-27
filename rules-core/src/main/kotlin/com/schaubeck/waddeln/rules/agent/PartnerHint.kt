@@ -93,7 +93,7 @@ object PartnerHints {
     }
 
     /** Chance that none of [special] cards among [total] unknown ones is in [drawn] of them. */
-    private fun chanceNoneAmong(total: Int, special: Int, drawn: Int): Double {
+    internal fun chanceNoneAmong(total: Int, special: Int, drawn: Int): Double {
         var p = 1.0
         for (i in 0 until drawn) {
             if (total - i <= 0) break
@@ -111,7 +111,7 @@ object PartnerHints {
         return obs.hand.count { card -> trump.isTrump(card) && unseen.none { trump.strength(it) > trump.strength(card) } }
     }
 
-    private fun unseen(obs: Observation): List<Card> {
+    internal fun unseen(obs: Observation): List<Card> {
         val seen = (obs.hand + obs.currentTrick.map { it.card } + obs.completedTricks.flatMap { t -> t.plays.map { it.card } }).toSet()
         return Card.ALL.filter { it !in seen }
     }
