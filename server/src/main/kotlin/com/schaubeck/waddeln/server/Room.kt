@@ -151,12 +151,17 @@ class Room(
         stopTimer()
     }
 
+    /**
+     * Moves the member to [seat]. Only the host may take the seat of another human, who then gets
+     * the host's old seat; this way the host can form any teams.
+     */
     fun takeSeat(playerId: String, seat: Int): String? {
         val from = seatOf(playerId) ?: return null
         if (started) return "Die Plätze sind nach dem Start fest."
-        if (seat !in 0 until PLAYER_COUNT || seats[seat] != null) return "Dieser Platz ist besetzt."
-        seats[seat] = seats[from]
-        seats[from] = null
+        if (seat !in 0 until PLAYER_COUNT) return "Diesen Platz gibt es nicht."
+        if (seat == from) return null
+        if (seats[seat] != null && playerId != hostId) return "Nur der Gastgeber kann Plätze tauschen."
+        seats[from] = seats[seat].also { seats[seat] = seats[from] }
         changed()
         return null
     }

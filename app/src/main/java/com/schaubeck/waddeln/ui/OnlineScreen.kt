@@ -269,12 +269,14 @@ private fun SeatBox(
     val ourTeam = teamOf(seat) == teamOf(table.yourSeat)
     val shape = RoundedCornerShape(10.dp)
     val free = !info.isHuman
+    val isHost = table.room.seats[table.yourSeat].host
     Box(
         modifier = modifier
             .padding(vertical = 3.dp)
             .background(if (ourTeam) BarGreen.copy(alpha = 0.7f) else Color(0x66000000), shape)
             .border(if (mine) 2.dp else 1.dp, if (mine) Highlight else Color.White.copy(alpha = 0.4f), shape)
-            .then(if (free) Modifier.clickable { onTakeSeat(seat) } else Modifier)
+            // The host swaps with another human by tapping their seat.
+            .then(if (!mine && (free || isHost)) Modifier.clickable { onTakeSeat(seat) } else Modifier)
             .padding(8.dp),
         contentAlignment = Alignment.Center,
     ) {

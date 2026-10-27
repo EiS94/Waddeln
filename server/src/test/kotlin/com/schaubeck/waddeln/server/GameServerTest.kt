@@ -148,7 +148,7 @@ class GameServerTest {
         val guest = player(server, "guest")
         guest.send(ClientMessage.JoinRoom(host.table.room.code))
 
-        guest.send(ClientMessage.TakeSeat(0))
+        guest.send(ClientMessage.TakeSeat(4))
         assertIs<ServerMessage.Error>(guest.connection.last)
         guest.send(ClientMessage.TakeSeat(2))
         assertEquals(2, guest.seat)
@@ -157,6 +157,27 @@ class GameServerTest {
         guest.send(ClientMessage.TakeSeat(3))
         assertIs<ServerMessage.Error>(guest.connection.last)
         assertEquals(2, guest.seat)
+    }
+
+    @Test
+    fun `only the host swaps seats with another human`() = runTest {
+        val server = newServer()
+        val host = player(server, "host")
+        host.send(ClientMessage.CreateRoom)
+        val code = host.table.room.code
+        val guests = (1..3).map { player(server, "guest$it").apply { send(ClientMessage.JoinRoom(code)) } }
+        assertEquals(listOf(1, 2, 3), guests.map { it.seat })
+
+        guests[0].send(ClientMessage.TakeSeat(2))
+        assertIs<ServerMessage.Error>(guests[0].connection.last)
+        assertEquals(1, guests[0].seat)
+
+        // With four humans the host can still change the teams.
+        host.send(ClientMessage.TakeSeat(3))
+        assertEquals(3, host.seat)
+        assertEquals(0, guests[2].seat)
+        assertEquals(listOf("guest3", "guest1", "guest2", "host"), host.table.room.seats.map { it.name })
+        assertTrue(host.table.room.seats[3].host)
     }
 
     @Test
