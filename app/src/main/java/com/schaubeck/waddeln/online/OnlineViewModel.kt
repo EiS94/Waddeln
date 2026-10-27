@@ -160,6 +160,8 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
     /** We have seen enough of the cut. */
     fun onCutSeen() {
         cutJob?.cancel()
+        val shown = cutShown
+        if (shown != null && shown.geberLooks && shown.geber == _ui.value.table?.yourSeat) send(ClientMessage.CutSeen)
         finishCut()
     }
     fun ready() = send(ClientMessage.Ready)
@@ -276,16 +278,14 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
             krittenCount = cut.krittenCount,
             kritten = cut.kritten,
             bottomCard = cut.bottomCard,
+            geberLooks = cut.geberLooked,
             geberKrittenCount = cut.geberKrittenCount,
             geberKritten = cut.geberKritten,
             geberCard = cut.geberCard,
         )
         cutJob?.cancel()
-        // Who cut by hand, or looked under the rest as dealer, closes the cut with "Weiter"
-        // (the server goes on meanwhile; our own turn waits until then).
-        val me = now.yourSeat
-        val confirm = (cut.abheber == me && selfCut) || (cutShown?.geber == me && cut.krittenCount > 0)
-        if (confirm) return
+        // Who looked under the rest as dealer closes the cut with "Weiter"; the server waits for it.
+        if (cutShown?.geber == now.yourSeat && cut.geberLooked) return
         cutJob = viewModelScope.launch {
             delay(CutAnimation.durationMs(cut.krittenCount, cut.geberKrittenCount))
             finishCut()

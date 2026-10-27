@@ -289,16 +289,15 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             krittenCount = reveal.kritten.size,
             kritten = reveal.kritten.takeIf { abheber == OfflineGame.HUMAN }.orEmpty(),
             bottomCard = reveal.bottomCard,
+            geberLooks = reveal.kritten.isNotEmpty(),
             geberKrittenCount = reveal.geberKritten.size,
             geberKritten = reveal.geberKritten.takeIf { game.state.dealer == OfflineGame.HUMAN }.orEmpty(),
             geberCard = reveal.geberCard.takeIf { game.state.dealer == OfflineGame.HUMAN },
         )
         publish()
         cutJob?.cancel()
-        // Who cut by hand, or looked under the rest as dealer, closes the cut with "Weiter".
-        val confirm = (abheber == OfflineGame.HUMAN && settings.selfCut) ||
-            (game.state.dealer == OfflineGame.HUMAN && reveal.kritten.isNotEmpty())
-        if (confirm) return
+        // Who looked under the rest as dealer closes the cut with "Weiter"; the game waits until then.
+        if (game.state.dealer == OfflineGame.HUMAN && reveal.kritten.isNotEmpty()) return
         cutJob = viewModelScope.launch {
             delay(CutAnimation.durationMs(reveal.kritten.size, reveal.geberKritten.size))
             finishCut()

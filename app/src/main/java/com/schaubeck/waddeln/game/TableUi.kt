@@ -34,7 +34,9 @@ data class CutUi(
     val kritten: List<Card> = emptyList(),
     /** The open bottom card of the lifted stack, once cut. */
     val bottomCard: Card? = null,
-    /** Kritten the dealer took from under the rest (he looks only if the Abheber took some). */
+    /** The dealer looked under the rest (he does only if the Abheber took Kritten). */
+    val geberLooks: Boolean = false,
+    /** Kritten the dealer took from under the rest. */
     val geberKrittenCount: Int = 0,
     /** Which Kritten, if we may see them (we are the dealer); otherwise empty. */
     val geberKritten: List<Card> = emptyList(),

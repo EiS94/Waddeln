@@ -103,6 +103,9 @@ class Room(
     /** The cut of the current round, shown to everybody (the Kritten only to the Abheber). */
     private var lastCut: RoomCut? = null
 
+    /** A human dealer looked under the rest; the game waits until he confirms ([cutSeen]) or the time is up. */
+    private var waitingForGeber = false
+
     /**
      * Seat that asked its partner during the open Schub. The answer and "Schadder?" are part of
      * the game state (everybody hears them, the bots take them into account).
@@ -212,9 +215,20 @@ class Room(
         return null
     }
 
+    /** The dealer has seen the card under the rest: the game goes on. */
+    fun cutSeen(playerId: String): String? {
+        val seat = seatOf(playerId) ?: return null
+        val s = state ?: return null
+        if (!waitingForGeber || seat != s.dealer) return null
+        waitingForGeber = false
+        changed()
+        return null
+    }
+
     fun act(playerId: String, action: Action): String? {
         val seat = seatOf(playerId) ?: return null
         val s = state ?: return "Das Spiel hat noch nicht begonnen."
+        if (waitingForGeber) return null
         // Stale clicks (e.g. a card after the trick moved on) are simply ignored.
         if (!Waddeln.isLegal(s, seat, action)) return null
         apply(seat, action)
@@ -406,6 +420,7 @@ class Room(
         state = round.deal(cut)
         pendingRound = null
         lastCut = RoomCut(round.abheber, cut, reveal)
+        waitingForGeber = reveal.kritten.isNotEmpty() && state!!.dealer in humanSeats()
         changed(CutAnimation.durationMs(reveal.kritten.size, reveal.geberKritten.size))
     }
 
@@ -426,6 +441,17 @@ class Room(
         val humans = humanSeats()
         // Nobody watching: the game waits for the players to come back.
         if (humans.isEmpty()) return stopTimer()
+        if (waitingForGeber) {
+            // Until the dealer confirms; if he does not (e.g. an older app), the game goes on later.
+            stopTimer()
+            botJob = scope.launch {
+                delay(pauseMs + (timing.cutTimeoutMs ?: 0))
+                botJob = null
+                waitingForGeber = false
+                changed()
+            }
+            return
+        }
         pendingRound?.let { round ->
             if (round.abheber in humans) return startTimer(s, timing.cutTimeoutMs)
             stopTimer()
@@ -584,6 +610,7 @@ class Room(
             krittenCount = c.reveal.kritten.size,
             kritten = if (seat == c.abheber) c.reveal.kritten else emptyList(),
             bottomCard = c.reveal.bottomCard,
+            geberLooked = c.reveal.kritten.isNotEmpty(),
             geberKrittenCount = c.reveal.geberKritten.size,
             geberKritten = if (seat == s.dealer) c.reveal.geberKritten else emptyList(),
             geberCard = c.reveal.geberCard.takeIf { seat == s.dealer },

@@ -182,7 +182,7 @@ private fun Reveal(
 ) {
     val count = cut.krittenCount
     val geberCount = cut.geberKrittenCount
-    val geberLooks = count > 0
+    val geberLooks = cut.geberLooks
     val split = remember(cut) { Animatable(0f) }
     /** Kritten taken so far; the one at index [taken] lies face up below the lifted stack meanwhile. */
     var taken by remember(cut) { mutableIntStateOf(0) }

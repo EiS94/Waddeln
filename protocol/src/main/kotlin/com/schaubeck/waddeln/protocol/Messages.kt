@@ -121,6 +121,10 @@ sealed interface ClientMessage {
     @Serializable @SerialName("show_last_trick")
     data class ShowLastTrick(val show: Boolean) : ClientMessage
 
+    /** The dealer has seen what lay under the rest ([CutView.geberLooked]); the game goes on. */
+    @Serializable @SerialName("cut_seen")
+    data object CutSeen : ClientMessage
+
     /** After a round or match: ready for the next one. It starts once all connected players are ready. */
     @Serializable @SerialName("ready")
     data object Ready : ClientMessage
@@ -216,6 +220,11 @@ data class CutView(
     val kritten: List<Card> = emptyList(),
     /** The open bottom card of the lifted stack; null before the cut. */
     val bottomCard: Card? = null,
+    /**
+     * The dealer looked under the rest (because the Abheber took Kritten). Older servers never set
+     * it; then the app shows no dealer step. A human dealer confirms with [ClientMessage.CutSeen].
+     */
+    val geberLooked: Boolean = false,
     /** Kritten the dealer took from under the rest (only after the Abheber took some). */
     val geberKrittenCount: Int = 0,
     /** Which Kritten: only in the dealer's own view. */

@@ -116,6 +116,7 @@ class GameServer(
             ClientMessage.AskSchadet -> room?.askSchadet(id)
             is ClientMessage.AnswerSchadet -> room?.answerSchadet(id, message.answer)
             is ClientMessage.ShowLastTrick -> room?.showLastTrick(id, message.show)
+            ClientMessage.CutSeen -> room?.cutSeen(id)
             ClientMessage.Ready -> room?.ready(id)
         }
         error?.let { client.send(ServerMessage.Error(it)) }
