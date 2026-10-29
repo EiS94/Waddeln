@@ -4,6 +4,7 @@ import android.content.res.Resources
 import androidx.annotation.StringRes
 import com.schaubeck.waddeln.R
 import com.schaubeck.waddeln.rules.Action
+import com.schaubeck.waddeln.rules.BASE_GAME_VALUE
 import com.schaubeck.waddeln.rules.Rank
 import com.schaubeck.waddeln.rules.Suit
 import com.schaubeck.waddeln.rules.TRICKS_TO_WIN
@@ -22,11 +23,20 @@ class Sayings(private val res: Resources) {
     private fun pick(@StringRes id: Int, random: Random): String =
         res.getString(id).split('|').map(String::trim).filter(String::isNotEmpty).random(random)
 
-    /** A random variant for an action said aloud; null for playing a card. */
-    fun speech(action: Action, random: Random = Random.Default): String? = when (action) {
+    /** A random variant of the saying [id] formatted with [arg]. */
+    private fun pick(@StringRes id: Int, arg: String, random: Random): String =
+        res.getString(id, arg).split('|').map(String::trim).filter(String::isNotEmpty).random(random)
+
+    /**
+     * A random variant for an action said aloud; null for playing a card. [gameValue] is the value
+     * of the game when the action is taken: from 3 on, a Schub is called by the new value ("Vier").
+     */
+    fun speech(action: Action, gameValue: Int, random: Random = Random.Default): String? = when (action) {
         is Action.AnnounceSchlag -> pick(schlag(action.rank), random)
         is Action.AnnounceFarbe -> pick(farbe(action.suit), random)
-        Action.Schub -> pick(R.string.say_schub, random)
+        Action.Schub ->
+            if (gameValue <= BASE_GAME_VALUE) pick(R.string.say_schub, random)
+            else pick(R.string.say_schub_value, Texts.schubCall(res, gameValue), random)
         Action.Bleiben -> pick(R.string.say_bleiben, random)
         Action.Gehen -> pick(R.string.say_gehen, random)
         is Action.PlayCard -> null

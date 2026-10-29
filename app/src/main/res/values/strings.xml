@@ -53,7 +53,7 @@
     <string name="game_connection_lost">Verbindung unterbrochen – verbinde neu …</string>
 
     <!-- Game: table -->
-    <string name="game_schub_button">Schub!</string>
+    <string name="game_schub_button">%1$s!</string>
     <string name="game_last_trick">Letzter Stich</string>
     <string name="game_last_trick_won_by">Gewonnen von %1$s</string>
     <string name="game_last_trick_close">Tippen zum Schließen</string>
@@ -80,8 +80,8 @@
     <string name="status_countdown">noch %1$d s, dann spielt die KI</string>
 
     <!-- Game: action panel -->
-    <string name="notice_schub_you">Du sagst Schub – %1$s bleibt.\nSpielwert jetzt %2$d.</string>
-    <string name="notice_schub_other">%1$s sagt Schub – %2$s bleibt.\nSpielwert jetzt %3$d.</string>
+    <string name="notice_schub_you">Du sagst %3$s – %1$s bleibt.\nSpielwert jetzt %2$d.</string>
+    <string name="notice_schub_other">%1$s sagt %4$s – %2$s bleibt.\nSpielwert jetzt %3$d.</string>
     <string name="action_schlagwechsel_asks_us">%1$s will einen Schlagwechsel: Du sagst den Schlag an, %1$s die Farbe.</string>
     <string name="action_accept">Annehmen</string>
     <string name="action_decline">Ablehnen</string>
@@ -89,7 +89,7 @@
     <string name="action_announce_schlag">Sag den Schlag an</string>
     <string name="action_propose_schlagwechsel">Schlagwechsel vorschlagen</string>
     <string name="action_announce_farbe">Sag die Farbe an – Schlag %1$s</string>
-    <string name="action_schub_asked">%1$s sagt Schub! Geht ihr?</string>
+    <string name="action_schub_asked">%1$s sagt %2$s! Geht ihr?</string>
     <string name="action_partner_said">%1$s: „%2$s“</string>
     <string name="action_ask_partner">%1$s fragen, wie gut die Karten sind</string>
     <string name="action_wait_for">Warte auf Antwort von %1$s …</string>
@@ -172,6 +172,20 @@
 
     <!-- Sayings: Schub -->
     <string name="say_schub">Schub!|Geht ihr?|Gehen?|Ab mit euch</string>
+    <!-- From a game value of 3 on, a Schub is called by the new value: "Vier", "Fünf", ... -->
+    <string name="say_schub_value">%1$s!|%1$s?|%1$s.</string>
+    <!-- What a Schub is called, by the game value before it: 2 → "Schub", 3 → "Vier", ... -->
+    <string-array name="schub_calls">
+        <item>Schub</item>
+        <item>Vier</item>
+        <item>Fünf</item>
+        <item>Sechs</item>
+        <item>Sieben</item>
+        <item>Acht</item>
+        <item>Neun</item>
+        <item>Zehn</item>
+        <item>Elf</item>
+    </string-array>
     <string name="say_bleiben">Wir bleiben!|Bleiben!|Nix da, wir bleiben.</string>
     <string name="say_gehen">Wir gehen.|Gehen.|Müss ma gehen.|Da müss ma gehen.|Hilft nix, wir gehen.</string>
 

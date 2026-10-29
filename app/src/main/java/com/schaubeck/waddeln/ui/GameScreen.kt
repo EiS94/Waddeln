@@ -209,7 +209,7 @@ private fun Table(table: TableUi, onSchub: () -> Unit, onShowLastTrick: (Boolean
                 colors = ButtonDefaults.buttonColors(containerColor = SchubOrange),
                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
                 modifier = Modifier.align(Alignment.BottomEnd).padding(end = 8.dp, bottom = 4.dp),
-            ) { Text(stringResource(R.string.game_schub_button), fontWeight = FontWeight.Bold) }
+            ) { Text(stringResource(R.string.game_schub_button, Texts.schubCall(s.gameValue)), fontWeight = FontWeight.Bold) }
         }
         if (table.canShowLastTrick && table.lastTrickShownBy == null) {
             OutlinedButton(
@@ -717,7 +717,7 @@ private fun ActionArea(
 
         Action.Bleiben in actions -> {
             {
-                PanelTitle(stringResource(R.string.action_schub_asked, table.names[s.pendingSchub!!.askingPlayer]))
+                PanelTitle(stringResource(R.string.action_schub_asked, table.names[s.pendingSchub!!.askingPlayer], Texts.schubCall(s.gameValue)))
                 val partner = table.names[table.seatAt(2)]
                 saidPartnerHint(table)?.let {
                     Text(stringResource(R.string.action_partner_said, partner, it), color = Highlight, fontSize = 15.sp, modifier = Modifier.padding(bottom = 4.dp))

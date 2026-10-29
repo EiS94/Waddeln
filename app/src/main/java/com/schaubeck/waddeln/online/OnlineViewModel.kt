@@ -246,7 +246,7 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
         // only a new last action means a new action. The same seat never says the same thing twice
         // in a row, since every spoken action is followed by another one or a new round.
         if (last != null && last.action.isSpoken() && last != old.lastAction) {
-            sayings.speech(last.action)?.let { say(last.seat, it) }
+            sayings.speech(last.action, obs.gameValue)?.let { say(last.seat, it) }
         }
         val asking = game.partnerQuestion
         val newQuestion = asking != null && old.partnerQuestion == null

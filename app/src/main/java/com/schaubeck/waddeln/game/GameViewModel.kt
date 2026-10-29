@@ -359,7 +359,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun say(seat: Int, action: Action) {
-        sayings.speech(action)?.let { say(seat, it) }
+        // A Schub does not change the game value, so the state after it still has the value it raises.
+        sayings.speech(action, game.state.gameValue)?.let { say(seat, it) }
     }
 
     private fun say(seat: Int, text: String, delayMs: Long = 0) {
