@@ -26,3 +26,13 @@ Thumbs.db
 
 # Notes for Claude Code (local only)
 CLAUDE.md
+
+# Licensed card artwork (used in the Play Store app, not open source)
+/design/cards/
+/design/Spieltisch.jpeg
+/design/launcher_icon_preview.png
+/app/src/main/res/drawable-nodpi/card_*
+/app/src/main/res/mipmap-*/ic_launcher.webp
+/app/src/main/res/mipmap-*/ic_launcher_round.webp
+/app/src/main/res/mipmap-*/ic_launcher_foreground.png
+/fastlane/metadata/android/*/images/
