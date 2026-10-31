@@ -1,0 +1,3 @@
+Neue, stärkere KI: komplett neu trainiert, spielt auf Matchsieg statt auf Punkte und kennt alles, was am Tisch passiert.
+Die Bots gehen nicht mehr, wenn der Gegner dadurch ohnehin gespannt wäre, und verschenken keine starken Karten mehr an Stiche, die sie nicht holen.
+Ab dem zweiten Schub wird der neue Spielwert angesagt („Vier“, „Fünf“, …).
