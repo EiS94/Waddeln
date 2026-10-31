@@ -7,13 +7,16 @@ from __future__ import annotations
 import numpy as np
 
 from .engine import (
-    ACTION_SIZE, CARD_OFFSET, A_SCHUB, FARBE, GESPANNT_POINTS, HINT_COUNT, KRITTE_SET, MATCH_POINTS, NO_TRUMP,
-    PLAYER_COUNT, PLAYING, SCHLAG, Observation, haubi_of, suit_of, team_of, trick_winner_index,
+    ACTION_SIZE, ADVICE_COUNT, CARD_OFFSET, A_SCHUB, FARBE, GESPANNT_POINTS, HINT_COUNT, KRITTE_SET, MATCH_POINTS,
+    NO_TRUMP, PLAYER_COUNT, PLAYING, SCHLAG, Observation, haubi_of, suit_of, team_of, trick_winner_index,
 )
 
-STATE_SIZE = 517
-# Models trained before the table talk features had only the first 478 state features.
+STATE_SIZE = 571
+# Older models got only the first state features: 478 before the table talk, 517 before the
+# dealer's Kritten and card, "Was soll ich machen?" and the Schlagwechsel.
 LEGACY_STATE_SIZE = 478
+TABLE_TALK_STATE_SIZE = 517
+OLD_STATE_SIZES = (LEGACY_STATE_SIZE, TABLE_TALK_STATE_SIZE)
 ACTION_FEATURES = ACTION_SIZE + 4
 INPUT_SIZE = STATE_SIZE + ACTION_FEATURES
 LEGACY_INPUT_SIZE = LEGACY_STATE_SIZE + ACTION_FEATURES
@@ -118,6 +121,25 @@ def encode_state(obs: Observation) -> np.ndarray:
         f[509 + rel(p)] += 0.5  # 509: Schubs said per seat / 2
         if cards_played == 0:
             f[513 + rel(p)] = 1.0  # 513: said Schub before the first card
+
+    # ---- Dealing, "Was soll ich machen?" and Schlagwechsel ----
+    if 0 <= obs.geber_kritten < 3:
+        f[517 + obs.geber_kritten] = 1.0  # 517: Kritten the dealer took
+    if obs.geber_card is not None:
+        f[520 + obs.geber_card] = 1.0  # 520: card the dealer saw under the rest (only he knows it)
+    for r in range(PLAYER_COUNT):
+        seat = (me + r) % PLAYER_COUNT
+        answered = [a for p, _, a in obs.advice if p == seat and a is not None]
+        if answered:
+            f[552 + r * ADVICE_COUNT + answered[-1]] = 1.0  # 552: latest answer to "Was soll ich machen?" per asker
+        if any(p == seat and t == len(obs.completed_tricks) for p, t, _ in obs.advice):
+            f[564 + r] = 1.0  # 564: asked in the current trick
+    if obs.schlagwechsel_proposed:
+        f[568] = 1.0  # 568: Schlagwechsel proposed, accepted / declined by the dealer
+        if obs.schlagwechsel_accepted is True:
+            f[569] = 1.0
+        elif obs.schlagwechsel_accepted is False:
+            f[570] = 1.0
     return f
 
 
@@ -181,12 +203,13 @@ def encode_action(obs: Observation, action: int) -> np.ndarray:
 
 
 def for_model(x: np.ndarray, input_size: int) -> np.ndarray:
-    """Rows of encode_actions() for a model with input_size inputs (current or legacy layout)."""
+    """Rows of encode_actions() for a model with input_size inputs (current or an older layout)."""
     if input_size == INPUT_SIZE:
         return x
-    if input_size == LEGACY_INPUT_SIZE:
-        return np.concatenate([x[:, :LEGACY_STATE_SIZE], x[:, STATE_SIZE:]], axis=1)
-    raise ValueError(f"model has {input_size} inputs, expected {INPUT_SIZE} or {LEGACY_INPUT_SIZE}")
+    for old in OLD_STATE_SIZES:
+        if input_size == old + ACTION_FEATURES:
+            return np.concatenate([x[:, :old], x[:, STATE_SIZE:]], axis=1)
+    raise ValueError(f"model has {input_size} inputs, expected {INPUT_SIZE} or an older layout {OLD_STATE_SIZES}")
 
 
 def encode_actions(obs: Observation, actions: list[int]) -> np.ndarray:

@@ -30,10 +30,18 @@ class DiscardRuleTest {
     }
 
     @Test
-    fun `no change when the opponents win the trick`() {
-        // Opponent 1 leads; player 2 may well want to play high
+    fun `taking the opponents' trick over is kept`() {
+        // Opponent 1 takes Schell 9 with Schell Koenig; Herz Ass (Haubi-Schlag) takes it from him
         val s = playingWith(hands, Rank.ASS, Suit.GRAS).play("S9", "SK")
         assertEquals(Action.PlayCard(c("HA")), decide(s, 2, "HA"))
+    }
+
+    @Test
+    fun `no Haubi-Schlag on the opponents' earlier Haubi-Schlag`() {
+        // Opponent 0 leads Schell Ass: Eichel Ass cannot beat it (the first Haubi-Schlag wins), so it is wasted
+        val withAss = listOf(hands[0], "S8 SK EA E10 H9", hands[2], hands[3])
+        val s = playingWith(withAss, Rank.ASS, Suit.GRAS).play("SA")
+        assertEquals(Action.PlayCard(c("S8")), decide(s, 1, "EA"))
     }
 
     @Test

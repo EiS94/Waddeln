@@ -3,7 +3,7 @@
     python export_onnx.py checkpoints/run1/best.pt ../app/src/main/assets/models/waddeln.onnx
 
 The model maps a float tensor "input" [N, INPUT_SIZE] (state + action features, see
-features.py / Encoding.kt) to "q" [N]: the expected points of the acting team.
+features.py / Encoding.kt) to "q" [N]: the scaled change of the acting team's chance to win the match (match_value.py).
 With --test-vectors, real inputs and the expected outputs are written as JSON so the Kotlin
 side can verify that it feeds and reads the model correctly.
 """

@@ -78,7 +78,7 @@ class MlAgentTest {
         val model = java.io.File("../app/src/main/assets/models/waddeln.onnx")
         if (!model.exists()) return
         OrtQFunction(model.readBytes()).use { q ->
-            assertTrue(q.inputSize == FeatureEncoder.INPUT_SIZE || q.inputSize == FeatureEncoder.LEGACY_INPUT_SIZE)
+            assertTrue(q.inputSize in FeatureEncoder.INPUT_SIZES)
             var failed = false
             val agents = List(PLAYER_COUNT) { seat ->
                 if (seat % 2 == 0) {

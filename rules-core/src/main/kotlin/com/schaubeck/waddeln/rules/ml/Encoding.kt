@@ -15,6 +15,7 @@ import com.schaubeck.waddeln.rules.teamOf
 import com.schaubeck.waddeln.rules.trickWinnerIndex
 import com.schaubeck.waddeln.rules.agent.PartnerHint
 import com.schaubeck.waddeln.rules.agent.SchadetAnswer
+import com.schaubeck.waddeln.rules.agent.TrickAdvice
 
 /**
  * Integer codes for actions, shared with the Python simulator (training/waddeln/engine.py):
@@ -55,7 +56,7 @@ object ActionCodec {
  * Seats are relative to the observing player: 0 = self, 1 = next (left), 2 = partner, 3 = right.
  */
 object FeatureEncoder {
-    const val STATE_SIZE = 517
+    const val STATE_SIZE = 571
     const val ACTION_SIZE = ActionCodec.SIZE + 4
     const val INPUT_SIZE = STATE_SIZE + ACTION_SIZE
 
@@ -66,6 +67,13 @@ object FeatureEncoder {
      */
     const val LEGACY_STATE_SIZE = 478
     const val LEGACY_INPUT_SIZE = LEGACY_STATE_SIZE + ACTION_SIZE
+
+    /** State features of models trained before the dealer's Kritten and card, "Was soll ich machen?" and the Schlagwechsel. */
+    const val TABLE_TALK_STATE_SIZE = 517
+    const val TABLE_TALK_INPUT_SIZE = TABLE_TALK_STATE_SIZE + ACTION_SIZE
+
+    /** Input sizes of all layouts a model may have been trained with. */
+    val INPUT_SIZES = listOf(INPUT_SIZE, TABLE_TALK_INPUT_SIZE, LEGACY_INPUT_SIZE)
 
     private fun rel(obs: Observation, seat: Int) = (seat - obs.player + PLAYER_COUNT) % PLAYER_COUNT
 
@@ -173,6 +181,22 @@ object FeatureEncoder {
             val seat = (obs.player + r) % PLAYER_COUNT
             scalar(if (obs.schubs.any { it.player == seat && it.cardsPlayed == 0 }) 1f else 0f)
         }
+
+        // ---- Dealing, "Was soll ich machen?" and Schlagwechsel ----
+        oneHot(obs.geberKritten, 3)                                           // 517: Kritten the dealer took
+        cardBlock(listOfNotNull(obs.geberCard))                               // 520: card the dealer saw under the rest (only he knows it)
+        for (r in 0 until PLAYER_COUNT) {                                     // 552: latest answer to "Was soll ich machen?" per asker
+            val seat = (obs.player + r) % PLAYER_COUNT
+            oneHot(obs.advice.lastOrNull { it.asker == seat && it.answer != null }?.answer?.ordinal ?: -1, TrickAdvice.entries.size)
+        }
+        for (r in 0 until PLAYER_COUNT) {                                     // 564: asked in the current trick
+            val seat = (obs.player + r) % PLAYER_COUNT
+            scalar(if (obs.advice.any { it.asker == seat && it.trick == obs.completedTricks.size }) 1f else 0f)
+        }
+        val schlagwechsel = obs.schlagwechsel
+        scalar(if (schlagwechsel != null) 1f else 0f)                         // 568: Schlagwechsel proposed
+        scalar(if (schlagwechsel?.accepted == true) 1f else 0f)               // 569: accepted by the dealer
+        scalar(if (schlagwechsel?.accepted == false) 1f else 0f)              // 570: declined
         check(o == STATE_SIZE) { "Feature layout mismatch: $o" }
         return f
     }
@@ -235,10 +259,9 @@ object FeatureEncoder {
     /** Network input for one candidate action: state features followed by action features. */
     fun encode(obs: Observation, action: Action): FloatArray = encodeState(obs) + encodeAction(obs, action)
 
-    /** Network input for a model with [inputSize] inputs: the current layout or the legacy one. */
-    fun encodeFor(inputSize: Int, state: FloatArray, action: FloatArray): FloatArray = when (inputSize) {
-        INPUT_SIZE -> state + action
-        LEGACY_INPUT_SIZE -> state.copyOf(LEGACY_STATE_SIZE) + action
-        else -> throw IllegalArgumentException("Model has $inputSize inputs, expected $INPUT_SIZE or $LEGACY_INPUT_SIZE")
+    /** Network input for a model with [inputSize] inputs: the current layout or an older one. */
+    fun encodeFor(inputSize: Int, state: FloatArray, action: FloatArray): FloatArray {
+        require(inputSize in INPUT_SIZES) { "Model has $inputSize inputs, expected one of $INPUT_SIZES" }
+        return state.copyOf(inputSize - ACTION_SIZE) + action
     }
 }

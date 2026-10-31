@@ -7,15 +7,31 @@ import numpy as np
 
 from . import engine as E
 from . import talk as T
-from .bots import apply_discard_rule
+from .bots import apply_discard_rule, schub_must_stay
 from .features import INPUT_SIZE, encode_actions
+from .match_value import MatchValue
+
+_match_value: MatchValue | None = None
+
+
+def round_targets(state, seats) -> list[float]:
+    """Training targets of the recorded decisions of `seats` in the finished game of `state`:
+    the change of their team's chance to win the match (match_value.py)."""
+    global _match_value
+    if _match_value is None:
+        _match_value = MatchValue()
+    team, points, _ = state.result
+    before = list(state.scores)
+    before[team] -= points
+    by_team = [_match_value.target(before, t, team, points) for t in (0, 1)]
+    return [by_team[E.team_of(seat)] for seat in seats]
 
 
 def play_match(agents, rng: random.Random, record_seats=(), max_rounds: int = 200):
     """Plays one match. Agents with `choose_with_input` on seats in `record_seats` produce samples.
 
-    Returns (X, y, final_state): X holds the network inputs of all recorded decisions, y the points
-    the decider's team gained (+) or conceded (−) in that game (round). All seats talk at the table
+    Returns (X, y, final_state): X holds the network inputs of all recorded decisions, y how much
+    that game (round) changed the decider's team's chance to win the match (round_targets). All seats talk at the table
     like bots (talk.py); a decision that leads to "Schadder?" is taken again with the answer and
     only the second one is recorded.
     """
@@ -43,10 +59,9 @@ def play_match(agents, rng: random.Random, record_seats=(), max_rounds: int = 20
             if row is not None:
                 pending.append((actor, row))
             E.apply(state, actor, action, check=False)
-        team, points, _ = state.result
-        for seat, row in pending:
+        for (_, row), y in zip(pending, round_targets(state, [seat for seat, _ in pending])):
             xs.append(row)
-            ys.append(points if E.team_of(seat) == team else -points)
+            ys.append(y)
         if state.phase == E.MATCH_OVER:
             break
         deck, cut = E.random_deal(rng)
@@ -155,6 +170,9 @@ class BatchedSelfPlay:
                 if len(legal) == 1 and legal[0] != E.A_SCHUB:
                     E.apply(st, actor, legal[0], check=False)
                     continue
+                if E.A_BLEIBEN in legal and schub_must_stay(obs):
+                    E.apply(st, actor, E.A_BLEIBEN, check=False)  # fixed rule, not recorded
+                    continue
                 if self.rng.random() < self.epsilon:
                     a = apply_discard_rule(obs, legal, legal[self.rng.randrange(len(legal))])
                     if T.talks_schadet(st, actor, a, self.rng):
@@ -190,8 +208,8 @@ class BatchedSelfPlay:
             slot.pending.append((actor, row))
 
     def _finish_round(self, slot: _Slot) -> None:
-        team, points, _ = slot.state.result
-        for seat, row in slot.pending:
+        targets = round_targets(slot.state, [seat for seat, _ in slot.pending])
+        for (_, row), y in zip(slot.pending, targets):
             self._xs.append(row)
-            self._ys.append(points if E.team_of(seat) == team else -points)
+            self._ys.append(y)
         slot.pending = []

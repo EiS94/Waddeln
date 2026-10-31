@@ -1,5 +1,6 @@
 """Q-network for Deep Monte-Carlo: input = state features + action features, output = expected
-points of the acting player's team in the current game (round)."""
+change of the acting team's chance to win the match through the current game (round), scaled to
+the size of game points (match_value.py)."""
 from __future__ import annotations
 
 import random
@@ -7,8 +8,8 @@ import random
 import torch
 from torch import nn
 
-from .bots import apply_discard_rule
-from .engine import A_SCHUB, Observation
+from .bots import apply_discard_rule, schub_must_stay
+from .engine import A_BLEIBEN, A_SCHUB, Observation
 from .features import INPUT_SIZE, encode_actions, for_model
 
 DEFAULT_HIDDEN = (512, 512, 256)
@@ -63,6 +64,8 @@ class ModelAgent:
         """Returns (action, network input row of that action); the row is None for forced moves."""
         if len(legal) == 1 and legal[0] != A_SCHUB:
             return legal[0], None
+        if A_BLEIBEN in legal and schub_must_stay(obs):
+            return A_BLEIBEN, None
         if self.rng.random() < self.epsilon:
             a = apply_discard_rule(obs, legal, legal[self.rng.randrange(len(legal))])
             return a, encode_actions(obs, [a])[0]

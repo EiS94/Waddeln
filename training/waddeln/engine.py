@@ -369,6 +369,7 @@ HINT_COUNT = 5
 SCHADET_NO, SCHADET_A_LITTLE, SCHADET_YES = range(3)
 # TrickAdvice ordinals
 ADVICE_NICHTS, ADVICE_STICHELN, ADVICE_MACHEN = range(3)
+ADVICE_COUNT = 3
 
 
 def can_give_hint(state: State, player: int) -> bool:

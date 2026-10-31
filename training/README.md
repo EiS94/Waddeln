@@ -12,6 +12,8 @@ für den Raspberry Pi 5.
 | `waddeln/bots.py` | Zufalls-Bot und Regel-Bot (Port von `RuleBasedAgent.kt`) |
 | `waddeln/features.py` | Netz-Eingabe – identisch zu `Encoding.kt` (`FeatureEncoder`) |
 | `waddeln/model.py` | Q-Netz (MLP) und Agent, der damit spielt |
+| `waddeln/match_value.py` | Siegchance je Spielstand → Lernziel des Netzes |
+| `make_match_value.py` | Baut die Tabelle `waddeln/match_value.json` |
 | `waddeln/selfplay.py` | Matches spielen, Trainingsbeispiele sammeln, Bewertung |
 | `train_dmc.py` | Training (parallele Self-Play-Prozesse + Lernprozess) |
 | `export_onnx.py` | Checkpoint → ONNX für die App |
@@ -43,6 +45,21 @@ cd waddeln/training
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 .venv/bin/python -m pytest tests -q   # Paritätstest (protocols/ vom PC mitkopieren, sonst wird er übersprungen)
+```
+
+## Lernziel: Siegchance statt Punkte
+
+Das Netz lernt für jede Entscheidung, wie stark das laufende Spiel die **Chance des eigenen Teams
+verändert, das Match zu gewinnen** – nicht die Punkte des Spiels. Sonst sieht z. B. „Gehen“ bei
+7 Punkten des Gegners (er kommt auf 9) besser aus als „Bleiben und verlieren“ (10), obwohl er in
+beiden Fällen gespannt ist. Die Siegchance je Spielstand steht in `waddeln/match_value.json`
+(aus Partien des Regel-Bots gezählt); der Faktor `scale` macht die Werte im Schnitt so groß wie
+Spielpunkte, damit die Temperaturen der Schwierigkeitsstufen in der App passen. Neu bauen (dauert
+einige Minuten), z. B. mit einem fertig trainierten Netz statt des Regel-Bots:
+
+```bash
+.venv/bin/python make_match_value.py --matches 400000 --workers 16
+.venv/bin/python make_match_value.py --model checkpoints/run1/best.pt --matches 100000 --workers 16
 ```
 
 ## Training
@@ -113,7 +130,13 @@ Schub, „Schadder?“ samt Antwort und der Schlagwechsel. Bots reden überall g
 
 Das Netz bekommt dazu 39 Merkmale (Zustand 478 → 517): letzter Hinweis je Platz, wer „Schadder?“
 gefragt hat (hat den Haubi oder blufft) und die Antwort, wer beim Haubi-Anspiel nicht bedient hat (hat keine
-Haubi-Farbe), Schübe je Platz und ob vor der ersten Karte.
+Haubi-Farbe), Schübe je Platz und ob vor der ersten Karte. Seit Zustand 571 außerdem alles, was ein
+Mensch am Tisch auch weiß: wie viele Kritten der Geber genommen hat, die Karte, die nur der Geber unter
+dem Rest gesehen hat, „Was soll ich machen?“ (wer gefragt hat, letzte Antwort je Platz) und der
+Schlagwechsel (vorgeschlagen, angenommen, abgelehnt).
+
+Die Tischgespräche führen alle Bots nach festen Regeln (`BotTalk.kt` ↔ `waddeln/talk.py`); das Netz
+entscheidet Schlag, Farbe, Karte, Schub, Bleiben und Gehen.
 
 **Weitertrainieren statt neu:** Alte Checkpoints werden mit `migrate_checkpoint.py` erweitert; die
 neuen Eingaben starten mit Gewicht 0, das Netz spielt also zunächst genau wie vorher.

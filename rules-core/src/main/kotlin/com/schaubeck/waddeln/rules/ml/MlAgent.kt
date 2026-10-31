@@ -6,17 +6,19 @@ import com.schaubeck.waddeln.rules.agent.Agent
 import com.schaubeck.waddeln.rules.agent.DiscardRule
 import com.schaubeck.waddeln.rules.agent.LastTrick
 import com.schaubeck.waddeln.rules.agent.RuleBasedAgent
+import com.schaubeck.waddeln.rules.agent.SchubRule
 import kotlin.math.exp
 import kotlin.random.Random
 
 /**
- * Evaluates network inputs (rows of [inputSize] floats) and returns one value per row:
- * the expected points of the acting team. Implemented with ONNX Runtime by the app/server.
+ * Evaluates network inputs (rows of [inputSize] floats) and returns one value per row: how much the
+ * current game is expected to change the acting team's chance to win the match, scaled to the size
+ * of game points (training/waddeln/match_value.py). Implemented with ONNX Runtime by the app/server.
  */
 fun interface QFunction {
     fun evaluate(inputs: Array<FloatArray>): FloatArray
 
-    /** [FeatureEncoder.INPUT_SIZE], or [FeatureEncoder.LEGACY_INPUT_SIZE] for a model trained before the table talk. */
+    /** [FeatureEncoder.INPUT_SIZE], or one of the older [FeatureEncoder.INPUT_SIZES] for an older model. */
     val inputSize: Int get() = FeatureEncoder.INPUT_SIZE
 }
 
@@ -39,6 +41,7 @@ class MlAgent(
         if (legalActions.size == 1 && legalActions.single() != Action.Schub) return legalActions.single()
         // With the partner's last card on the table the trick itself decides (as for the rule bot).
         if (Action.Bleiben in legalActions) {
+            if (SchubRule.mustStay(observation)) return Action.Bleiben
             LastTrick.shouldStay(observation)?.let { return if (it) Action.Bleiben else Action.Gehen }
         }
         val values = try {
