@@ -843,7 +843,7 @@ private val CompactPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
 private fun Hand(table: TableUi, onAction: (Action) -> Unit) {
     val s = table.obs
     val trump = s.trump
-    val hand = sortHand(s.hand, trump)
+    val hand = sortHand(s.hand, trump, s.phase, s.schlag)
     val playable = table.actions.filterIsInstance<Action.PlayCard>().map { it.card }.toSet()
     val myTurn = playable.isNotEmpty()
     BoxWithConstraints(
@@ -880,13 +880,22 @@ private fun Hand(table: TableUi, onAction: (Action) -> Unit) {
 /** Width of the own cards (and of the Haubi) on a screen [areaWidth] wide. */
 private fun handCardWidth(areaWidth: Dp): Dp = min(areaWidth * 0.21f, 100.dp)
 
-/** Trumps first (strongest left), then plain cards grouped by suit, high to low. */
-private fun sortHand(hand: List<Card>, trump: Trump?): List<Card> =
-    hand.sortedWith(
-        compareByDescending<Card> { trump?.strength(it) ?: (if (it.isKritte) 200 - Card.KRITTEN.indexOf(it) else -1) }
-            .thenBy { it.suit.ordinal }
-            .thenByDescending { it.rank.ordinal },
-    )
+/**
+ * Trumps first (strongest left), then plain cards grouped by suit, high to low. While the Schlag is
+ * announced the cards are grouped by rank instead, and while the Farbe is announced the Schläge come
+ * right after the Kritten, so the choice can be read off the hand.
+ */
+private fun sortHand(hand: List<Card>, trump: Trump?, phase: Phase, schlag: Rank?): List<Card> {
+    fun kritte(card: Card) = if (card.isKritte) 200 - Card.KRITTEN.indexOf(card) else -1
+    val order = when {
+        trump != null -> compareByDescending<Card> { trump.strength(it) }
+        phase == Phase.SCHLAG -> compareByDescending<Card> { kritte(it) }.thenByDescending { it.rank.ordinal }
+        phase == Phase.FARBE && schlag != null ->
+            compareByDescending<Card> { kritte(it) }.thenByDescending { it.rank == schlag }
+        else -> compareByDescending<Card> { kritte(it) }
+    }
+    return hand.sortedWith(order.thenBy { it.suit.ordinal }.thenByDescending { it.rank.ordinal })
+}
 
 // ---- End of round / match --------------------------------------------------------------------
 

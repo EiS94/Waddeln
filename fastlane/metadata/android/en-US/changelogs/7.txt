@@ -1,3 +1,4 @@
 New, stronger AI: trained from scratch, plays to win the match instead of points and knows everything said at the table.
 Bots no longer give up when the opponents would be gespannt anyway, and no longer waste strong cards on tricks they cannot take.
+While announcing, your cards are sorted for the Schlag or the Farbe.
 From the second Schub on, the new game value is called ("Vier", "Fünf", ...).
