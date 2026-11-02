@@ -17,6 +17,7 @@ import com.schaubeck.waddeln.rules.GameState
 import com.schaubeck.waddeln.rules.PLAYER_COUNT
 import com.schaubeck.waddeln.rules.PendingRound
 import com.schaubeck.waddeln.rules.Phase
+import com.schaubeck.waddeln.rules.TEAM_COUNT
 import com.schaubeck.waddeln.rules.Waddeln
 import com.schaubeck.waddeln.rules.agent.Advice
 import com.schaubeck.waddeln.rules.agent.Agent
@@ -48,6 +49,11 @@ data class Timing(
     val schubPauseMs: Long = 1500,
     /** After a Schlag, Farbe or Schub was said, so the speech bubble can be read (with [botDelayMs] like the app's speechMs). */
     val speechPauseMs: Long = 1400,
+    /**
+     * Gespannt against gespannt: before a bot cuts, the apps let two players call it out
+     * (question and answer, with [botDelayMs] like the app's ANSWER_DELAY_MS + speechMs).
+     */
+    val gespanntPauseMs: Long = 2700,
     /** A human who has to decide gets this long; then the bot decides for them. Null = no limit. */
     val turnTimeoutMs: Long? = 60_000,
     /** Like [turnTimeoutMs] for the Abheber; then a random cut is made for them. */
@@ -486,8 +492,9 @@ class Room(
         pendingRound?.let { round ->
             if (round.abheber in humans) return startTimer(s, timing.cutTimeoutMs)
             stopTimer()
+            val gespanntPause = if ((0 until TEAM_COUNT).all { s.isGespannt(it) }) timing.gespanntPauseMs else 0
             botJob = scope.launch {
-                delay(pauseMs + timing.botDelayMs)
+                delay(pauseMs + timing.botDelayMs + gespanntPause)
                 botJob = null
                 cut(pendingRound ?: return@launch, Deal.randomCut(random))
             }

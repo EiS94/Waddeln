@@ -15,6 +15,8 @@ import com.schaubeck.waddeln.game.StatsMode
 import com.schaubeck.waddeln.game.StatsStore
 import com.schaubeck.waddeln.game.StatsTracker
 import com.schaubeck.waddeln.game.TableUi
+import com.schaubeck.waddeln.game.bothGespannt
+import com.schaubeck.waddeln.game.gespanntSpeakers
 import com.schaubeck.waddeln.game.isSpoken
 import com.schaubeck.waddeln.protocol.BotStrength
 import com.schaubeck.waddeln.protocol.ClientMessage
@@ -27,6 +29,7 @@ import com.schaubeck.waddeln.rules.Phase
 import com.schaubeck.waddeln.rules.teamOf
 import com.schaubeck.waddeln.rules.agent.PartnerHint
 import com.schaubeck.waddeln.rules.agent.SchadetAnswer
+import com.schaubeck.waddeln.rules.agent.SchubRule
 import com.schaubeck.waddeln.rules.agent.TrickAdvice
 import com.schaubeck.waddeln.ui.Sayings
 import kotlinx.coroutines.Job
@@ -241,12 +244,22 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
         val old = before?.game ?: return
         game ?: return
         val obs = game.observation
+        if (obs.roundNumber != old.observation.roundNumber && obs.bothGespannt()) {
+            // Before the cut; every app picks its own speakers among the others (our own words are no bubble).
+            val (caller, answerer) = gespanntSpeakers(now.yourSeat)
+            say(caller, sayings.gespanntGespannt())
+            say(answerer, sayings.layOut(), delayMs = ANSWER_DELAY_MS)
+        }
         val last = game.lastAction
         // Views are also sent for other reasons (connections, table talk like asking the partner);
         // only a new last action means a new action. The same seat never says the same thing twice
         // in a row, since every spoken action is followed by another one or a new round.
         if (last != null && last.action.isSpoken() && last != old.lastAction) {
-            sayings.speech(last.action, obs.gameValue)?.let { say(last.seat, it) }
+            val schub = old.observation.pendingSchub
+            val gespanntEitherWay = last.action == Action.Bleiben && schub != null &&
+                SchubRule.gespanntEitherWay(old.observation.scores[teamOf(schub.askingPlayer)], old.observation.gameValue)
+            if (gespanntEitherWay) say(last.seat, sayings.bleibenGespannt())
+            else sayings.speech(last.action, obs.gameValue)?.let { say(last.seat, it) }
         }
         val asking = game.partnerQuestion
         val newQuestion = asking != null && old.partnerQuestion == null
@@ -374,7 +387,7 @@ class OnlineViewModel(application: Application) : AndroidViewModel(application) 
             bots = table.room.seats.indices.filter { !table.room.seats[it].isHuman }.toSet(),
             waitingForOthers = over && game.ready[me],
             deadline = deadline,
-            cut = cutShown ?: game.cut?.takeIf { it.cut == null }?.let { CutUi(it.abheber, choosing = it.abheber == me && selfCut) },
+            cut = cutShown ?: game.cut?.takeIf { it.cut == null }?.let { CutUi(it.abheber, choosing = it.abheber == me && selfCut, byBot = !table.room.seats[it.abheber].isHuman) },
             connectionProblem = if (connection == ConnectionState.LOST) res.getString(R.string.game_connection_lost) else null,
         )
     }

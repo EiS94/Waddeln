@@ -122,7 +122,10 @@ fun GameScreen(
                 // Before the deal: the seats around the table and the cut in the middle.
                 Box(Modifier.weight(1f).fillMaxWidth().navigationBarsPadding()) {
                     Seats(table)
-                    CutScene(table, cut, onCut, onCutSeen, Modifier.align(Alignment.Center).padding(horizontal = 12.dp).zIndex(2f))
+                    // While a bot chooses, its glowing name is enough; the cut appears once it is made.
+                    if (cut.cut != null || !cut.byBot) {
+                        CutScene(table, cut, onCut, onCutSeen, Modifier.align(Alignment.Center).padding(horizontal = 12.dp).zIndex(2f))
+                    }
                 }
             } else {
                 Box(Modifier.weight(1f).fillMaxWidth()) {
@@ -241,6 +244,12 @@ private fun Seats(table: TableUi, sideSeatTop: Dp = 48.dp) {
 /** Cards in the hand of [seat] as the others see them; none until the cut has been shown. */
 private fun handSize(table: TableUi, seat: Int): Int = if (table.cut != null) 0 else table.obs.handSizes[seat]
 
+/** Of these, the cards [seat] laid out face down (gespannt against gespannt); they lie further forward. */
+private fun laidOut(table: TableUi, seat: Int): Int = if (table.cut != null) 0 else table.obs.laidOutCounts?.get(seat) ?: 0
+
+/** How far laid-out cards lie towards the middle of the table. */
+private val LaidOutPush = 14.dp
+
 /**
  * The last completed trick as it lay on the table, the winning card framed. Shown by [shownBy];
  * only they can close it ([onClose]), playing a card closes it too.
@@ -289,8 +298,11 @@ private fun LastTrickOverlay(table: TableUi, shownBy: Int, cardWidth: Dp, onClos
 private fun PartnerSeat(table: TableUi, modifier: Modifier) {
     val seat = table.seatAt(2)
     Column(modifier.padding(top = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        val laid = laidOut(table, seat)
         Row(horizontalArrangement = Arrangement.spacedBy((-22).dp)) {
-            repeat(handSize(table, seat)) { CardBack(width = 40.dp) }
+            repeat(handSize(table, seat)) { i ->
+                CardBack(width = 40.dp, modifier = Modifier.padding(top = if (i < laid) LaidOutPush else 0.dp))
+            }
         }
         Spacer(Modifier.height(4.dp))
         SeatChip(table, seat)
@@ -304,12 +316,21 @@ private fun SideSeat(table: TableUi, seat: Int, left: Boolean, modifier: Modifie
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         // The name moves over the cards sticking out of the screen; without cards it stays inside.
         val shift = if (handSize(table, seat) > 0) 18.dp else (-4).dp
+        val laid = laidOut(table, seat)
         val backs = @Composable {
             Column(
                 modifier = Modifier.offset(x = if (left) (-22).dp else 22.dp),
                 verticalArrangement = Arrangement.spacedBy((-14).dp),
+                horizontalAlignment = if (left) Alignment.Start else Alignment.End,
             ) {
-                repeat(handSize(table, seat)) { CardBack(width = 34.dp, landscape = true) }
+                repeat(handSize(table, seat)) { i ->
+                    val push = if (i < laid) LaidOutPush else 0.dp
+                    CardBack(
+                        width = 34.dp,
+                        landscape = true,
+                        modifier = if (left) Modifier.padding(start = push) else Modifier.padding(end = push),
+                    )
+                }
             }
         }
         if (left) {
@@ -397,8 +418,8 @@ private fun remainingMs(speech: Speech, durationMs: Long) = durationMs - (System
 private fun startsInMs(speech: Speech) = speech.at - SystemClock.elapsedRealtime()
 
 /**
- * Name of a seat with badges (dealer, Kritten taken while cutting, who leads the next trick, laid out
- * cards, lost connection); glows when to move.
+ * Name of a seat with badges (dealer, Kritten taken while cutting, who leads the next trick, lost
+ * connection); glows when to move.
  */
 @Composable
 private fun SeatChip(table: TableUi, seat: Int, modifier: Modifier = Modifier) {
@@ -418,7 +439,6 @@ private fun SeatChip(table: TableUi, seat: Int, modifier: Modifier = Modifier) {
         if (cut != null && seat == cut.abheber) add(stringResource(R.string.badge_abheber))
         if (cut == null && seat == s.abheber && s.abheberKritten > 0) add(stringResource(R.string.badge_kritten_taken, Texts.kritten(s.abheberKritten)))
         if (cut == null && seat == s.dealer && s.geberKritten > 0) add(stringResource(R.string.badge_kritten_taken, Texts.kritten(s.geberKritten)))
-        s.laidOutCounts?.get(seat)?.takeIf { it > 0 }?.let { add(stringResource(R.string.badge_laid_out, it)) }
         if (seat in table.absent) add(stringResource(R.string.badge_absent))
         if (seat in table.bots) add(stringResource(R.string.badge_bot))
     }
@@ -838,7 +858,7 @@ private val CompactPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
 
 // ---- Own hand --------------------------------------------------------------------------------
 
-/** The own cards, overlapping; playable ones are raised. */
+/** The own cards, overlapping; playable ones are raised, laid-out ones (gespannt against gespannt) lie further forward. */
 @Composable
 private fun Hand(table: TableUi, onAction: (Action) -> Unit) {
     val s = table.obs
@@ -855,10 +875,11 @@ private fun Hand(table: TableUi, onAction: (Action) -> Unit) {
         val areaWidth = maxWidth
         val cardWidth = handCardWidth(areaWidth)
         val raise = 18.dp
+        val laidRaise = if (s.ownLaidOut.isNotEmpty()) LaidOutPush * 1.5f else 0.dp
         val n = hand.size
         val step: Dp = if (n > 1) min(cardWidth + 6.dp, (areaWidth - 16.dp - cardWidth) / (n - 1)) else 0.dp
         val total = cardWidth + step * (n - 1).coerceAtLeast(0)
-        Box(Modifier.fillMaxWidth().height(cardWidth * CARD_ASPECT + raise)) {
+        Box(Modifier.fillMaxWidth().height(cardWidth * CARD_ASPECT + raise + laidRaise)) {
             hand.forEachIndexed { i, card ->
                 val canPlay = card in playable
                 CardView(
@@ -869,7 +890,10 @@ private fun Hand(table: TableUi, onAction: (Action) -> Unit) {
                     onClick = if (canPlay) ({ onAction(Action.PlayCard(card)) }) else null,
                     modifier = Modifier
                         .align(Alignment.BottomStart)
-                        .offset(x = (areaWidth - total) / 2 + step * i, y = if (myTurn && canPlay) -raise else 0.dp)
+                        .offset(
+                            x = (areaWidth - total) / 2 + step * i,
+                            y = -(if (card in s.ownLaidOut) laidRaise else 0.dp) - (if (myTurn && canPlay) raise else 0.dp),
+                        )
                         .zIndex(i.toFloat()),
                 )
             }

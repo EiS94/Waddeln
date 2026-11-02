@@ -68,7 +68,6 @@
     <string name="badge_leads">kommt raus</string>
     <string name="badge_abheber">Abheber</string>
     <string name="badge_kritten_taken">%1$s abgehoben</string>
-    <string name="badge_laid_out">%1$d hingelegt</string>
     <string name="badge_absent">offline – KI spielt</string>
     <string name="badge_bot">KI</string>
 
@@ -188,6 +187,12 @@
     </string-array>
     <string name="say_bleiben">Wir bleiben!|Bleiben!|Nix da, wir bleiben.</string>
     <string name="say_gehen">Wir gehen.|Gehen.|Müss ma gehen.|Da müss ma gehen.|Hilft nix, wir gehen.</string>
+    <!-- Bleiben when going would leave the opponents gespannt just as a lost game would -->
+    <string name="say_bleiben_gespannt">Wir bleiben, ihr seid dann ja eh gespannt.|Bleiben! Gespannt seid ihr so oder so.|Da gehen wir doch nicht, gespannt seid ihr eh.</string>
+
+    <!-- Sayings: gespannt against gespannt, before the cut -->
+    <string name="say_gespannt_gespannt">Gespannt – gespannt!|Gespannt gegen gespannt!</string>
+    <string name="say_lay_out">Kritten und Hauptschläge auf den Tisch!</string>
 
     <!-- Sayings: asking the partner during a Schub -->
     <string name="say_partner_question">Was hast du?|Wie schaut\'s aus?|Was meinst du?</string>

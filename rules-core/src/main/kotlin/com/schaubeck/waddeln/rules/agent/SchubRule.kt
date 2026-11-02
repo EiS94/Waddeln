@@ -15,7 +15,15 @@ object SchubRule {
     fun mustStay(obs: Observation): Boolean {
         val asking = obs.pendingSchub?.askingTeam ?: return false
         if (asking == obs.team) return false
-        val afterGoing = obs.scores[asking] + obs.gameValue
+        return gespanntEitherWay(obs.scores[asking], obs.gameValue)
+    }
+
+    /**
+     * True if the team asking a Schub from [gameValue] with [askingScore] points ends up gespannt
+     * whether the answer is Gehen or the raised game is lost, without the match being over.
+     */
+    fun gespanntEitherWay(askingScore: Int, gameValue: Int): Boolean {
+        val afterGoing = askingScore + gameValue
         return afterGoing >= GESPANNT_POINTS && afterGoing + 1 < MATCH_POINTS
     }
 }

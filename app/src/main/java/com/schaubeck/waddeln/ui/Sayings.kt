@@ -42,6 +42,14 @@ class Sayings(private val res: Resources) {
         is Action.PlayCard -> null
     }
 
+    /** Bleiben when the opponents are gespannt after going as well as after losing (see SchubRule). */
+    fun bleibenGespannt(random: Random = Random.Default): String = pick(R.string.say_bleiben_gespannt, random)
+
+    /** Gespannt against gespannt: one player calls it out before the cut, another answers. */
+    fun gespanntGespannt(random: Random = Random.Default): String = pick(R.string.say_gespannt_gespannt, random)
+
+    fun layOut(random: Random = Random.Default): String = pick(R.string.say_lay_out, random)
+
     /** What the Abheber says after taking [count] Kritten (1 to 3). */
     fun kritten(count: Int, random: Random = Random.Default): String = pick(
         when (count) {

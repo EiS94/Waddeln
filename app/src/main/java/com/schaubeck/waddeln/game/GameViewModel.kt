@@ -15,6 +15,7 @@ import com.schaubeck.waddeln.rules.Waddeln
 import com.schaubeck.waddeln.rules.observationFor
 import com.schaubeck.waddeln.rules.partnerOf
 import com.schaubeck.waddeln.rules.agent.SchadetAnswer
+import com.schaubeck.waddeln.rules.agent.SchubRule
 import com.schaubeck.waddeln.rules.agent.TrickAdvice
 import com.schaubeck.waddeln.rules.teamOf
 import com.schaubeck.waddeln.ui.Sayings
@@ -222,8 +223,16 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         schadetText = null
         adviceText = null
         game.nextRound()
+        // Gespannt against gespannt is called out before the cut, which waits until the answer was read.
+        val gespannt = game.state.observationFor(OfflineGame.HUMAN).bothGespannt()
+        if (gespannt) {
+            val (caller, answerer) = gespanntSpeakers(OfflineGame.HUMAN)
+            say(caller, sayings.gespanntGespannt())
+            say(answerer, sayings.layOut(), delayMs = ANSWER_DELAY_MS)
+        }
         publish()
-        runBots()
+        val speed = settings.speed
+        runBots(initialPauseMs = if (gespannt) (ANSWER_DELAY_MS + speed.speechMs - speed.botDelayMs).coerceAtLeast(0) else 0)
     }
 
     fun onNewMatch() {
@@ -256,6 +265,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 val bot = game.botToAct() ?: break // the human acted (e.g. Schub) in the meantime
                 val tricksBefore = game.state.completedTricks.size
                 val schubBefore = game.state.pendingSchub
+                val gespanntEitherWay = schubBefore != null && SchubRule.mustStay(game.state.observationFor(bot))
                 val spoken = when (val step = game.stepBot()) {
                     is BotStep.Cut -> {
                         // The game goes on once the cut has been shown.
@@ -263,7 +273,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                         break
                     }
                     is BotStep.Acted -> {
-                        say(bot, step.action)
+                        if (step.action == Action.Bleiben && gespanntEitherWay) say(bot, sayings.bleibenGespannt()) else say(bot, step.action)
                         step.action.isSpoken()
                     }
                     is BotStep.AskedSchadet -> {
@@ -403,7 +413,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             schlagwechselAsksUs = game.humanMustAnswerSchlagwechsel(),
             canShowLastTrick = notice == null && Waddeln.canShowLastTrick(game.state, OfflineGame.HUMAN),
             lastTrickShownBy = OfflineGame.HUMAN.takeIf { showingLastTrick && Waddeln.canShowLastTrick(game.state, it) },
-            cut = cutShown ?: game.abheberToCut?.let { CutUi(it, choosing = it == OfflineGame.HUMAN && settings.selfCut) },
+            cut = cutShown ?: game.abheberToCut?.let { CutUi(it, choosing = it == OfflineGame.HUMAN && settings.selfCut, byBot = it != OfflineGame.HUMAN) },
         ),
         settings = settings,
         matchInProgress = matchStarted && game.state.phase != Phase.MATCH_OVER,

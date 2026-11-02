@@ -41,6 +41,15 @@ class SchubRuleTest {
     }
 
     @Test
+    fun `gespannt either way for every raise that brings them to exactly 9 by going`() {
+        assertTrue(SchubRule.gespanntEitherWay(7, 2))
+        assertTrue(SchubRule.gespanntEitherWay(6, 3))
+        assertTrue(SchubRule.gespanntEitherWay(5, 4))
+        assertFalse(SchubRule.gespanntEitherWay(6, 2))
+        assertFalse(SchubRule.gespanntEitherWay(7, 3), "losing: 11, match over")
+    }
+
+    @Test
     fun `rule bot and network both stay`() {
         val obs = answering(listOf(7, 4))
         assertEquals(Action.Gehen, RuleBasedAgent().chooseAction(answering(listOf(3, 4)), answers), "weak hand: goes otherwise")

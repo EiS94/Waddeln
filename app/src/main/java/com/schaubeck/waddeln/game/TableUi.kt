@@ -4,6 +4,8 @@ import com.schaubeck.waddeln.rules.Action
 import com.schaubeck.waddeln.rules.Card
 import com.schaubeck.waddeln.rules.Observation
 import com.schaubeck.waddeln.rules.PLAYER_COUNT
+import com.schaubeck.waddeln.rules.TEAM_COUNT
+import kotlin.random.Random
 
 /**
  * A Schub that others answered with "Bleiben" while the player only watched.
@@ -26,6 +28,8 @@ data class CutUi(
     val abheber: Int,
     /** We are the Abheber and choose where to cut. */
     val choosing: Boolean = false,
+    /** A bot cuts: no spread deck while it chooses, only the cut once it is made. */
+    val byBot: Boolean = false,
     /** Cards lifted; null while the Abheber still chooses. */
     val cut: Int? = null,
     /** Number of Kritten the Abheber took. */
@@ -49,6 +53,18 @@ data class CutUi(
 
 /** How long after a question its immediate answer is said. */
 const val ANSWER_DELAY_MS = 1300L
+
+/** Gespannt against gespannt: the Kritten and Haubis are laid out before the first trick. */
+fun Observation.bothGespannt(): Boolean = (0 until TEAM_COUNT).all { isGespannt(it) }
+
+/**
+ * Two different seats other than [me] (whose own words are no speech bubble): who calls out
+ * gespannt against gespannt before the cut and who answers.
+ */
+fun gespanntSpeakers(me: Int, random: Random = Random.Default): Pair<Int, Int> {
+    val (caller, answerer) = (0 until PLAYER_COUNT).filter { it != me }.shuffled(random)
+    return caller to answerer
+}
 
 /** True for actions that are said aloud at the table (everything but playing a card). */
 fun Action.isSpoken(): Boolean = this !is Action.PlayCard
