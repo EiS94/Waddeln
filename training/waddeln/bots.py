@@ -169,7 +169,8 @@ def schub_must_stay(obs: Observation) -> bool:
 
 def apply_discard_rule(obs: Observation, legal: list[int], action: int) -> int:
     """Abwurf-Regel (mirror of DiscardRule.kt): if the chosen card would not take the trick over, play
-    the cheapest legal card that does not take it over either, whoever wins the trick."""
+    the cheapest legal card that does not take it over either, whoever wins the trick. The same if the
+    chosen card would take a sure trick from the partner (we play last or the partner's card is boss)."""
     if not (CARD_OFFSET <= action < A_SCHUB):
         return action
     st = obs.strengths
@@ -182,10 +183,21 @@ def apply_discard_rule(obs: Observation, legal: list[int], action: int) -> int:
         return trick_winner_index(trick_cards + [c], st) == len(trick)
 
     chosen = action - CARD_OFFSET
-    if takes_over(chosen):
+    if takes_over(chosen) and not _partner_surely_wins(obs, st):
         return action
     candidates = [a - CARD_OFFSET for a in legal if CARD_OFFSET <= a < A_SCHUB and not takes_over(a - CARD_OFFSET)]
     if not candidates:
         return action
     cheapest = min(candidates, key=lambda c: _value(c, st))
-    return CARD_OFFSET + cheapest if _value(cheapest, st) < _value(chosen, st) else action
+    if not takes_over(chosen) and _value(cheapest, st) >= _value(chosen, st):
+        return action
+    return CARD_OFFSET + cheapest
+
+
+def _partner_surely_wins(obs: Observation, st) -> bool:
+    """The partner wins the current trick for sure: we play last, or nobody can beat their card anymore."""
+    trick = obs.current_trick
+    winning_player, winning_card = trick[trick_winner_index([c for _, c in trick], st)]
+    if team_of(winning_player) != obs.team:
+        return False
+    return len(trick) == PLAYER_COUNT - 1 or _is_boss(winning_card, obs, st)

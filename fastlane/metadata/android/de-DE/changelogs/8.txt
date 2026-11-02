@@ -1,0 +1,1 @@
+Behoben: Dein KI-Partner übertrumpft dich nicht mehr, wenn der Stich eurem Team ohnehin sicher ist (z. B. als Letzter im Stich). Er wirft dann stattdessen seine billigste Karte ab.

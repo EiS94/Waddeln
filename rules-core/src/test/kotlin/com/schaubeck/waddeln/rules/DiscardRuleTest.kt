@@ -45,6 +45,13 @@ class DiscardRuleTest {
     }
 
     @Test
+    fun `playing last, the partner's trick is not taken over`() {
+        // Partner 1 holds the trick with Schell Koenig; Gras 7 (Haubi-Farbe) would only waste a trump
+        val s = playingWith(hands, Rank.ASS, Suit.GRAS).play("S9", "SK", "E9")
+        assertEquals(Action.PlayCard(c("S10")), decide(s, 3, "G7"))
+    }
+
+    @Test
     fun `no change when the card takes the trick over`() {
         // Partner 0 leads Schell 9 (plain), opponent plays Schell 8: Schell Unter would take over within the team
         val s = playingWith(hands, Rank.ASS, Suit.GRAS).play("S9", "S8")

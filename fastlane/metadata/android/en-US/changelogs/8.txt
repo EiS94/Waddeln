@@ -1,0 +1,1 @@
+Fixed: your AI partner no longer overtrumps you when your team is sure to win the trick (e.g. when playing last). It discards its cheapest card instead.
