@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.sp
 import com.schaubeck.waddeln.R
 import com.schaubeck.waddeln.game.Difficulty
 import com.schaubeck.waddeln.game.GameSpeed
+import com.schaubeck.waddeln.game.Gender
 import com.schaubeck.waddeln.game.Settings
 import com.schaubeck.waddeln.game.TableStyle
 
@@ -92,6 +93,12 @@ fun SettingsScreen(settings: Settings, onChange: (Settings) -> Unit, onBack: () 
                     for (seat in listOf(0, 2, 1, 3)) {
                         NameField(stringResource(labels[seat]), settings.names[seat], stringResource(Settings.DEFAULT_NAMES[seat])) { name ->
                             onChange(settings.copy(names = settings.names.toMutableList().also { it[seat] = name }))
+                        }
+                        // Only the bots talk about each other and speak aloud.
+                        if (seat != 0) {
+                            GenderChoice(settings.genders[seat]) { gender ->
+                                onChange(settings.copy(genders = settings.genders.toMutableList().also { it[seat] = gender }))
+                            }
                         }
                     }
                 }
@@ -171,6 +178,27 @@ fun Toggle(label: String, description: String?, checked: Boolean, onChange: (Boo
             onCheckedChange = onChange,
             colors = SwitchDefaults.colors(checkedTrackColor = Highlight, checkedThumbColor = Color.White),
         )
+    }
+}
+
+@Composable
+private fun GenderChoice(selected: Gender, onSelect: (Gender) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(stringResource(R.string.settings_gender), color = Color.White.copy(alpha = 0.7f), fontSize = 13.sp, modifier = Modifier.weight(1f))
+        Gender.entries.forEach { gender ->
+            val chosen = gender == selected
+            Text(
+                stringResource(gender.label),
+                color = if (chosen) Color.Black else Color.White,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .background(if (chosen) Highlight else Color.Transparent, RoundedCornerShape(8.dp))
+                    .border(1.dp, if (chosen) Highlight else Color.White.copy(alpha = 0.6f), RoundedCornerShape(8.dp))
+                    .clickable { onSelect(gender) }
+                    .padding(horizontal = 14.dp, vertical = 4.dp),
+            )
+        }
     }
 }
 

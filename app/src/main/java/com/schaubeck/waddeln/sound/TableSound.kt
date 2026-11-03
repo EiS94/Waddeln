@@ -10,6 +10,7 @@ import android.speech.tts.TextToSpeech
 import android.speech.tts.Voice
 import androidx.compose.runtime.staticCompositionLocalOf
 import com.schaubeck.waddeln.R
+import com.schaubeck.waddeln.game.Gender
 import com.schaubeck.waddeln.game.Speech
 import com.schaubeck.waddeln.game.TableUi
 import com.schaubeck.waddeln.rules.PLAYER_COUNT
@@ -45,6 +46,9 @@ class TableSound(context: Context) {
 
     /** One voice per seat (or null = the engine's default), so the four players sound different. */
     private var seatVoices: List<Voice?> = List(PLAYER_COUNT) { null }
+
+    /** Installed German voices recognised as male or female by their name (engines do not tell otherwise). */
+    private var voicesOf: Map<Gender, List<Voice>> = emptyMap()
     private val tts: TextToSpeech = TextToSpeech(context.applicationContext) { status ->
         if (status == TextToSpeech.SUCCESS) setUpVoices()
     }
@@ -84,15 +88,33 @@ class TableSound(context: Context) {
             .filter { it !in before?.speech.orEmpty() && now - it.at < FRESH_SPEECH_MS }
             .forEach { speech ->
                 val wait = speech.at - now
-                if (wait > 0) later.postDelayed({ say(speech.seat, speech.text) }, wait) else say(speech.seat, speech.text)
+                val gender = table.genders[speech.seat]
+                // Players of the same gender get different voices where there are enough.
+                val slot = table.genders.take(speech.seat).count { it == gender }
+                if (wait > 0) {
+                    later.postDelayed({ say(speech.seat, speech.text, gender, slot) }, wait)
+                } else {
+                    say(speech.seat, speech.text, gender, slot)
+                }
             }
     }
 
-    fun say(seat: Int, text: String) {
+    /**
+     * Says [text] in the voice of [seat]. With a [gender] a matching voice is used if one is installed,
+     * otherwise the pitch makes the difference; [slot] counts the seats before with the same gender.
+     */
+    fun say(seat: Int, text: String, gender: Gender? = null, slot: Int = 0) {
         if (!voicesOn || !ttsReady) return
+        val matching = gender?.let { voicesOf[it] }.orEmpty()
+        val voice = if (matching.isNotEmpty()) matching[slot % matching.size] else seatVoices[seat]
         // Some engines have no default voice; setting null would crash, so the current one stays then.
-        (seatVoices[seat] ?: tts.defaultVoice)?.let { tts.voice = it }
-        tts.setPitch(SEAT_PITCH[seat])
+        (voice ?: tts.defaultVoice)?.let { tts.voice = it }
+        val pitch = when {
+            gender == null -> SEAT_PITCH[seat]
+            matching.isNotEmpty() -> SEAT_VARIATION[seat]
+            else -> GENDER_PITCH.getValue(gender) * SEAT_VARIATION[seat]
+        }
+        tts.setPitch(pitch)
         tts.setSpeechRate(SEAT_RATE[seat])
         tts.speak(Pronunciation.spoken(text), TextToSpeech.QUEUE_ADD, null, "speech-${SystemClock.elapsedRealtime()}")
     }
@@ -129,6 +151,8 @@ class TableSound(context: Context) {
             }
             .sortedWith(compareBy({ it.locale.country != "DE" }, { it.name }))
         if (german.isNotEmpty()) seatVoices = List(PLAYER_COUNT) { german[it % german.size] }
+        voicesOf = german.mapNotNull { voice -> genderOf(voice.name)?.let { it to voice } }
+            .groupBy({ it.first }, { it.second })
         ttsReady = true
     }
 
@@ -137,7 +161,26 @@ class TableSound(context: Context) {
         val SEAT_PITCH = listOf(1.0f, 0.8f, 1.15f, 0.92f)
         val SEAT_RATE = listOf(1.0f, 0.95f, 1.05f, 0.9f)
 
+        /** With a gender: small differences between seats on top of the voice's own height. */
+        val SEAT_VARIATION = listOf(1.0f, 0.95f, 1.05f, 0.98f)
+
+        /** Voice height for a gender when no matching voice is installed. */
+        val GENDER_PITCH = mapOf(Gender.MALE to 0.8f, Gender.FEMALE to 1.2f, Gender.DIVERSE to 1.0f)
+
         const val FRESH_SPEECH_MS = 2000L
+
+        /**
+         * Gender of a voice by its name: Google's German voices (x-deg male; x-dea, x-deb, x-nfh female),
+         * Samsung's (SMTm / SMTf) and names that say "male"/"female". Null if unknown.
+         */
+        fun genderOf(name: String): Gender? {
+            val n = name.lowercase()
+            return when {
+                "female" in n || Regex("x-(dea|deb|nfh)|smtf").containsMatchIn(n) -> Gender.FEMALE
+                "male" in n || Regex("x-deg|smtm").containsMatchIn(n) -> Gender.MALE
+                else -> null
+            }
+        }
     }
 }
 

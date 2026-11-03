@@ -395,6 +395,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             obs = game.state.observationFor(OfflineGame.HUMAN),
             actions = if (notice != null || cutShown != null) emptyList() else game.humanActions(),
             names = List(PLAYER_COUNT) { settings.names[it].ifBlank { store.defaultNames[it] } },
+            genders = settings.genders,
             speed = settings.speed,
             notice = notice,
             speech = speech,

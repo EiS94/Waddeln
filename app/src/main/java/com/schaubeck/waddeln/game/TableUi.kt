@@ -78,6 +78,8 @@ data class TableUi(
     val actions: List<Action>,
     /** Display name per seat. */
     val names: List<String>,
+    /** Gender per seat where known (offline from the settings), for pronouns and voices. */
+    val genders: List<Gender?> = List(PLAYER_COUNT) { null },
     val speed: GameSpeed,
     val notice: SchubNotice? = null,
     /** Recent speech bubbles, oldest first; the UI shows the latest per seat while it is fresh. */

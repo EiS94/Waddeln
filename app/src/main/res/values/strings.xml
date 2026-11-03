@@ -152,6 +152,8 @@
     <string name="cut_geber_looks_other">%1$s schaut unter den Rest …</string>
     <string name="cut_geber_no_kritte_you">Keine Kritte. Die Karte siehst nur du.</string>
     <string name="cut_geber_no_kritte_other">Keine Kritte für %1$s. Die Karte sieht nur er.</string>
+    <string name="cut_geber_no_kritte_other_female">Keine Kritte für %1$s. Die Karte sieht nur sie.</string>
+    <string name="cut_geber_no_kritte_other_neutral">Keine Kritte für %1$s. Die Karte bleibt geheim.</string>
     <string name="cut_geber_kritten">%1$s für %2$s.</string>
     <string name="cut_geber_kritten_you">%1$s für dich.</string>
 
@@ -258,6 +260,10 @@
     <string name="settings_name_left">Gegner links</string>
     <string name="settings_name_partner">Partner</string>
     <string name="settings_name_right">Gegner rechts</string>
+    <string name="settings_gender">Geschlecht (für Texte und Stimme)</string>
+    <string name="gender_male">m</string>
+    <string name="gender_female">w</string>
+    <string name="gender_diverse">d</string>
     <!-- Names of the players while they have not been named -->
     <string name="default_name_you">Du</string>
     <string name="default_name_left">Links</string>

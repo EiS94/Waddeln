@@ -27,6 +27,13 @@ enum class Difficulty(@StringRes val label: Int, @StringRes val description: Int
     HARD(R.string.difficulty_hard, R.string.difficulty_hard_description, 0.0),
 }
 
+/** Gender of a player: chooses pronouns in texts and the voice. */
+enum class Gender(@StringRes val label: Int) {
+    MALE(R.string.gender_male),
+    FEMALE(R.string.gender_female),
+    DIVERSE(R.string.gender_diverse),
+}
+
 /** Wood of the table behind all screens. */
 enum class TableStyle(@StringRes val label: Int) {
     DARK(R.string.table_dark),
@@ -38,6 +45,8 @@ data class Settings(
     val difficulty: Difficulty = Difficulty.HARD,
     /** Names per seat: you, left opponent, partner, right opponent. */
     val names: List<String> = List(PLAYER_COUNT) { "" },
+    /** Gender per seat, like [names]. */
+    val genders: List<Gender> = List(PLAYER_COUNT) { Gender.MALE },
     /** Nickname shown to the other players online. */
     val onlineName: String = "",
     /** WebSocket address of the game server. */
@@ -76,6 +85,7 @@ class SettingsStore(context: Context) {
         speed = enumOrDefault(prefs.getString(KEY_SPEED, null), GameSpeed.NORMAL),
         difficulty = enumOrDefault(prefs.getString(KEY_DIFFICULTY, null), Difficulty.HARD),
         names = List(PLAYER_COUNT) { prefs.getString("$KEY_NAME$it", null) ?: defaultNames[it] },
+        genders = List(PLAYER_COUNT) { enumOrDefault(prefs.getString("$KEY_GENDER$it", null), Gender.MALE) },
         onlineName = prefs.getString(KEY_ONLINE_NAME, null).orEmpty(),
         serverUrl = prefs.getString(KEY_SERVER_URL, null) ?: Settings.DEFAULT_SERVER_URL,
         soundEffects = prefs.getBoolean(KEY_SOUND_EFFECTS, true),
@@ -106,6 +116,7 @@ class SettingsStore(context: Context) {
             putString(KEY_SPEED, settings.speed.name)
             putString(KEY_DIFFICULTY, settings.difficulty.name)
             settings.names.forEachIndexed { seat, name -> putString("$KEY_NAME$seat", name) }
+            settings.genders.forEachIndexed { seat, gender -> putString("$KEY_GENDER$seat", gender.name) }
             putString(KEY_ONLINE_NAME, settings.onlineName)
             // Only an address of the user's own is stored, so a later change of the default reaches everyone.
             if (settings.serverUrl.trim() == Settings.DEFAULT_SERVER_URL) {
@@ -129,6 +140,7 @@ class SettingsStore(context: Context) {
         const val KEY_SPEED = "speed"
         const val KEY_DIFFICULTY = "difficulty"
         const val KEY_NAME = "name_"
+        const val KEY_GENDER = "gender_"
         const val KEY_ONLINE_NAME = "online_name"
         const val KEY_SERVER_URL = "server_url"
         const val KEY_DEVICE_ID = "device_id"

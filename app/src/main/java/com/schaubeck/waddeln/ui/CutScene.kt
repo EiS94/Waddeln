@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.schaubeck.waddeln.R
 import com.schaubeck.waddeln.game.CutUi
+import com.schaubeck.waddeln.game.Gender
 import com.schaubeck.waddeln.game.TableUi
 import com.schaubeck.waddeln.protocol.CutAnimation
 import com.schaubeck.waddeln.rules.Card
@@ -90,7 +91,7 @@ fun CutScene(table: TableUi, cut: CutUi, onCut: (Int) -> Unit, onCutSeen: () -> 
                 color = Highlight, fontSize = 18.sp, fontWeight = FontWeight.Bold,
             )
             Spacer(Modifier.height(10.dp))
-            Reveal(cut, lifted, name, mine, table.names[cut.geber], cut.geber == table.me, onCutSeen)
+            Reveal(cut, lifted, name, mine, table.names[cut.geber], table.genders[cut.geber], cut.geber == table.me, onCutSeen)
         }
     }
 }
@@ -168,7 +169,7 @@ private fun Spread(selected: Int?, onSelect: ((Int) -> Unit)?) {
 
 /**
  * After the cut: the two stacks, the Kritten taken one by one and the open bottom card; then, if
- * the Abheber took Kritten, the dealer ([geberName], [geberMine] if that is us) does the same under the rest.
+ * the Abheber took Kritten, the dealer ([geberName], [geberGender] if known, [geberMine] if that is us) does the same under the rest.
  */
 @Composable
 private fun Reveal(
@@ -177,6 +178,7 @@ private fun Reveal(
     name: String,
     mine: Boolean,
     geberName: String,
+    geberGender: Gender?,
     geberMine: Boolean,
     onCutSeen: () -> Unit,
 ) {
@@ -268,7 +270,16 @@ private fun Reveal(
         showing != null -> if (mine) stringResource(R.string.cut_kritte_you) else stringResource(R.string.cut_kritte_other, name)
         geberShowing != null -> if (geberMine) stringResource(R.string.cut_kritte_you) else stringResource(R.string.cut_kritte_other, geberName)
         geberCardShown && geberCount == 0 ->
-            if (geberMine) stringResource(R.string.cut_geber_no_kritte_you) else stringResource(R.string.cut_geber_no_kritte_other, geberName)
+            if (geberMine) {
+                stringResource(R.string.cut_geber_no_kritte_you)
+            } else {
+                val text = when (geberGender) {
+                    Gender.MALE -> R.string.cut_geber_no_kritte_other
+                    Gender.FEMALE -> R.string.cut_geber_no_kritte_other_female
+                    Gender.DIVERSE, null -> R.string.cut_geber_no_kritte_other_neutral
+                }
+                stringResource(text, geberName)
+            }
         geberCardShown || geberTaken > 0 ->
             if (geberMine) {
                 stringResource(R.string.cut_geber_kritten_you, Texts.kritten(geberTaken))
