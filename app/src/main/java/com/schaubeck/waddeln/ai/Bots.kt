@@ -11,6 +11,7 @@ import com.schaubeck.waddeln.game.OfflineGame
 import com.schaubeck.waddeln.rules.PLAYER_COUNT
 import com.schaubeck.waddeln.rules.agent.Agent
 import com.schaubeck.waddeln.rules.agent.RuleBasedAgent
+import com.schaubeck.waddeln.rules.agent.SchubManners
 import com.schaubeck.waddeln.rules.ml.MlAgent
 import com.schaubeck.waddeln.rules.ml.QFunction
 import com.schaubeck.waddeln.rules.teamOf
@@ -57,7 +58,7 @@ class BotFactory(context: Context) : Closeable {
     fun createBots(difficulty: Difficulty): List<Agent> = List(PLAYER_COUNT) { seat ->
         val q = qFunction
         val temperature = if (teamOf(seat) == teamOf(OfflineGame.HUMAN)) 0.0 else difficulty.temperature
-        if (q == null || temperature == null) RuleBasedAgent() else MlAgent(q, temperature)
+        SchubManners(if (q == null || temperature == null) RuleBasedAgent() else MlAgent(q, temperature))
     }
 
     override fun close() {

@@ -7,6 +7,7 @@ import ai.onnxruntime.TensorInfo
 import com.schaubeck.waddeln.protocol.BotStrength
 import com.schaubeck.waddeln.rules.agent.Agent
 import com.schaubeck.waddeln.rules.agent.RuleBasedAgent
+import com.schaubeck.waddeln.rules.agent.SchubManners
 import com.schaubeck.waddeln.rules.ml.MlAgent
 import com.schaubeck.waddeln.rules.ml.QFunction
 import org.slf4j.LoggerFactory
@@ -21,7 +22,7 @@ fun interface BotProvider {
 class ModelBots(private val q: QFunction?) : BotProvider {
     override fun create(strength: BotStrength): Agent {
         val temperature = strength.temperature
-        return if (q == null || temperature == null) RuleBasedAgent() else MlAgent(q, temperature)
+        return SchubManners(if (q == null || temperature == null) RuleBasedAgent() else MlAgent(q, temperature))
     }
 
     companion object {
