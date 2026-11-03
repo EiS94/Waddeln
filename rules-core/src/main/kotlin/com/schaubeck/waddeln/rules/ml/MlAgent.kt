@@ -4,6 +4,7 @@ import com.schaubeck.waddeln.rules.Action
 import com.schaubeck.waddeln.rules.Observation
 import com.schaubeck.waddeln.rules.agent.Agent
 import com.schaubeck.waddeln.rules.agent.DiscardRule
+import com.schaubeck.waddeln.rules.agent.KrittenRule
 import com.schaubeck.waddeln.rules.agent.LastTrick
 import com.schaubeck.waddeln.rules.agent.RuleBasedAgent
 import com.schaubeck.waddeln.rules.agent.SchubRule
@@ -38,19 +39,20 @@ class MlAgent(
 
     override fun chooseAction(observation: Observation, legalActions: List<Action>): Action {
         require(legalActions.isNotEmpty())
-        if (legalActions.size == 1 && legalActions.single() != Action.Schub) return legalActions.single()
+        val choices = KrittenRule.allowed(observation, legalActions)
+        if (choices.size == 1 && choices.single() != Action.Schub) return choices.single()
         // With the partner's last card on the table the trick itself decides (as for the rule bot).
-        if (Action.Bleiben in legalActions) {
+        if (Action.Bleiben in choices) {
             if (SchubRule.mustStay(observation)) return Action.Bleiben
             LastTrick.shouldStay(observation)?.let { return if (it) Action.Bleiben else Action.Gehen }
         }
         val values = try {
             val state = FeatureEncoder.encodeState(observation)
-            q.evaluate(Array(legalActions.size) { FeatureEncoder.encodeFor(q.inputSize, state, FeatureEncoder.encodeAction(observation, legalActions[it])) })
+            q.evaluate(Array(choices.size) { FeatureEncoder.encodeFor(q.inputSize, state, FeatureEncoder.encodeAction(observation, choices[it])) })
         } catch (e: Exception) {
             return fallback.chooseAction(observation, legalActions)
         }
-        return DiscardRule.apply(observation, legalActions, legalActions[pick(values)])
+        return DiscardRule.apply(observation, choices, choices[pick(values)])
     }
 
     private fun pick(values: FloatArray): Int {
