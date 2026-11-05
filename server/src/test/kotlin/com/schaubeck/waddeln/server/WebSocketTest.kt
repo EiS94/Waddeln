@@ -16,11 +16,17 @@ import io.ktor.websocket.readText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.consumeAsFlow
+import kotlinx.coroutines.flow.count
+import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.withTimeout
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.seconds
 
 class WebSocketTest {
 
@@ -54,6 +60,20 @@ class WebSocketTest {
             if (cut.abheber == started.yourSeat) send(Frame.Text(ClientMessage.Cut(16).encode()))
             val dealt = assertIs<ServerMessage.Table>(receive())
             assertEquals(5, dealt.game!!.observation.hand.size)
+        }
+    }
+
+    @Test
+    fun `flooding with unreadable messages closes the connection`() = testApplication {
+        val gameThread = Dispatchers.Default.limitedParallelism(1)
+        val server = GameServer(CoroutineScope(SupervisorJob() + gameThread), { RuleBasedAgent() }, Timing(), Random(1))
+        application { waddeln(server, gameThread) }
+        val client = createClient { install(WebSockets) }
+
+        client.webSocket(WS_PATH) {
+            repeat(Limits().messageBurst + 10) { send(Frame.Text("nonsense")) }
+            val errors = withTimeout(10.seconds) { incoming.consumeAsFlow().filterIsInstance<Frame.Text>().count() }
+            assertTrue(errors <= Limits().messageBurst + 1, "got $errors answers")
         }
     }
 }

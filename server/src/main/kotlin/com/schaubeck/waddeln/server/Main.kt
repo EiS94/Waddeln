@@ -26,6 +26,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -38,6 +39,9 @@ private val log = LoggerFactory.getLogger("com.schaubeck.waddeln.server.Main")
 
 /** How often a status line is logged while somebody is online. */
 private const val STATUS_MINUTES = 15
+
+/** Messages waiting for one connection; far more than an app that reads them ever needs. */
+private const val MAX_QUEUED_MESSAGES = 64
 
 fun main() {
     val port = System.getenv("PORT")?.toIntOrNull() ?: 8765
@@ -70,10 +74,16 @@ fun Application.waddeln(server: GameServer, gameThread: CoroutineDispatcher) {
         invites()
 
         webSocket(WS_PATH) {
-            val outgoing = Channel<ServerMessage>(Channel.UNLIMITED)
+            val session = this
+            val outgoing = Channel<ServerMessage>(MAX_QUEUED_MESSAGES)
             val connection = object : Connection {
                 override fun send(message: ServerMessage) {
-                    outgoing.trySend(message)
+                    // An app that stops reading must not fill the memory: it is disconnected and reconnects.
+                    if (outgoing.trySend(message).isFailure && !outgoing.isClosedForSend) {
+                        log.warn("Connection does not read its messages, closing it")
+                        outgoing.close()
+                        session.cancel()
+                    }
                 }
 
                 override fun close() {
@@ -98,7 +108,7 @@ fun Application.waddeln(server: GameServer, gameThread: CoroutineDispatcher) {
                     val message = runCatching { decodeClientMessage(frame.readText()) }.getOrNull()
                     withContext(gameThread) {
                         if (message == null) {
-                            client.send(ServerMessage.Error("Unbekannte Nachricht."))
+                            server.onUnreadableMessage(client)
                         } else {
                             try {
                                 server.onMessage(client, message)

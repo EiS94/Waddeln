@@ -3,16 +3,21 @@ package com.schaubeck.waddeln.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -40,8 +45,14 @@ fun MainMenu(
     onRules: () -> Unit,
 ) {
     WoodBackground {
+        // Centred when it fits, scrollable with large fonts, small screens or in landscape.
+        BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding()) {
         Column(
-            modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(24.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .heightIn(min = maxHeight)
+                .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
@@ -58,6 +69,7 @@ fun MainMenu(
             Spacer(Modifier.height(40.dp))
             Column(
                 modifier = Modifier
+                    .widthIn(max = 480.dp)
                     .fillMaxWidth()
                     .background(Panel, RoundedCornerShape(16.dp))
                     .padding(20.dp),
@@ -71,12 +83,13 @@ fun MainMenu(
                 MenuButton(stringResource(R.string.menu_settings), onSettings, primary = false)
             }
         }
+        }
     }
 }
 
 @Composable
 private fun MenuButton(text: String, onClick: () -> Unit, primary: Boolean = true) {
-    val modifier = Modifier.fillMaxWidth().height(52.dp)
+    val modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
     if (primary) {
         Button(onClick = onClick, colors = woodButton(), modifier = modifier) { Text(text, fontSize = 18.sp) }
     } else {

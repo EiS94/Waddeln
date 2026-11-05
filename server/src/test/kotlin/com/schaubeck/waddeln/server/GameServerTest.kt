@@ -557,6 +557,47 @@ class GameServerTest {
     }
 
     @Test
+    fun `unreadable messages count against the limit too`() = runTest {
+        val server = newServer(limits = Limits(messageBurst = 10, messageIntervalMs = 100))
+        val p = player(server, "p")
+        repeat(9) { server.onUnreadableMessage(p.client) }
+        assertIs<ServerMessage.Error>(p.connection.last)
+        assertFalse(p.connection.closed)
+        server.onUnreadableMessage(p.client)
+        assertTrue(p.connection.closed)
+    }
+
+    @Test
+    fun `an IPv6 network counts as one IP`() = runTest {
+        val server = newServer(limits = Limits(maxConnectionsPerIp = 3))
+        repeat(3) { assertNotNull(server.connect(FakeConnection(), "2001:db8:1:2::${it + 1}")) }
+        assertNull(server.connect(FakeConnection(), "2001:db8:1:2:ffff:ffff:ffff:ffff"), "same /64")
+        assertNotNull(server.connect(FakeConnection(), "2001:db8:1:3::1"), "other /64")
+
+        assertEquals("2001:0db8:0001:0002::/64", networkOf("2001:db8:1:2:abcd::7"))
+        assertEquals("1.2.3.4", networkOf("::ffff:1.2.3.4"))
+        assertEquals("1.2.3.4", networkOf("1.2.3.4"))
+        assertEquals("local", networkOf("local"))
+        assertEquals("no:address", networkOf("no:address"))
+    }
+
+    @Test
+    fun `open rooms per IP are limited`() = runTest {
+        val server = newServer(limits = Limits(maxRoomsPerIp = 2))
+        val players = List(3) { player(server, "p$it", ip = "1.1.1.1") }
+        players.forEach { it.send(ClientMessage.CreateRoom) }
+        assertIs<ServerMessage.Table>(players[1].connection.last)
+        assertIs<ServerMessage.Error>(players[2].connection.last)
+        assertEquals(2, server.roomCount)
+        // Somebody else is not affected, and a closed room frees its place.
+        player(server, "other", ip = "2.2.2.2").send(ClientMessage.CreateRoom)
+        assertEquals(3, server.roomCount)
+        players[0].send(ClientMessage.LeaveRoom)
+        players[2].send(ClientMessage.CreateRoom)
+        assertIs<ServerMessage.Table>(players[2].connection.last)
+    }
+
+    @Test
     fun `rooms per IP and in total are limited`() = runTest {
         val server = newServer(limits = Limits(roomCreationBurst = 2, roomCreationIntervalMs = 60_000, maxRooms = 3))
         val p = player(server, "p", ip = "1.1.1.1")
@@ -808,6 +849,15 @@ class GameServerTest {
             }
         }
         error("the host never announced the Schlag")
+    }
+
+    @Test
+    fun `names lose control and invisible format characters but keep joined emoji`() {
+        assertEquals("Eike", cleanName("  Ei\u0000ke\n "))
+        assertEquals("evilgnp.exe", cleanName("evil‮gnp.exe"))
+        assertEquals("ab", cleanName("a​b⁦"))
+        assertEquals("👨‍👩", cleanName("👨‍👩"))
+        assertEquals("", cleanName("‮​"))
     }
 
     @Test

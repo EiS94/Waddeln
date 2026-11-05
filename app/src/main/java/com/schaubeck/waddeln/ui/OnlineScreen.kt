@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
@@ -153,7 +154,7 @@ private fun Home(
             color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp,
         )
         Spacer(Modifier.height(4.dp))
-        Button(onClick = onCreate, enabled = ready, colors = woodButton(), modifier = Modifier.fillMaxWidth().height(48.dp)) {
+        Button(onClick = onCreate, enabled = ready, colors = woodButton(), modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
             Text(stringResource(R.string.online_create_room), fontSize = 17.sp)
         }
     }
@@ -240,7 +241,7 @@ private fun Lobby(
                 Choice(stringResource(strengthLabel(strength)), null, strength == room.botStrength) { onBotStrength(strength) }
             }
         }
-        Button(onClick = onStart, colors = woodButton(), modifier = Modifier.fillMaxWidth().height(52.dp)) {
+        Button(onClick = onStart, colors = woodButton(), modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
             Text(stringResource(R.string.online_start), fontSize = 18.sp)
         }
     } else {

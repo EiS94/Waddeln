@@ -19,14 +19,15 @@ import com.schaubeck.waddeln.rules.agent.SchubRule
 import com.schaubeck.waddeln.rules.agent.TrickAdvice
 import com.schaubeck.waddeln.rules.teamOf
 import com.schaubeck.waddeln.ui.Sayings
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.concurrent.Executors
 import kotlin.random.Random
 
 /**
@@ -44,7 +45,11 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private val store = SettingsStore(application)
     private val sayings = Sayings(application.resources)
     private var settings = store.load()
+    private val matchStore = MatchStore(application)
     private val game = OfflineGame().apply { adviceEnabled = settings.trickAdvice }
+
+    /** A match from before Android ended the app goes on where it was. */
+    private val restored = matchStore.load()?.let(game::restore) == true
     private val statsStore = StatsStore(application)
     private val statsTracker = StatsTracker { statsStore.add(StatsMode.OFFLINE, it) }
     private var notice: SchubNotice? = null
@@ -58,7 +63,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     /** The variant picked for the partner bot's answer to the human's "Was soll ich machen?". */
     private var adviceText: String? = null
-    private var matchStarted = false
+    private var matchStarted = restored
 
     /** The human looks at the last completed trick (until they act). */
     private var showingLastTrick = false
@@ -77,9 +82,17 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     /** Loading the network takes a moment, so it happens off the main thread; bots start afterwards. */
     private var botFactory: BotFactory? = null
 
+    /**
+     * The bots load the network and think here, one at a time and off the main thread, so the table
+     * never stutters. A step still being thought about when it is no longer wanted runs to its end
+     * here and is then dropped (see [OfflineGame.commit]).
+     */
+    private val botExecutor = Executors.newSingleThreadExecutor { Thread(it, "bots") }
+    private val botThread = botExecutor.asCoroutineDispatcher()
+
     init {
         viewModelScope.launch {
-            val factory = withContext(Dispatchers.Default) { BotFactory(application) }
+            val factory = withContext(botThread) { BotFactory(application) }
             botFactory = factory
             game.bots = factory.createBots(settings.difficulty)
             runBots()
@@ -96,6 +109,15 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     fun onGameHidden() {
         paused = true
         botJob?.cancel()
+        saveMatch()
+    }
+
+    /**
+     * Keeps the running match, so it goes on after Android ended the app in the background.
+     * Called when the table is left and when the app goes to the background.
+     */
+    fun saveMatch() {
+        if (matchStarted && game.state.phase != Phase.MATCH_OVER) matchStore.save(game.save()) else matchStore.clear()
     }
 
     /** As Abheber: cut after [cut] cards; the round is dealt and the cut shown. */
@@ -266,7 +288,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 val tricksBefore = game.state.completedTricks.size
                 val schubBefore = game.state.pendingSchub
                 val gespanntEitherWay = schubBefore != null && SchubRule.mustStay(game.state.observationFor(bot))
-                val spoken = when (val step = game.stepBot()) {
+                val move = withContext(botThread) { game.planBot() }
+                // The human acted while the bot was thinking: look again who is to act.
+                if (!game.commit(move)) continue
+                val spoken = when (val step = move.step) {
                     is BotStep.Cut -> {
                         // The game goes on once the cut has been shown.
                         showCut(bot, step.cut, step.reveal)
@@ -365,7 +390,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     override fun onCleared() {
-        botFactory?.close()
+        // After a step that may still be thought about.
+        val factory = botFactory
+        botExecutor.execute { factory?.close() }
+        botExecutor.shutdown()
     }
 
     private fun say(seat: Int, action: Action) {

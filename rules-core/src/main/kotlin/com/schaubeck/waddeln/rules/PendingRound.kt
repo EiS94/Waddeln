@@ -1,9 +1,12 @@
 package com.schaubeck.waddeln.rules
 
+import kotlinx.serialization.Serializable
+
 /**
  * A round before the deal: the dealer has shuffled [deck] (index 0 = top card) and the Abheber
  * still has to choose where to cut. Created by [Waddeln.prepareMatch] or [Waddeln.prepareNextRound].
  */
+@Serializable
 data class PendingRound(val scores: List<Int>, val dealer: Int, val roundNumber: Int, val deck: List<Card>) {
     init {
         require(deck.size == 32 && deck.toSet().size == 32) { "Deck must contain all 32 cards exactly once" }

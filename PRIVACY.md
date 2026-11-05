@@ -2,7 +2,7 @@
 
 *English version below.*
 
-Stand: 19. Oktober 2026
+Stand: 5. November 2026
 
 ## Verantwortlicher
 
@@ -33,7 +33,7 @@ Wenn du den Online-Modus nutzt, verbindet sich die App mit dem Spielserver
 |---|---|---|
 | Spitzname (frei wählbar) | Anzeige für die Mitspieler am Tisch | Im Arbeitsspeicher, solange du verbunden bzw. der Raum offen ist; außerdem im Server-Protokoll (siehe unten) |
 | Zufällige Geräte-ID | Damit du nach einem Verbindungsabbruch auf deinen Platz zurückkehren kannst | Nur im Arbeitsspeicher, solange der Raum offen ist |
-| IP-Adresse | Technisch für die Verbindung nötig; Schutz vor Missbrauch (Begrenzung der Verbindungen pro Adresse) | Nur im Arbeitsspeicher während der Verbindung, wird nicht protokolliert |
+| IP-Adresse (bei IPv6 nur die ersten 64 Bit) | Technisch für die Verbindung nötig; Schutz vor Missbrauch (Begrenzung der Verbindungen, Räume und Beitrittsversuche pro Adresse) | Nur im Arbeitsspeicher: während der Verbindung, danach höchstens 15 Minuten für die Begrenzungen; bei einem selbst erstellten Raum, solange dieser offen ist. Wird nicht protokolliert |
 | Spielverlauf (Raum-Code, Ansagen, gespielte Karten) | Durchführung des Spiels | Nur im Arbeitsspeicher, solange der Raum offen ist |
 
 Der Spitzname ist kein Klarname; bitte wähle einen Namen, der dich nicht identifiziert, wenn
@@ -82,7 +82,7 @@ steht unter <https://github.com/EiS94/Waddeln/blob/main/PRIVACY.md>.
 
 # Privacy Policy – Waddeln
 
-Last updated: 19 October 2026
+Last updated: 5 November 2026
 
 ## Controller
 
@@ -112,7 +112,7 @@ When you use the online mode, the app connects to the game server (by default
 |---|---|---|
 | Nickname (freely chosen) | Shown to the other players at the table | In memory while you are connected or the room is open; also in the server log (see below) |
 | Random device ID | Lets you return to your seat after a lost connection | In memory only, while the room is open |
-| IP address | Technically required for the connection; abuse protection (limit of connections per address) | In memory only during the connection, not logged |
+| IP address (for IPv6 only the first 64 bits) | Technically required for the connection; abuse protection (limits on connections, rooms and join attempts per address) | In memory only: during the connection, afterwards at most 15 minutes for the limits; for a room you created, as long as it is open. Not logged |
 | Game progress (room code, calls, cards played) | Running the game | In memory only, while the room is open |
 
 The nickname is not your real name; choose one that does not identify you if you prefer. The
