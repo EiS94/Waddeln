@@ -265,4 +265,87 @@ class OfflineGameTest {
         assertNull(game.state.pendingSchub)
         assertTrue(game.events.any { it is GameEvent.Acted && it.action == Action.Schub })
     }
+
+    /** Goes through [game] like [playMatchAsHuman], [steps] times or until the match is over. */
+    private fun advance(game: OfflineGame, steps: Int) {
+        val human = RuleBasedAgent()
+        repeat(steps) {
+            when {
+                game.state.phase == Phase.MATCH_OVER -> return
+                game.humanMustCut() -> game.cut(16)
+                game.botToAct() != null && game.abheberToCut != null -> game.stepBot()
+                game.state.phase == Phase.ROUND_OVER -> game.nextRound()
+                game.humanMustAnswerSchadet() -> game.answerSchadet(SchadetAnswer.NO)
+                game.humanMustAnswerAdvice() -> game.answerAdvice(TrickAdvice.NICHTS)
+                game.humanMustAnswerSchlagwechsel() -> game.answerSchlagwechsel(false)
+                game.botToAct() != null -> game.stepBot()
+                else -> game.applyHuman(human.chooseAction(game.state.observationFor(HUMAN), game.humanActions()))
+            }
+        }
+    }
+
+    @Test
+    fun `a saved match goes on after a restart at every point of the match`() {
+        val game = OfflineGame(Random(7))
+        var checked = 0
+        while (game.state.phase != Phase.MATCH_OVER) {
+            val saved = MatchStore.decode(MatchStore.encode(game.save()))
+            assertNotNull(saved)
+            val restarted = OfflineGame(Random(8))
+            assertTrue(restarted.restore(saved!!))
+            assertEquals(game.state, restarted.state)
+            assertEquals(game.abheberToCut, restarted.abheberToCut)
+            assertEquals(game.botToAct(), restarted.botToAct())
+            assertEquals(game.humanActions(), restarted.humanActions())
+            checked++
+            advance(game, 1)
+        }
+        assertTrue(checked > 50)
+    }
+
+    @Test
+    fun `a match restored while waiting for the cut is dealt from the same deck`() {
+        val game = OfflineGame(Random(3))
+        val restarted = OfflineGame(Random(4))
+        restarted.restore(MatchStore.decode(MatchStore.encode(game.save()))!!)
+        // The same cut (a bot would cut at random) gives the same cards.
+        game.cut(16)
+        restarted.cut(16)
+        assertEquals(game.state, restarted.state)
+    }
+
+    @Test
+    fun `nothing saved is no match`() {
+        assertNull(MatchStore.decode("{}"))
+        assertTrue(!OfflineGame().restore(SavedMatch()))
+    }
+
+    @Test
+    fun `a bot step planned before the human acted is dropped`() {
+        val game = dealt(OfflineGame(Random(11)))
+        // Plays until a bot is to act in a state the human could change meanwhile.
+        var guard = 0
+        while (game.botToAct() == null || game.abheberToCut != null) {
+            check(guard++ < 1000)
+            advance(game, 1)
+        }
+        val move = game.planBot()
+        val before = game.state
+        game.newMatch()
+        assertTrue(!game.commit(move))
+        assertTrue(game.state !== before)
+        assertNotNull(game.abheberToCut)
+    }
+
+    @Test
+    fun `a planned bot step changes nothing until it is committed`() {
+        val game = dealt(OfflineGame(Random(12)))
+        while (game.botToAct() == null) advance(game, 1)
+        val before = game.state
+        val move = game.planBot()
+        assertTrue(game.state === before)
+        assertTrue(game.commit(move))
+        assertTrue(game.state !== before || move.step !is BotStep.Acted)
+        assertTrue(!game.commit(move))
+    }
 }

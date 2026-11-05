@@ -58,8 +58,10 @@ data class PendingSchub(val askingPlayer: Int) {
 /**
  * Complete, authoritative state of a match including the current round.
  * Immutable; every action produces a new instance via [Waddeln.apply].
- * Players must only ever see an [Observation] of it.
+ * Players must only ever see an [Observation] of it. Serializable so the app can keep a match
+ * across a restart.
  */
+@Serializable
 data class GameState(
     /** Match points per team. Updated when a round ends. */
     val scores: List<Int>,

@@ -222,6 +222,8 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         super.onStop()
         sound.stop()
+        // Android may end the app in the background; the offline match then goes on from here.
+        viewModel.saveMatch()
     }
 
     override fun onDestroy() {
