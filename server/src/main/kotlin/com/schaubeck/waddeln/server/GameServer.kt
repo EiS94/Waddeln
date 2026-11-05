@@ -8,7 +8,9 @@ import com.schaubeck.waddeln.protocol.ROOM_CODE_LENGTH
 import com.schaubeck.waddeln.protocol.ServerMessage
 import kotlinx.coroutines.CoroutineScope
 import org.slf4j.LoggerFactory
+import java.security.SecureRandom
 import kotlin.random.Random
+import kotlin.random.asKotlinRandom
 
 /** Sends messages to one connected app; must not block. */
 interface Connection {
@@ -16,12 +18,15 @@ interface Connection {
     fun close()
 }
 
-/** One WebSocket connection from [ip]; [playerId] is known after [ClientMessage.Hello]. */
+/** One WebSocket connection from [ip] (see [networkOf]); [playerId] is known after [ClientMessage.Hello]. */
 class Client(private val connection: Connection, val ip: String, internal val messages: TokenBucket) {
     var playerId: String? = null
         internal set
     var name: String = ""
         internal set
+
+    /** Sent too many messages; the connection is being closed. */
+    internal var flooded = false
 
     fun send(message: ServerMessage) = connection.send(message)
     fun close() = connection.close()
@@ -38,7 +43,8 @@ class GameServer(
     private val scope: CoroutineScope,
     private val bots: BotProvider,
     private val timing: Timing = Timing(),
-    private val random: Random = Random.Default,
+    /** Room codes and shuffling: unpredictable, so that nobody can work out other rooms or hands. */
+    private val random: Random = SecureRandom().asKotlinRandom(),
     private val clock: () -> Long = System::currentTimeMillis,
     private val limits: Limits = Limits(),
 ) {
@@ -46,6 +52,9 @@ class GameServer(
     private val rooms = mutableMapOf<String, Room>()
     private val playerRooms = mutableMapOf<String, Room>()
     private val quotas = mutableMapOf<String, IpQuota>()
+
+    /** Room code → IP the room was created from, for [Limits.maxRoomsPerIp]. */
+    private val roomCreators = mutableMapOf<String, String>()
 
     val roomCount: Int get() = rooms.size
 
@@ -61,7 +70,8 @@ class GameServer(
     val active: Boolean get() = clients.isNotEmpty() || rooms.isNotEmpty()
 
     /** Registers a new connection, or returns null if the server or this [ip] has too many. */
-    fun connect(connection: Connection, ip: String = "local"): Client? {
+    fun connect(connection: Connection, address: String = "local"): Client? {
+        val ip = networkOf(address)
         val quota = quotas.getOrPut(ip) { IpQuota(limits, clock) }
         if (clients.size >= limits.maxConnections || quota.connections >= limits.maxConnectionsPerIp) {
             log.warn("Connection refused ({} connections, {} from this IP)", clients.size, quota.connections)
@@ -89,12 +99,7 @@ class GameServer(
     }
 
     fun onMessage(client: Client, message: ClientMessage) {
-        if (!client.messages.tryTake()) {
-            log.warn("Too many messages from '{}', closing connection", client.name)
-            client.send(ServerMessage.Error("Zu viele Nachrichten – Verbindung wird neu aufgebaut."))
-            client.close()
-            return
-        }
+        if (!takeMessage(client)) return
         if (message is ClientMessage.Hello) return hello(client, message)
         val id = client.playerId ?: return client.send(ServerMessage.Error("Bitte zuerst anmelden."))
         val room = playerRooms[id]
@@ -122,6 +127,24 @@ class GameServer(
             ClientMessage.Ready -> room?.ready(id)
         }
         error?.let { client.send(ServerMessage.Error(it)) }
+    }
+
+    /** A message that could not be read; it counts against the message limit like any other. */
+    fun onUnreadableMessage(client: Client) {
+        if (!takeMessage(client)) return
+        client.send(ServerMessage.Error("Unbekannte Nachricht."))
+    }
+
+    /** Takes one message from the client's allowance, or closes the connection of a client that floods. */
+    private fun takeMessage(client: Client): Boolean {
+        if (client.messages.tryTake()) return true
+        // Messages already on the way arrive after closing; they are dropped without a word.
+        if (client.flooded) return false
+        client.flooded = true
+        log.warn("Too many messages from '{}', closing connection", client.name)
+        client.send(ServerMessage.Error("Zu viele Nachrichten – Verbindung wird neu aufgebaut."))
+        client.close()
+        return false
     }
 
     /** Removes rooms nobody has been connected to for a while and forgets unused IPs. Called periodically. */
@@ -172,6 +195,10 @@ class GameServer(
             log.warn("Room limit reached, '{}' could not create a room", client.name)
             return "Gerade sind zu viele Räume offen. Versuch es später noch einmal."
         }
+        if (roomCreators.values.count { it == client.ip } >= limits.maxRoomsPerIp) {
+            log.warn("'{}' has too many open rooms", client.name)
+            return "Von deinem Netz aus sind schon zu viele Räume offen."
+        }
         if (!quota(client).roomCreations.tryTake()) {
             log.warn("'{}' created too many rooms", client.name)
             return "Du hast zu viele Räume erstellt. Warte ein paar Minuten."
@@ -179,6 +206,7 @@ class GameServer(
         leaveCurrentRoom(id)
         val room = Room(newCode(), scope, bots, timing, random, clock)
         rooms[room.code] = room
+        roomCreators[room.code] = client.ip
         log.info("Room {} created by '{}' ({})", room.code, client.name, status)
         return enter(room, client, id)
     }
@@ -230,6 +258,7 @@ class GameServer(
     private fun removeRoom(room: Room) {
         room.close()
         rooms.remove(room.code)
+        roomCreators.remove(room.code)
         room.members.forEach { playerRooms.remove(it.playerId) }
         log.info("Room {} closed ({})", room.code, status)
     }

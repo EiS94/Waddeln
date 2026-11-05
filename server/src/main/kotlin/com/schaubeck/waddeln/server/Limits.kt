@@ -1,11 +1,19 @@
 package com.schaubeck.waddeln.server
 
-/** Protection against overload and guessing room codes when the server is reachable from the internet. */
+import java.net.Inet6Address
+import java.net.InetAddress
+
+/**
+ * Protection against overload and guessing room codes when the server is reachable from the internet.
+ * "Per IP" means per [networkOf] the address.
+ */
 data class Limits(
     val maxConnections: Int = 200,
     /** Several phones in one home network share an IP, so this must not be too small. */
     val maxConnectionsPerIp: Int = 12,
     val maxRooms: Int = 50,
+    /** Open rooms created from one IP, so that a few addresses cannot take all [maxRooms]. */
+    val maxRoomsPerIp: Int = 4,
     /** Messages per connection: a burst, then one per [messageIntervalMs]. */
     val messageBurst: Int = 40,
     val messageIntervalMs: Long = 100,
@@ -42,6 +50,19 @@ class TokenBucket(private val capacity: Int, private val intervalMs: Long, priva
         tokens = minOf(capacity.toDouble(), tokens + (now - updated).toDouble() / intervalMs)
         updated = now
     }
+}
+
+/**
+ * The network an address belongs to, for the limits per IP. A home connection gets a whole IPv6 /64
+ * and can use any address in it, so for IPv6 only the first 64 bits count; IPv4 addresses stay as they are.
+ */
+internal fun networkOf(ip: String): String {
+    // Only literals are parsed: a name (like "local" in tests) must not cause a DNS lookup.
+    if (':' !in ip) return ip
+    val address = runCatching { InetAddress.getByName(ip) }.getOrNull() ?: return ip
+    if (address !is Inet6Address) return address.hostAddress // e.g. ::ffff:1.2.3.4
+    val bytes = address.address
+    return (0 until 8 step 2).joinToString(":", postfix = "::/64") { "%02x%02x".format(bytes[it], bytes[it + 1]) }
 }
 
 /** What one IP address is currently allowed to do. */
