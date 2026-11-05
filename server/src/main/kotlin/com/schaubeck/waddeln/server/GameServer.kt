@@ -277,6 +277,14 @@ class GameServer(
     }
 }
 
-/** A name as shown to others: without control characters, at most [MAX_NAME_LENGTH] long; blank if nothing is left. */
+/**
+ * A name as shown to others: without control and invisible format characters (e.g. a right-to-left
+ * override that turns the following text around), at most [MAX_NAME_LENGTH] long; blank if nothing is left.
+ * The zero width joiner stays, it holds emoji like 👨‍👩‍👧 together.
+ */
 internal fun cleanName(name: String): String =
-    name.trim().filter { !it.isISOControl() }.take(MAX_NAME_LENGTH).trim()
+    name.trim().filter { !it.isISOControl() && (Character.getType(it) != Character.FORMAT.toInt() || it == ZERO_WIDTH_JOINER) }
+        .take(MAX_NAME_LENGTH).trim()
+
+private const val ZERO_WIDTH_JOINER = '‍'
+

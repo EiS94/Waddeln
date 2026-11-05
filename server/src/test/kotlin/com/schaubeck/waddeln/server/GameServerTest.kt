@@ -852,6 +852,15 @@ class GameServerTest {
     }
 
     @Test
+    fun `names lose control and invisible format characters but keep joined emoji`() {
+        assertEquals("Eike", cleanName("  Ei\u0000ke\n "))
+        assertEquals("evilgnp.exe", cleanName("evil‮gnp.exe"))
+        assertEquals("ab", cleanName("a​b⁦"))
+        assertEquals("👨‍👩", cleanName("👨‍👩"))
+        assertEquals("", cleanName("‮​"))
+    }
+
+    @Test
     fun `the player to move shows the last trick to the whole table until they act`() = runTest {
         val server = newServer(seed = 5)
         val host = player(server, "host")
