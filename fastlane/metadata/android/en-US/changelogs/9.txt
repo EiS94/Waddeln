@@ -1,0 +1,4 @@
+Your match is kept: if Android closes the app in the background, you carry on where you left off.
+Bots say Schub less often, and the higher the game the rarer, like at a real table.
+New: gender for each player (m/f/d) for texts and voices.
+The main menu now fits with large fonts and on small screens, and the game runs more smoothly.

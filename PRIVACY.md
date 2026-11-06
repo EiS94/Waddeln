@@ -2,7 +2,7 @@
 
 *English version below.*
 
-Stand: 5. November 2026
+Stand: 6. November 2026
 
 ## Verantwortlicher
 
@@ -17,9 +17,10 @@ E-Mail: waddeln@schaumler.de
 
 ## Daten auf deinem Gerät
 
-Die App speichert lokal auf deinem Gerät: Einstellungen (Spielernamen, Spielgeschwindigkeit,
-Schwierigkeitsgrad, Ton, Server-Adresse), Spielstatistiken und eine zufällig erzeugte Geräte-ID.
-Diese Daten werden nicht an uns übertragen. Einstellungen und Statistiken können in die
+Die App speichert lokal auf deinem Gerät: Einstellungen (Spielernamen und ihr Geschlecht für Texte
+und Stimmen, Spielgeschwindigkeit, Schwierigkeitsgrad, Ton, Server-Adresse), Spielstatistiken, die
+laufende Partie gegen den Computer und eine zufällig erzeugte Geräte-ID. Diese Daten werden nicht
+an uns übertragen. Einstellungen, Statistiken und die laufende Partie können in die
 Android-Sicherung (z. B. Google-Konto) aufgenommen werden, wenn du diese auf deinem Gerät
 aktiviert hast; die Geräte-ID ist davon ausgenommen. Beim Deinstallieren der App werden alle
 lokalen Daten gelöscht.
@@ -82,7 +83,7 @@ steht unter <https://github.com/EiS94/Waddeln/blob/main/PRIVACY.md>.
 
 # Privacy Policy – Waddeln
 
-Last updated: 5 November 2026
+Last updated: 6 November 2026
 
 ## Controller
 
@@ -97,9 +98,10 @@ Email: waddeln@schaumler.de
 
 ## Data on your device
 
-The app stores locally on your device: settings (player names, game speed, difficulty, sound,
-server address), game statistics and a randomly generated device ID. This data is not sent to
-us. Settings and statistics may be included in the Android backup (e.g. your Google account)
+The app stores locally on your device: settings (player names and their gender for texts and
+voices, game speed, difficulty, sound, server address), game statistics, the running match against
+the computer and a randomly generated device ID. This data is not sent to us. Settings, statistics
+and the running match may be included in the Android backup (e.g. your Google account)
 if you have enabled it on your device; the device ID is excluded. Uninstalling the app deletes
 all local data.
 

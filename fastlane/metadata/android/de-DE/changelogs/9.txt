@@ -1,0 +1,4 @@
+Deine Partie bleibt erhalten: Beendet Android die App im Hintergrund, spielst du später an derselben Stelle weiter.
+Die Bots sagen seltener Schub, und je höher das Spiel steht, desto seltener – wie am echten Tisch.
+Neu: Geschlecht für jeden Spieler (m/w/d) für Texte und Stimme.
+Das Hauptmenü passt jetzt auch bei großer Schrift und auf kleinen Bildschirmen, das Spiel läuft flüssiger.
