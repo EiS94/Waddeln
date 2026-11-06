@@ -15,6 +15,9 @@ import kotlin.random.Random
  * - With the deciding trick already sure ([decidingTrickSure]) nobody says Schub anymore.
  * - If the raised game would hand the opponents the match when lost ([raiseLosesMatch]), a Schub is only
  *   kept when the own team is likely to win the game ([winChance]), and not always even then.
+ * - At a table of people Schub is said less often the higher the game already is: to 3 quite often, to 4
+ *   less, to 5 rarely and to 6 hardly ever. So the higher a Schub goes, the better the game must look to
+ *   keep it ([raiseChance]); bluffs get rarer too.
  */
 class SchubManners(private val base: Agent, private val random: Random = Random.Default) : Agent {
 
@@ -23,8 +26,11 @@ class SchubManners(private val base: Agent, private val random: Random = Random.
         val withoutSchub = legalActions - Action.Schub
         if (withoutSchub.isNotEmpty() && decidingTrickSure(observation)) return base.chooseAction(observation, withoutSchub)
         val chosen = base.chooseAction(observation, legalActions)
-        if (chosen != Action.Schub || withoutSchub.isEmpty() || !raiseLosesMatch(observation)) return chosen
-        return if (random.nextDouble() < keepChance(winChance(observation, random))) chosen else base.chooseAction(observation, withoutSchub)
+        if (chosen != Action.Schub || withoutSchub.isEmpty()) return chosen
+        val chance = winChance(observation, random)
+        val raise = raiseChance(chance, observation.gameValue + 1)
+        val keep = if (raiseLosesMatch(observation)) minOf(raise, keepChance(chance)) else raise
+        return if (random.nextDouble() < keep) chosen else base.chooseAction(observation, withoutSchub)
     }
 
     companion object {
@@ -43,6 +49,26 @@ class SchubManners(private val base: Agent, private val random: Random = Random.
         fun keepChance(winChance: Double): Double {
             val t = ((winChance - UNLIKELY_UP_TO) / (SURE_FROM - UNLIKELY_UP_TO)).coerceIn(0.0, 1.0)
             return BLUFF_CHANCE + (1 - BLUFF_CHANCE) * t
+        }
+
+        /** How good the game must look for a Schub to a game value; see [raiseChance]. */
+        private class Raise(val unlikelyUpTo: Double, val sureFrom: Double, val bluff: Double, val atMost: Double = 1.0)
+
+        private val RAISE_TO_3 = Raise(unlikelyUpTo = 0.55, sureFrom = 0.85, bluff = 0.05)
+        private val RAISE_TO_4 = Raise(unlikelyUpTo = 0.45, sureFrom = 0.85, bluff = 0.05)
+        private val RAISE_TO_5 = Raise(unlikelyUpTo = 0.6, sureFrom = 0.95, bluff = 0.02, atMost = 0.75)
+        private val RAISE_HIGHER = Raise(unlikelyUpTo = 0.8, sureFrom = 1.0, bluff = 0.0, atMost = 0.3)
+
+        /** Chance to keep a Schub to the game value [target] at [winChance]. */
+        fun raiseChance(winChance: Double, target: Int): Double {
+            val raise = when {
+                target <= 3 -> RAISE_TO_3
+                target == 4 -> RAISE_TO_4
+                target == 5 -> RAISE_TO_5
+                else -> RAISE_HIGHER
+            }
+            val t = ((winChance - raise.unlikelyUpTo) / (raise.sureFrom - raise.unlikelyUpTo)).coerceIn(0.0, 1.0)
+            return minOf(raise.atMost, raise.bluff + (1 - raise.bluff) * t)
         }
 
         /**
