@@ -16,8 +16,8 @@ android {
         applicationId = "com.schaubeck.waddeln"
         minSdk = 26
         targetSdk = 36
-        versionCode = 8
-        versionName = "1.4.1"
+        versionCode = 9
+        versionName = "1.5.0"
 
         // Phones are ARM; leaving out the x86 libraries of ONNX Runtime keeps the APK small.
         ndk {
