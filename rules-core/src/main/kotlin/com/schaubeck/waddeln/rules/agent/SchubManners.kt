@@ -17,7 +17,8 @@ import kotlin.random.Random
  *   kept when the own team is likely to win the game ([winChance]), and not always even then.
  * - At a table of people Schub is said less often the higher the game already is: to 3 quite often, to 4
  *   less, to 5 rarely and to 6 hardly ever. So the higher a Schub goes, the better the game must look to
- *   keep it ([raiseChance]); bluffs get rarer too.
+ *   keep it ([raiseChance]). Bluffing stays part of the game: a Schub to 3 with a bad game is still kept
+ *   quite often, bluffs only get rare further up.
  */
 class SchubManners(private val base: Agent, private val random: Random = Random.Default) : Agent {
 
@@ -54,10 +55,10 @@ class SchubManners(private val base: Agent, private val random: Random = Random.
         /** How good the game must look for a Schub to a game value; see [raiseChance]. */
         private class Raise(val unlikelyUpTo: Double, val sureFrom: Double, val bluff: Double, val atMost: Double = 1.0)
 
-        private val RAISE_TO_3 = Raise(unlikelyUpTo = 0.55, sureFrom = 0.85, bluff = 0.05)
-        private val RAISE_TO_4 = Raise(unlikelyUpTo = 0.45, sureFrom = 0.85, bluff = 0.05)
-        private val RAISE_TO_5 = Raise(unlikelyUpTo = 0.6, sureFrom = 0.95, bluff = 0.02, atMost = 0.75)
-        private val RAISE_HIGHER = Raise(unlikelyUpTo = 0.8, sureFrom = 1.0, bluff = 0.0, atMost = 0.3)
+        private val RAISE_TO_3 = Raise(unlikelyUpTo = 0.5, sureFrom = 0.8, bluff = 0.4)
+        private val RAISE_TO_4 = Raise(unlikelyUpTo = 0.5, sureFrom = 0.85, bluff = 0.2)
+        private val RAISE_TO_5 = Raise(unlikelyUpTo = 0.6, sureFrom = 0.95, bluff = 0.07, atMost = 0.75)
+        private val RAISE_HIGHER = Raise(unlikelyUpTo = 0.8, sureFrom = 1.0, bluff = 0.01, atMost = 0.3)
 
         /** Chance to keep a Schub to the game value [target] at [winChance]. */
         fun raiseChance(winChance: Double, target: Int): Double {

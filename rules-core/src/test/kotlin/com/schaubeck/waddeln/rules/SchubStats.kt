@@ -22,6 +22,12 @@ class SchubStats {
         val stayed = IntArray(MAX_VALUE + 1)
         val finalValue = IntArray(MAX_VALUE + 1)
 
+        /** Schub to 3 and Schub higher ([HIGHER]), per range of the win chance when it was said. */
+        val byChance = Array(2) { IntArray(CHANCE_LIMITS.size + 1) }
+
+        /** Schub to 3 per trick of the round in which it was said. */
+        val byTrick = IntArray(TRICKS_IN_ROUND)
+
         fun add(other: Counts) {
             rounds += other.rounds
             for (i in said.indices) {
@@ -29,6 +35,8 @@ class SchubStats {
                 stayed[i] += other.stayed[i]
                 finalValue[i] += other.finalValue[i]
             }
+            for (k in byChance.indices) for (i in byChance[k].indices) byChance[k][i] += other.byChance[k][i]
+            for (i in byTrick.indices) byTrick[i] += other.byTrick[i]
         }
     }
 
@@ -37,10 +45,17 @@ class SchubStats {
         val jobs = (0 until matches).map { match ->
             pool.submit<Counts> {
                 val counts = Counts()
+                val statsRandom = Random(match.toLong() + 77)
                 val agents = List(PLAYER_COUNT) { bot(match * 4 + it) }
                 MatchRunner(agents, Random(match.toLong()), onAction = { s, p, a ->
                     val target = (s.gameValue + 1).coerceAtMost(MAX_VALUE)
-                    if (a == Action.Schub) counts.said[target]++
+                    if (a == Action.Schub) {
+                        counts.said[target]++
+                        val chance = SchubManners.winChance(s.observationFor(p), statsRandom)
+                        val bucket = CHANCE_LIMITS.indexOfFirst { chance < it }.let { if (it < 0) CHANCE_LIMITS.size else it }
+                        counts.byChance[if (target == 3) 0 else HIGHER][bucket]++
+                        if (target == 3) counts.byTrick[s.completedTricks.size]++
+                    }
                     if (a == Action.Bleiben) counts.stayed[target]++
                     val after = Waddeln.apply(s, p, a)
                     if (after.result != null && s.result == null) {
@@ -55,7 +70,13 @@ class SchubStats {
         jobs.forEach { total.add(it.get()) }
         pool.shutdown()
         println("$label: ${total.rounds} rounds, ${"%.2f".format(total.said.sum().toDouble() / total.rounds)} Schub per round")
-        for (v in 3..MAX_VALUE) {
+        for (k in total.byChance.indices) {
+            val n = total.byChance[k].sum().coerceAtLeast(1)
+            println("  ${if (k == 0) "Schub to 3" else "Schub higher"} by win chance (<.3 <.5 <.7 <.9 rest): " + total.byChance[k].joinToString(" ") { "%.0f%%".format(100.0 * it / n) } +
+                "  = bluffs (<.5) in ${"%.1f".format(100.0 * (total.byChance[k][0] + total.byChance[k][1]) / total.rounds)} % of rounds")
+        }
+        println("  Schub to 3 per trick: " + total.byTrick.joinToString(" ") { "%.1f%%".format(100.0 * it / total.rounds) } + " of rounds")
+        for (v in 3..6) {
             println(
                 "  to $v: said in ${"%5.1f".format(100.0 * total.said[v] / total.rounds)} % of rounds, " +
                     "stayed ${"%5.1f".format(100.0 * total.stayed[v] / total.said[v].coerceAtLeast(1))} %, " +
@@ -117,6 +138,7 @@ class SchubStats {
         timing()
         measure("Rule-based", matches) { SchubManners(RuleBasedAgent(), Random(it.toLong())) }
         OrtQFunction(File("../app/src/main/assets/models/waddeln.onnx").readBytes()).use { q ->
+            measure("Before the brake (hard)", matches) { OldManners(MlAgent(q), Random(it.toLong())) }
             measure("Network (hard)", matches) { SchubManners(MlAgent(q), Random(it.toLong())) }
             measure("Network (medium)", matches) { SchubManners(MlAgent(q, 0.7, Random(it.toLong())), Random(it.toLong() + 1)) }
             headToHead(matches, q)
@@ -125,5 +147,8 @@ class SchubStats {
 
     private companion object {
         const val MAX_VALUE = 8
+        const val HIGHER = 1
+        const val TRICKS_IN_ROUND = 5
+        val CHANCE_LIMITS = listOf(0.3, 0.5, 0.7, 0.9)
     }
 }

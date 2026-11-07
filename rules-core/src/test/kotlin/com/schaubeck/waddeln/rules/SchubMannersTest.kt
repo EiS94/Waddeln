@@ -96,24 +96,32 @@ class SchubMannersTest {
     }
 
     @Test
-    fun `a Schub to 3 is kept with a good game and mostly dropped with a bad one`() {
+    fun `a Schub to 3 is kept with a good game and often enough as a bluff with a bad one`() {
         assertEquals(1.0, SchubManners.raiseChance(0.9, 3))
-        assertEquals(0.05, SchubManners.raiseChance(0.3, 3))
+        assertEquals(0.4, SchubManners.raiseChance(0.3, 3))
+    }
+
+    @Test
+    fun `bluffs get rarer the higher the game is`() {
+        val bluffs = (3..6).map { SchubManners.raiseChance(0.2, it) }
+        assertEquals(bluffs.sortedDescending(), bluffs)
+        assertEquals(bluffs.distinct(), bluffs)
+        assertTrue(bluffs.last() > 0, "even that high it can happen")
     }
 
     @Test
     fun `a Schub to 6 or higher is a rare exception even with a sure game`() {
         assertEquals(0.3, SchubManners.raiseChance(1.0, 6))
         assertEquals(0.3, SchubManners.raiseChance(1.0, 9))
-        assertEquals(0.0, SchubManners.raiseChance(0.7, 6), "no bluffs that high")
+        assertEquals(0.01, SchubManners.raiseChance(0.7, 6), "hardly any bluffs that high")
     }
 
     @Test
-    fun `a hopeless Schub to 3 is mostly dropped without any risk for the match`() {
+    fun `a hopeless Schub to 3 is sometimes kept as a bluff, sometimes dropped`() {
         val s = playingWith(hands, Rank.ASS, Suit.GRAS).play("HK")
         val legal = Waddeln.legalActions(s, 1)
         val random = Random(4)
         val schubs = (1..200).count { SchubManners(schubber, random).chooseAction(s.observationFor(1), legal) == Action.Schub }
-        assertTrue(schubs in 1..30, "$schubs of 200")
+        assertTrue(schubs in 50..110, "$schubs of 200")
     }
 }
