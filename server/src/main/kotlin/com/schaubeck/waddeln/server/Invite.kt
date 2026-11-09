@@ -13,6 +13,9 @@ import io.ktor.server.routing.get
 /** Package name of the app that opens invitation links. */
 private const val APP_PACKAGE = "com.schaubeck.waddeln"
 
+/** Where people without the app get it. */
+private const val STORE_LINK = "https://play.google.com/store/apps/details?id=$APP_PACKAGE"
+
 /**
  * SHA-256 fingerprints of the certificates the app is signed with: the release key (also used by
  * Google Play, since we uploaded our own signing key) and the debug key for testing over USB.
@@ -86,6 +89,8 @@ private fun invitePage(code: String): String {
         <p><a class="button" href="$appLink">In der App öffnen</a></p>
         <p>Hat sich die App nicht geöffnet? Starte Waddeln, tippe auf „Online spielen“ und gib den Code bei
         „Raum beitreten“ ein.</p>
+        <p>Noch keine App?</p>
+        <p><a class="button" href="$STORE_LINK">Bei Google Play laden</a></p>
         </main></body>
         </html>
     """.trimIndent()

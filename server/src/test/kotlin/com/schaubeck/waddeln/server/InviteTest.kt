@@ -43,6 +43,7 @@ class InviteTest {
         assertEquals(HttpStatusCode.OK, response.status)
         val page = response.bodyAsText()
         assertTrue("K7QMX" in page)
+        assertTrue("https://play.google.com/store/apps/details?id=com.schaubeck.waddeln" in page)
         assertTrue(response.headers["Content-Security-Policy"]!!.startsWith("default-src 'none'"))
     }
 
