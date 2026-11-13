@@ -399,6 +399,61 @@ class GameServerTest {
     }
 
     @Test
+    fun `those who are ready do not wait forever for somebody who is away`() = runTest {
+        val server = newServer(seed = 11)
+        val host = player(server, "host")
+        host.send(ClientMessage.CreateRoom)
+        val guest = player(server, "guest")
+        guest.send(ClientMessage.JoinRoom(host.table.room.code))
+        host.send(ClientMessage.StartMatch)
+        playUntilRoundOver(listOf(host, guest))
+        val round = host.table.game!!.observation.roundNumber
+
+        // Nobody ready: nothing starts by itself.
+        advanceTimeBy(120_000)
+        assertEquals(round, host.table.game!!.observation.roundNumber)
+
+        host.send(ClientMessage.Ready)
+        advanceTimeBy(44_000)
+        assertEquals(round, host.table.game!!.observation.roundNumber)
+        advanceTimeBy(2_000)
+        assertEquals(round + 1, host.table.game!!.observation.roundNumber)
+    }
+
+    @Test
+    fun `a connection cannot become another player`() = runTest {
+        val server = newServer()
+        val host = player(server, "host")
+        host.send(ClientMessage.CreateRoom)
+        host.send(ClientMessage.Hello("somebody else", "x"))
+        assertIs<ServerMessage.Error>(host.connection.last)
+        assertEquals("host", host.client.playerId)
+
+        // The room is still cleaned up once the connection is gone.
+        host.disconnect()
+        now += Limits().idleLobbyMs
+        server.cleanup()
+        assertEquals(0, server.roomCount)
+    }
+
+    @Test
+    fun `a connection without hello is closed after ten seconds`() = runTest {
+        val server = newServer()
+        val silent = FakeConnection()
+        server.connect(silent)
+        val outdated = FakeConnection()
+        server.onMessage(server.connect(outdated)!!, ClientMessage.Hello("a", "A", version = 999))
+        val greeted = player(server, "b")
+
+        advanceTimeBy(9_000)
+        assertFalse(silent.closed)
+        advanceTimeBy(2_000)
+        assertTrue(silent.closed)
+        assertTrue(outdated.closed)
+        assertFalse(greeted.connection.closed)
+    }
+
+    @Test
     fun `a disconnected player is replaced by a bot and gets the seat back`() = runTest {
         val server = newServer(seed = 13)
         val host = player(server, "host")

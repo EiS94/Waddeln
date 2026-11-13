@@ -11,6 +11,8 @@ data class Limits(
     val maxConnections: Int = 200,
     /** Several phones in one home network share an IP, so this must not be too small. */
     val maxConnectionsPerIp: Int = 12,
+    /** A connection that has not introduced itself with a valid hello after this time is closed. */
+    val helloTimeoutMs: Long = 10_000,
     val maxRooms: Int = 50,
     /** Open rooms created from one IP, so that a few addresses cannot take all [maxRooms]. */
     val maxRoomsPerIp: Int = 4,

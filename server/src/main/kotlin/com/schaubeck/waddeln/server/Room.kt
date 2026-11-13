@@ -58,6 +58,11 @@ data class Timing(
     val turnTimeoutMs: Long? = 60_000,
     /** Like [turnTimeoutMs] for the Abheber; then a random cut is made for them. */
     val cutTimeoutMs: Long? = 30_000,
+    /**
+     * After a round or match: once the first connected human is ready, the others get this long;
+     * then the next round starts without their confirmation. Null = wait for everybody.
+     */
+    val readyTimeoutMs: Long? = 45_000,
 )
 
 /** How [abheber] cut the deck of the current round. */
@@ -500,7 +505,10 @@ class Room(
             }
             return
         }
-        if (s.playerToMove == null) return stopTimer()
+        if (s.playerToMove == null) {
+            // Round or match over: nobody who is away keeps those who are ready waiting for good.
+            return if (humans.any { ready[it] }) startTimer(s, timing.readyTimeoutMs) else stopTimer()
+        }
         // An open "Schadder?", "Was soll ich machen?" or Schlagwechsel is answered first.
         val answerer = Waddeln.schadetAnswerer(s) ?: Waddeln.adviceAnswerer(s) ?: Waddeln.schlagwechselAnswerer(s)
         if (answerer != null) {
@@ -540,6 +548,12 @@ class Room(
                 timeoutJob = null
                 log.info("Room {}: time is up for {}, the bot cuts", code, seatName(round.abheber))
                 return@launch cut(round, Deal.randomCut(random))
+            }
+            if (current.playerToMove == null) {
+                timeoutJob = null
+                log.info("Room {}: time is up, the next round starts without everybody's confirmation", code)
+                humanSeats().forEach { ready[it] = true }
+                return@launch changed()
             }
             (Waddeln.schadetAnswerer(current) ?: Waddeln.adviceAnswerer(current) ?: Waddeln.schlagwechselAnswerer(current))?.let { seat ->
                 timeoutJob = null

@@ -7,6 +7,8 @@ import com.schaubeck.waddeln.protocol.ROOM_CODE_ALPHABET
 import com.schaubeck.waddeln.protocol.ROOM_CODE_LENGTH
 import com.schaubeck.waddeln.protocol.ServerMessage
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.slf4j.LoggerFactory
 import java.security.SecureRandom
 import kotlin.random.Random
@@ -78,7 +80,17 @@ class GameServer(
             return null
         }
         quota.connections++
-        return Client(connection, ip, TokenBucket(limits.messageBurst, limits.messageIntervalMs, clock)).also { clients += it }
+        val client = Client(connection, ip, TokenBucket(limits.messageBurst, limits.messageIntervalMs, clock))
+        clients += client
+        // Who does not introduce themselves (or is refused as outdated) must not keep a connection busy.
+        scope.launch {
+            delay(limits.helloTimeoutMs)
+            if (client in clients && client.playerId == null) {
+                log.info("Connection without hello closed")
+                client.close()
+            }
+        }
+        return client
     }
 
     fun disconnect(client: Client) {
@@ -168,6 +180,11 @@ class GameServer(
         }
         if (hello.playerId.isBlank() || hello.playerId.length > 64) {
             client.send(ServerMessage.Error("Ungültige Geräte-ID."))
+            return
+        }
+        // A connection belongs to one player: as somebody else it would keep the old seat "connected" for good.
+        if (client.playerId != null && client.playerId != hello.playerId) {
+            client.send(ServerMessage.Error("Du bist schon angemeldet."))
             return
         }
         client.playerId = hello.playerId
