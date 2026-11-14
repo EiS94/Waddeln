@@ -50,7 +50,7 @@ class DoubleDummy(private val trump: Trump, private val team: Int) {
         }
         val ours = player % TEAM_COUNT == team
         while (moves != 0) {
-            val card = Integer.numberOfTrailingZeros(moves)
+            val card = moves.countTrailingZeroBits()
             moves = moves and (moves - 1)
             hands[player] = hands[player] xor (1 shl card)
             tricks[at + played] = card
@@ -98,7 +98,7 @@ class DoubleDummy(private val trump: Trump, private val team: Int) {
         for (p in 0 until PLAYER_COUNT) {
             var m = hands[p]
             while (m != 0) {
-                val card = Integer.numberOfTrailingZeros(m)
+                val card = m.countTrailingZeroBits()
                 m = m and (m - 1)
                 owners = owners or (p.toLong() shl (2 * card))
             }

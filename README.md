@@ -21,8 +21,8 @@ Die Spielregeln stehen in [`WADDELN_RULES.md`](WADDELN_RULES.md).
 
 | Modul | Inhalt |
 |---|---|
-| `rules-core/` | Spiellogik als reine Kotlin/JVM-Bibliothek: Zustandsautomat, legale Aktionen, Stiche, Schub, Punkte; regelbasierter Bot und Merkmale fürs Netz |
-| `protocol/` | Nachrichten zwischen App und Server (kotlinx.serialization) |
+| `rules-core/` | Spiellogik als Kotlin-Multiplatform-Bibliothek (JVM und Browser/Wasm): Zustandsautomat, legale Aktionen, Stiche, Schub, Punkte; regelbasierter Bot und Merkmale fürs Netz |
+| `protocol/` | Nachrichten zwischen App und Server (kotlinx.serialization; JVM und Browser/Wasm) |
 | `app/` | Android-App (Jetpack Compose), Offline-Spiel, KI-Inferenz mit ONNX Runtime |
 | `server/` | Spielserver (Ktor, WebSocket), läuft in Docker |
 | `training/` | Python-Nachbau der Regeln und KI-Training mit PyTorch – siehe [`training/README.md`](training/README.md) |
@@ -36,7 +36,7 @@ der Server hält den echten Spielzustand.
 Voraussetzungen: JDK 21 (z. B. das von Android Studio) und das Android SDK.
 
 ```bash
-./gradlew test                    # alle Unit-Tests (Regeln, Protokoll, Server, App)
+./gradlew test                    # alle Unit-Tests (Regeln, Protokoll, Server, App; Wasm-Tests in Headless-Chrome)
 ./gradlew :app:assembleDebug      # APK unter app/build/outputs/apk/debug/
 ```
 
