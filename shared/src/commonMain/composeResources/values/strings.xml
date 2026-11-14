@@ -288,8 +288,8 @@
     <string name="stats_reset_title">Statistik zurücksetzen?</string>
     <string name="stats_reset_text">Alle Zahlen (offline und online) werden gelöscht.</string>
     <string name="stats_reset_confirm">Zurücksetzen</string>
-    <!-- A count with its share, e.g. "7 (35 %)" -->
-    <string name="stats_share">%1$d (%2$d %%)</string>
+    <!-- A count with its share, e.g. "7 (35 %)". A single %: Compose resources do not turn %% into % (Android did). -->
+    <string name="stats_share">%1$d (%2$d %)</string>
     <string name="stats_no_average">–</string>
     <string name="stats_matches">Matches</string>
     <string name="stats_played">Gespielt</string>
