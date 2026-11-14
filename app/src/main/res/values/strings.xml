@@ -48,6 +48,8 @@
     <string name="game_opponents">Gegner</string>
     <string name="game_score">%1$s %2$d</string>
     <string name="game_gespannt">gespannt</string>
+    <string name="game_menu">Menü</string>
+    <string name="game_menu_leave_hint">Wenn du den Raum verlässt, übernimmt die KI deinen Platz.</string>
     <string name="game_tricks">Stiche %1$d : %2$d</string>
     <string name="game_value_round">Spielwert %1$d · Spiel %2$d</string>
     <string name="game_connection_lost">Verbindung unterbrochen – verbinde neu …</string>

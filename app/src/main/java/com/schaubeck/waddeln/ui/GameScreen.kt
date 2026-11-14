@@ -29,7 +29,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
@@ -41,21 +43,29 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
+import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -113,9 +123,25 @@ fun GameScreen(
 ) {
     val sound = LocalTableSound.current
     LaunchedEffect(table) { sound?.observe(soundKey, table) }
+    var menuOpen by rememberSaveable { mutableStateOf(false) }
+    if (menuOpen) {
+        GameMenuDialog(
+            onResume = { menuOpen = false },
+            onMenu = {
+                menuOpen = false
+                onMenu()
+            },
+            onLeave = onLeave?.let { leave ->
+                {
+                    menuOpen = false
+                    leave()
+                }
+            },
+        )
+    }
     WoodBackground {
         Column(Modifier.fillMaxSize()) {
-            TopBar(table.obs)
+            TopBar(table.obs, onMenu = { menuOpen = true })
             table.connectionProblem?.let { ConnectionBanner(it) }
             val cut = table.cut
             if (cut != null) {
@@ -129,12 +155,14 @@ fun GameScreen(
                 }
             } else {
                 Box(Modifier.weight(1f).fillMaxWidth()) {
-                    Table(table, onSchub = { onAction(Action.Schub) }, onShowLastTrick = onShowLastTrick)
+                    // The questions lie on the lower part of the table, so the table keeps its size and nothing jumps.
+                    Table(table, onSchub = { onAction(Action.Schub) }, onShowLastTrick = onShowLastTrick) {
+                        ActionArea(
+                            table, onAction, onNoticeConfirmed, onAskPartner, onAnswerPartner, onAskSchadet, onAnswerSchadet,
+                            onAskAdvice, onAnswerAdvice, onProposeSchlagwechsel, onAnswerSchlagwechsel,
+                        )
+                    }
                 }
-                ActionArea(
-                    table, onAction, onNoticeConfirmed, onAskPartner, onAnswerPartner, onAskSchadet, onAnswerSchadet,
-                    onAskAdvice, onAnswerAdvice, onProposeSchlagwechsel, onAnswerSchlagwechsel,
-                )
                 Hand(table, onAction)
             }
         }
@@ -156,24 +184,74 @@ private fun ConnectionBanner(text: String) {
 // ---- Top bar ---------------------------------------------------------------------------------
 
 @Composable
-private fun TopBar(s: Observation) {
+private fun TopBar(s: Observation, onMenu: () -> Unit) {
     val us = s.team
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .background(BarGreen)
             .statusBarsPadding()
-            .padding(horizontal = 14.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+            .padding(start = 2.dp, end = 14.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        ScoreLabel(stringResource(R.string.game_we), s.scores[us], s.isGespannt(us))
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            BarText(stringResource(R.string.game_tricks, s.tricksWon[us], s.tricksWon[1 - us]), size = 15, color = Highlight)
-            BarText(stringResource(R.string.game_value_round, s.gameValue, s.roundNumber), size = 12)
+        MenuButton(onMenu)
+        Row(
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            ScoreLabel(stringResource(R.string.game_we), s.scores[us], s.isGespannt(us))
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                BarText(stringResource(R.string.game_tricks, s.tricksWon[us], s.tricksWon[1 - us]), size = 15, color = Highlight)
+                BarText(stringResource(R.string.game_value_round, s.gameValue, s.roundNumber), size = 12)
+            }
+            ScoreLabel(stringResource(R.string.game_opponents), s.scores[1 - us], s.isGespannt(1 - us))
         }
-        ScoreLabel(stringResource(R.string.game_opponents), s.scores[1 - us], s.isGespannt(1 - us))
     }
+}
+
+/** Three lines in the corner of the top bar: opens the [GameMenuDialog]. */
+@Composable
+private fun MenuButton(onClick: () -> Unit) {
+    val label = stringResource(R.string.game_menu)
+    Column(
+        modifier = Modifier
+            .size(44.dp)
+            .clip(CircleShape)
+            .clickable(onClickLabel = label, role = Role.Button, onClick = onClick)
+            .clearAndSetSemantics { contentDescription = label },
+        verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        repeat(3) { Box(Modifier.size(20.dp, 2.5.dp).background(Color.White, RoundedCornerShape(1.dp))) }
+    }
+}
+
+/** Opened from the top bar during a game: back to the main menu or ([onLeave], online only) out of the room. */
+@Composable
+private fun GameMenuDialog(onResume: () -> Unit, onMenu: () -> Unit, onLeave: (() -> Unit)?) {
+    AlertDialog(
+        onDismissRequest = onResume,
+        containerColor = Color(0xFF2B1F14),
+        title = { Text(stringResource(R.string.game_menu), color = Highlight) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = onResume, colors = woodButton(), modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.menu_continue), fontSize = 16.sp)
+                }
+                OutlinedButton(onClick = onMenu, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.end_main_menu), color = Color.White, fontSize = 16.sp)
+                }
+                if (onLeave != null) {
+                    OutlinedButton(onClick = onLeave, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.common_leave_room), color = Color.White, fontSize = 16.sp)
+                    }
+                    Text(stringResource(R.string.game_menu_leave_hint), color = Color.White.copy(alpha = 0.7f), fontSize = 13.sp)
+                }
+            }
+        },
+        confirmButton = {},
+    )
 }
 
 @Composable
@@ -192,7 +270,7 @@ private fun BarText(text: String, size: Int = 14, bold: Boolean = false, color: 
 // ---- Table -----------------------------------------------------------------------------------
 
 @Composable
-private fun Table(table: TableUi, onSchub: () -> Unit, onShowLastTrick: (Boolean) -> Unit) {
+private fun Table(table: TableUi, onSchub: () -> Unit, onShowLastTrick: (Boolean) -> Unit, actionArea: @Composable () -> Unit) {
     val s = table.obs
     BoxWithConstraints(Modifier.fillMaxSize()) {
         // The Haubi has the size of the own cards; the table is as wide as the hand.
@@ -200,44 +278,80 @@ private fun Table(table: TableUi, onSchub: () -> Unit, onShowLastTrick: (Boolean
         val trickWidth = trickCardWidth(maxWidth, maxHeight)
         // Below the Haubi so they never overlap
         val sideSeatTop = haubiWidth * CARD_ASPECT + 48.dp
-        // Above the trick so speech bubbles stay readable
-        Seats(table, sideSeatTop)
+        // The trick lies a little above the middle, but below the partner's cards and name.
+        val (partnerSpot, _) = trickSpot(2, trickWidth / BaseTrickCardWidth)
+        val partnerSeatBottom = PartnerSeatTop + PartnerCardWidth * CARD_ASPECT + 4.dp + SeatChipHeight * LocalDensity.current.fontScale
+        val trickCentre = max(maxHeight / 2 - 12.dp, partnerSeatBottom + 4.dp - partnerSpot.y + trickWidth * CARD_ASPECT / 2)
+        // The names at the sides end before the cards played into the middle (long ones wrap).
+        val (sideSpot, _) = trickSpot(1, trickWidth / BaseTrickCardWidth)
+        val sideNameWidth = (maxWidth / 2 + sideSpot.x - trickWidth / 2 - SideChipInset).coerceIn(48.dp, WideNameWidth)
+        // From bottom to top: seats, trick, speech bubbles – a name never hides a played card,
+        // a played card never hides what is said.
+        Seats(table, sideSeatTop, SeatPart.SEATS, sideNameWidth)
         HaubiCorner(s, haubiWidth, Modifier.align(Alignment.TopStart).padding(8.dp))
         BottomCardCorner(s, Modifier.align(Alignment.TopEnd).padding(8.dp))
-        TrickArea(table, trickWidth, Modifier.align(Alignment.Center))
-        TableInfo(table, Modifier.align(Alignment.BottomCenter).padding(bottom = 4.dp))
-        if (Action.Schub in table.actions) {
-            Button(
-                onClick = onSchub,
-                colors = ButtonDefaults.buttonColors(containerColor = SchubOrange),
-                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-                modifier = Modifier.align(Alignment.BottomEnd).padding(end = 8.dp, bottom = 4.dp),
-            ) { Text(stringResource(R.string.game_schub_button, Texts.schubCall(s.gameValue)), fontWeight = FontWeight.Bold) }
-        }
-        if (table.canShowLastTrick && table.lastTrickShownBy == null) {
-            OutlinedButton(
-                onClick = { onShowLastTrick(true) },
-                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                modifier = Modifier.align(Alignment.BottomStart).padding(start = 8.dp, bottom = 4.dp),
-            ) { Text(stringResource(R.string.game_last_trick), color = Color.White, fontSize = 13.sp) }
+        TrickArea(table, trickWidth, Modifier.align(Alignment.Center).offset(y = trickCentre - maxHeight / 2).zIndex(2f))
+        Seats(table, sideSeatTop, SeatPart.BUBBLES, sideNameWidth)
+        Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().zIndex(4f)) {
+            Box(Modifier.fillMaxWidth().padding(horizontal = 8.dp).padding(bottom = 4.dp)) {
+                if (table.canShowLastTrick && table.lastTrickShownBy == null) {
+                    OutlinedButton(
+                        onClick = { onShowLastTrick(true) },
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                        modifier = Modifier.align(Alignment.CenterStart),
+                    ) { Text(stringResource(R.string.game_last_trick), color = Color.White, fontSize = 13.sp) }
+                }
+                TableInfo(table, Modifier.align(Alignment.Center))
+                if (Action.Schub in table.actions) {
+                    Button(
+                        onClick = onSchub,
+                        colors = ButtonDefaults.buttonColors(containerColor = SchubOrange),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                        modifier = Modifier.align(Alignment.CenterEnd),
+                    ) { Text(stringResource(R.string.game_schub_button, Texts.schubCall(s.gameValue)), fontWeight = FontWeight.Bold) }
+                }
+            }
+            actionArea()
         }
         table.lastTrickShownBy?.let { shownBy ->
             LastTrickOverlay(
                 table, shownBy, trickWidth,
                 onClose = if (shownBy == table.me) ({ onShowLastTrick(false) }) else null,
-                modifier = Modifier.align(Alignment.Center).zIndex(2f),
+                modifier = Modifier.align(Alignment.Center).zIndex(5f),
             )
         }
     }
 }
 
-/** The three other players around the table; [sideSeatTop] keeps the side seats below the Haubi. */
+/** What [Seats] draws: everything, or only the seats or only what they say (to put the trick in between). */
+private enum class SeatPart { ALL, SEATS, BUBBLES }
+
+/** A seat that is laid out but not shown: its speech bubble then appears exactly where it belongs. */
+private fun Modifier.seatShown(part: SeatPart): Modifier =
+    if (part == SeatPart.BUBBLES) alpha(0f).clearAndSetSemantics { } else this
+
+private val PartnerSeatTop = 6.dp
+private val PartnerCardWidth = 40.dp
+
+/** Height of a name with one badge at normal font size, to keep the trick clear of the partner. */
+private val SeatChipHeight = 48.dp
+
+/** What a name at the side needs besides its text: the gap to the screen edge, the padding of its chip and a gap to the trick. */
+private val SideChipInset = 18.dp
+
+/** Widest name of a seat that has room; a longer one is cut off. */
+private val WideNameWidth = 110.dp
+
+/**
+ * The three other players around the table; [sideSeatTop] keeps the side seats below the Haubi,
+ * [sideNameWidth] their names clear of the trick.
+ */
 @Composable
-private fun Seats(table: TableUi, sideSeatTop: Dp = 48.dp) {
-    Box(Modifier.fillMaxSize().zIndex(1f)) {
-        PartnerSeat(table, Modifier.align(Alignment.TopCenter).zIndex(1f))
-        SideSeat(table, table.seatAt(1), left = true, modifier = Modifier.align(Alignment.TopStart).padding(top = sideSeatTop).zIndex(1f))
-        SideSeat(table, table.seatAt(3), left = false, modifier = Modifier.align(Alignment.TopEnd).padding(top = sideSeatTop).zIndex(1f))
+private fun Seats(table: TableUi, sideSeatTop: Dp = 48.dp, part: SeatPart = SeatPart.ALL, sideNameWidth: Dp = WideNameWidth) {
+    Box(Modifier.fillMaxSize().zIndex(if (part == SeatPart.BUBBLES) 3f else 1f)) {
+        PartnerSeat(table, part, Modifier.align(Alignment.TopCenter))
+        SideSeat(table, table.seatAt(1), left = true, part = part, nameWidth = sideNameWidth, modifier = Modifier.align(Alignment.TopStart).padding(top = sideSeatTop))
+        SideSeat(table, table.seatAt(3), left = false, part = part, nameWidth = sideNameWidth, modifier = Modifier.align(Alignment.TopEnd).padding(top = sideSeatTop))
     }
 }
 
@@ -295,56 +409,61 @@ private fun LastTrickOverlay(table: TableUi, shownBy: Int, cardWidth: Dp, onClos
 }
 
 @Composable
-private fun PartnerSeat(table: TableUi, modifier: Modifier) {
+private fun PartnerSeat(table: TableUi, part: SeatPart, modifier: Modifier) {
     val seat = table.seatAt(2)
-    Column(modifier.padding(top = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(modifier.padding(top = PartnerSeatTop), horizontalAlignment = Alignment.CenterHorizontally) {
         val laid = laidOut(table, seat)
-        Row(horizontalArrangement = Arrangement.spacedBy((-22).dp)) {
+        Row(Modifier.seatShown(part), horizontalArrangement = Arrangement.spacedBy((-22).dp)) {
             repeat(handSize(table, seat)) { i ->
-                CardBack(width = 40.dp, modifier = Modifier.padding(top = if (i < laid) LaidOutPush else 0.dp))
+                CardBack(width = PartnerCardWidth, modifier = Modifier.padding(top = if (i < laid) LaidOutPush else 0.dp))
             }
         }
         Spacer(Modifier.height(4.dp))
-        SeatChip(table, seat)
-        SpeechBubble(table, seat, BubbleFrom.ABOVE, Modifier.padding(top = 4.dp))
+        SeatChip(table, seat, Modifier.seatShown(part))
+        if (part != SeatPart.SEATS) SpeechBubble(table, seat, BubbleFrom.ABOVE, Modifier.padding(top = 4.dp))
     }
 }
 
-/** Opponent on the left/right: cards lie sideways at the screen edge, partly outside. */
+/**
+ * Opponent on the left/right: the name at the screen edge, below it the cards lying sideways, partly
+ * outside the screen. So the name stays clear of the cards played into the middle.
+ */
 @Composable
-private fun SideSeat(table: TableUi, seat: Int, left: Boolean, modifier: Modifier) {
-    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
-        // The name moves over the cards sticking out of the screen; without cards it stays inside.
-        val shift = if (handSize(table, seat) > 0) 18.dp else (-4).dp
+private fun SideSeat(table: TableUi, seat: Int, left: Boolean, part: SeatPart, nameWidth: Dp, modifier: Modifier) {
+    Row(modifier, verticalAlignment = Alignment.Top) {
         val laid = laidOut(table, seat)
-        val backs = @Composable {
+        val seatColumn = @Composable {
             Column(
-                modifier = Modifier.offset(x = if (left) (-22).dp else 22.dp),
-                verticalArrangement = Arrangement.spacedBy((-14).dp),
+                modifier = Modifier.seatShown(part),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
                 horizontalAlignment = if (left) Alignment.Start else Alignment.End,
             ) {
-                repeat(handSize(table, seat)) { i ->
-                    val push = if (i < laid) LaidOutPush else 0.dp
-                    CardBack(
-                        width = 34.dp,
-                        landscape = true,
-                        modifier = if (left) Modifier.padding(start = push) else Modifier.padding(end = push),
-                    )
+                SeatChip(table, seat, Modifier.padding(horizontal = 2.dp), nameWidth)
+                Column(
+                    modifier = Modifier.offset(x = if (left) (-22).dp else 22.dp),
+                    verticalArrangement = Arrangement.spacedBy((-14).dp),
+                    horizontalAlignment = if (left) Alignment.Start else Alignment.End,
+                ) {
+                    repeat(handSize(table, seat)) { i ->
+                        val push = if (i < laid) LaidOutPush else 0.dp
+                        CardBack(
+                            width = 34.dp,
+                            landscape = true,
+                            modifier = if (left) Modifier.padding(start = push) else Modifier.padding(end = push),
+                        )
+                    }
                 }
             }
         }
+        val bubble = @Composable {
+            if (part != SeatPart.SEATS) SpeechBubble(table, seat, if (left) BubbleFrom.LEFT else BubbleFrom.RIGHT, Modifier.padding(top = 4.dp))
+        }
         if (left) {
-            backs()
-            Column {
-                SeatChip(table, seat, Modifier.offset(x = -shift))
-                SpeechBubble(table, seat, BubbleFrom.LEFT, Modifier.padding(top = 4.dp))
-            }
+            seatColumn()
+            bubble()
         } else {
-            Column(horizontalAlignment = Alignment.End) {
-                SeatChip(table, seat, Modifier.offset(x = shift))
-                SpeechBubble(table, seat, BubbleFrom.RIGHT, Modifier.padding(top = 4.dp))
-            }
-            backs()
+            bubble()
+            seatColumn()
         }
     }
 }
@@ -419,10 +538,10 @@ private fun startsInMs(speech: Speech) = speech.at - SystemClock.elapsedRealtime
 
 /**
  * Name of a seat with badges (dealer, Kritten taken while cutting, who leads the next trick, lost
- * connection); glows when to move.
+ * connection); glows when to move. Texts wider than [textWidth] wrap, the name onto two lines at most.
  */
 @Composable
-private fun SeatChip(table: TableUi, seat: Int, modifier: Modifier = Modifier) {
+private fun SeatChip(table: TableUi, seat: Int, modifier: Modifier = Modifier, textWidth: Dp = WideNameWidth) {
     val s = table.obs
     val cut = table.cut
     val toMove = if (cut != null) {
@@ -451,11 +570,16 @@ private fun SeatChip(table: TableUi, seat: Int, modifier: Modifier = Modifier) {
                 color = if (toMove) Highlight else if (leads) Highlight.copy(alpha = 0.7f) else Color.Transparent,
                 shape = shape,
             )
-            .padding(horizontal = 8.dp, vertical = 3.dp),
+            .padding(horizontal = 6.dp, vertical = 3.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(table.names[seat], color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-        badges.forEach { Text(it, color = Highlight, fontSize = 10.sp) }
+        Text(
+            table.names[seat], color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = textWidth),
+        )
+        badges.forEach {
+            Text(it, color = Highlight, fontSize = 10.sp, lineHeight = 12.sp, textAlign = TextAlign.Center, modifier = Modifier.widthIn(max = textWidth))
+        }
     }
 }
 
@@ -578,7 +702,7 @@ private fun TrickArea(table: TableUi, cardWidth: Dp, modifier: Modifier) {
     val c = if (showingCompleted) collect.value else 0f
 
     val scale = cardWidth / BaseTrickCardWidth
-    Box(modifier.offset(y = 18.dp).size(220.dp * scale, 230.dp * scale)) {
+    Box(modifier.size(220.dp * scale, 230.dp * scale)) {
         plays.forEachIndexed { i, play ->
             key(s.roundNumber, play.card) {
                 val fly = remember { Animatable(0f) }
