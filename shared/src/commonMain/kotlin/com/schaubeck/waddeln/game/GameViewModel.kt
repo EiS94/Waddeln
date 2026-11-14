@@ -42,7 +42,7 @@ data class GameUiState(
 )
 
 class GameViewModel(platform: Platform, strings: Strings) : ViewModel() {
-    private val store = SettingsStore(platform.stores, strings)
+    private val store = SettingsStore(platform.stores, strings, platform.defaultServerUrl)
     private val sayings = Sayings(strings)
     private var settings = store.load()
     private val matchStore = MatchStore(platform.matchFile)

@@ -43,7 +43,15 @@ private enum class Screen { MENU, GAME, SETTINGS, STATS, ONLINE, RULES }
  * called once the online screen took it.
  */
 @Composable
-fun WaddelnApp(platform: Platform, sharing: Sharing, sound: TableSound, invite: String?, onInviteTaken: () -> Unit) {
+fun WaddelnApp(
+    platform: Platform,
+    sharing: Sharing,
+    sound: TableSound,
+    invite: String?,
+    onInviteTaken: () -> Unit,
+    /** Start at the online table if the player sat in a room last time (the browser after a reload). */
+    resumeOnline: Boolean = false,
+) {
     // The view models need the texts right away; reading them takes a moment only at the start.
     val strings by produceState<Strings?>(null) { value = Strings.load() }
     val texts = strings ?: return
@@ -63,7 +71,9 @@ fun WaddelnApp(platform: Platform, sharing: Sharing, sound: TableSound, invite: 
         sound.effectsOn = ui.settings.soundEffects
         sound.voicesOn = ui.settings.voices
         onlineViewModel.selfCut = ui.settings.selfCut
-        var screen by rememberSaveable { mutableStateOf(Screen.MENU) }
+        var screen by rememberSaveable {
+            mutableStateOf(if (resumeOnline && OnlineViewModel.wasInRoom(platform.stores)) Screen.ONLINE else Screen.MENU)
+        }
 
         // Bots only play while the table is visible. Online, the connection stays open while
         // we sit in a room, so the game can go on in the background.
@@ -122,6 +132,7 @@ fun WaddelnApp(platform: Platform, sharing: Sharing, sound: TableSound, invite: 
                 settings = ui.settings,
                 onChange = viewModel::onSettingsChanged,
                 onBack = { screen = Screen.MENU },
+                defaultServerUrl = platform.defaultServerUrl,
             )
 
             Screen.STATS -> {

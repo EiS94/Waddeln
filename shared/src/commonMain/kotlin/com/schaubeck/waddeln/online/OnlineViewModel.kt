@@ -2,6 +2,7 @@ package com.schaubeck.waddeln.online
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.schaubeck.waddeln.platform.KeyValueStores
 import com.schaubeck.waddeln.platform.Platform
 import com.schaubeck.waddeln.platform.elapsedMs
 import com.schaubeck.waddeln.resources.*
@@ -99,6 +100,14 @@ class OnlineViewModel(platform: Platform, private val strings: Strings) : ViewMo
             refreshGame()
         }
     private var errorJob: Job? = null
+
+    /** Whether we sit in a room, kept for the next start (see [wasInRoom]). */
+    private val roomMemory = platform.stores.open(STORE)
+    private var inRoom = roomMemory.getBoolean(KEY_IN_ROOM, false)
+
+    init {
+        viewModelScope.launch { platform.foreground.collect { client.reconnectNow() } }
+    }
 
     /** The nickname of the last [connect]; without one we cannot join a room from an invitation. */
     private var name = ""
@@ -202,6 +211,7 @@ class OnlineViewModel(platform: Platform, private val strings: Strings) : ViewMo
             ServerMessage.NoRoom -> {
                 notice = null
                 statsTracker.reset()
+                rememberInRoom(false)
                 update { it.copy(greeted = true, table = null) }
             }
 
@@ -213,12 +223,19 @@ class OnlineViewModel(platform: Platform, private val strings: Strings) : ViewMo
                 // The table without cards while the Abheber cuts is no round of its own.
                 message.game?.takeIf { it.cut?.cut != null || it.cut == null }?.let { statsTracker.observe(it.observation) }
                 deadline = message.game?.timeLeftMs?.let { elapsedMs() + it }
+                rememberInRoom(true)
                 update { it.copy(greeted = true, table = message) }
             }
 
             is ServerMessage.Error -> showError(message.message)
         }
         joinInvite()
+    }
+
+    private fun rememberInRoom(value: Boolean) {
+        if (value == inRoom) return
+        inRoom = value
+        roomMemory.edit { if (value) putBoolean(KEY_IN_ROOM, true) else remove(KEY_IN_ROOM) }
     }
 
     /** Someone else answered a Schub with "Bleiben": show it for a few seconds (the game goes on). */
@@ -426,6 +443,12 @@ class OnlineViewModel(platform: Platform, private val strings: Strings) : ViewMo
     }
 
     companion object {
+        private const val STORE = "online"
+        private const val KEY_IN_ROOM = "in_room"
+
+        /** True if the player sat in a room when the app (or page) was last open. */
+        fun wasInRoom(stores: KeyValueStores): Boolean = stores.open(STORE).getBoolean(KEY_IN_ROOM, false)
+
         const val NOTICE_MS = 4000L
         const val ERROR_MS = 4000L
         const val MAX_SPEECH = 8
