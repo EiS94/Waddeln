@@ -9,7 +9,7 @@ plugins {
 // UI, view models and game flow shared by the Android app and the web app. Platform services
 // (storage, sound, network, model) are interfaces here; the Android shell implements them.
 kotlin {
-    androidLibrary {
+    android {
         namespace = "com.schaubeck.waddeln.shared"
         compileSdk = 37
         minSdk = 26
@@ -23,6 +23,9 @@ kotlin {
     }
     @OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
     wasmJs {
+        compilerOptions {
+            optIn.add("kotlin.js.ExperimentalWasmJsInterop")
+        }
         browser()
     }
 
