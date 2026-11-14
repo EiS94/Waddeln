@@ -17,6 +17,7 @@ für den Raspberry Pi 5.
 | `waddeln/selfplay.py` | Matches spielen, Trainingsbeispiele sammeln, Bewertung |
 | `train_dmc.py` | Training (parallele Self-Play-Prozesse + Lernprozess) |
 | `export_onnx.py` | Checkpoint → ONNX für die App |
+| `export_weights.py` | Checkpoint/ONNX → `waddeln.mlp` für die Kotlin-Inferenz (Browser) |
 | `tests/test_parity.py` | Spielt Kotlin-Protokolle nach und vergleicht alles |
 
 ## Regeln Kotlin ↔ Python abgleichen
@@ -98,9 +99,16 @@ Netz ~55 % der Matches gegen den Regel-Bot. Weitertrainieren auf dem Pi:
 ```bash
 .venv/bin/python export_onnx.py checkpoints/run1/best.pt waddeln.onnx
 # waddeln.onnx nach app/src/main/assets/models/waddeln.onnx kopieren
+.venv/bin/python export_weights.py checkpoints/run1/best.pt waddeln.mlp
+# waddeln.mlp: dieselben Gewichte für die Browser-Version (reines Kotlin, MlpQFunction.kt)
 ```
 
-Der Export prüft selbst, dass ONNX dieselben Werte liefert wie PyTorch. Fehlt das Modell in der
+Jedes neue Modell immer in **beiden** Formaten exportieren: Android und Server rechnen mit ONNX Runtime,
+die Browser-Version mit `MlpQFunction` (ohne ONNX Runtime). Aus einem schon exportierten ONNX-Modell
+geht es auch: `export_weights.py waddeln.onnx waddeln.mlp`. Das Format (Kennung `WMLP`, Version, Schichten
+mit Gewichten und Bias als Little-Endian-`float32`) steht oben in `export_weights.py`.
+
+Der Export prüft selbst, dass ONNX bzw. `waddeln.mlp` dieselben Werte liefert wie PyTorch. Fehlt das Modell in der
 App, spielen die Bots automatisch regelbasiert.
 
 **Bester Checkpoint:** Die Bewertung während des Trainings nutzt wenige Matches und schwankt.
