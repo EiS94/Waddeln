@@ -19,11 +19,17 @@ class WebSoundOutput : SoundOutput {
     }
 
     override fun say(seat: Int, text: String, gender: Gender?, slot: Int) {
-        if (!userActivated()) return
+        if (!userActivated() || !speechAvailable()) return
         val german = germanVoices().split('\n').filter { it.isNotEmpty() }
-        if (german.isEmpty()) return
+        // Mobile browsers often list no voices at all (or only later); then the browser picks a German
+        // voice by itself. Only when voices are listed and none is German, the table stays silent.
+        if (german.isEmpty() && voiceCount() > 0) return
         val matching = gender?.let { g -> german.filter { genderOf(it) == g } }.orEmpty()
-        val voice = if (matching.isNotEmpty()) matching[slot % matching.size] else german[seat % german.size]
+        val voice = when {
+            matching.isNotEmpty() -> matching[slot % matching.size]
+            german.isNotEmpty() -> german[seat % german.size]
+            else -> ""
+        }
         val pitch = when {
             gender == null -> SEAT_PITCH[seat]
             matching.isNotEmpty() -> SEAT_VARIATION[seat]
@@ -60,43 +66,71 @@ class WebSoundOutput : SoundOutput {
     }
 }
 
-/** Remembers the first touch, click or key press (browsers allow sound only after one). */
+/**
+ * Remembers the first touch, click or key press: browsers allow sound only after one. Safari (and some
+ * Android browsers) also unlock speech only if something is spoken inside such an event, so a silent
+ * utterance is spoken right then; later speech from the bots is allowed after that.
+ */
 private fun watchUserActivation(): Unit = js(
     """
     {
       if (window.__waddelnActivated !== undefined) return;
       window.__waddelnActivated = false;
-      const on = () => { window.__waddelnActivated = true; };
-      for (const type of ['pointerdown', 'keydown', 'touchstart']) window.addEventListener(type, on, { once: true, capture: true });
+      let primed = 0;
+      const on = (e) => {
+        window.__waddelnActivated = true;
+        // Which event counts as the user's gesture differs between browsers: prime on the first few.
+        if (primed >= 3 || e.type === 'pointerdown') return;
+        primed++;
+        try {
+          if (typeof speechSynthesis !== 'undefined') {
+            const u = new SpeechSynthesisUtterance(' ');
+            u.volume = 0;
+            speechSynthesis.speak(u);
+            speechSynthesis.getVoices();
+          }
+        } catch (err) {}
+      };
+      for (const type of ['pointerdown', 'touchend', 'keydown', 'click']) window.addEventListener(type, on, { capture: true });
     }
     """,
 )
 
 private fun userActivated(): Boolean = js("window.__waddelnActivated === true")
 
+private fun speechAvailable(): Boolean = js("typeof speechSynthesis !== 'undefined' && typeof SpeechSynthesisUtterance !== 'undefined'")
+
 private fun playAudio(url: String, volume: Double): Unit = js(
     "{ try { const a = new Audio(url); a.volume = volume; a.play().catch(() => {}); } catch (e) {} }",
 )
 
-/** Names of the installed German voices, one per line, German (Germany) first. */
+private fun voiceCount(): Int = js("speechSynthesis.getVoices().length")
+
+/** Names of the installed German voices (de-DE or de_DE, ...), one per line, German (Germany) first. */
 private fun germanVoices(): String = js(
     """
-    (typeof speechSynthesis === 'undefined') ? '' : speechSynthesis.getVoices()
-      .filter(v => v.lang && v.lang.toLowerCase().startsWith('de'))
-      .sort((a, b) => (a.lang !== 'de-DE') - (b.lang !== 'de-DE') || a.name.localeCompare(b.name))
+    speechSynthesis.getVoices()
+      .map(v => ({ name: v.name, lang: (v.lang || '').replace('_', '-').toLowerCase() }))
+      .filter(v => v.lang.startsWith('de'))
+      .sort((a, b) => (a.lang !== 'de-de') - (b.lang !== 'de-de') || a.name.localeCompare(b.name))
       .map(v => v.name).join('\n')
     """,
 )
 
+/** Says [text]; with an empty [voiceName] the browser picks its German voice. */
 private fun speak(text: String, voiceName: String, pitch: Double, rate: Double): Unit = js(
     """
     {
-      const u = new SpeechSynthesisUtterance(text);
-      const v = speechSynthesis.getVoices().find(v => v.name === voiceName);
-      if (v) { u.voice = v; u.lang = v.lang; } else { u.lang = 'de-DE'; }
-      u.pitch = pitch;
-      u.rate = rate;
-      speechSynthesis.speak(u);
+      try {
+        const u = new SpeechSynthesisUtterance(text);
+        const v = voiceName ? speechSynthesis.getVoices().find(v => v.name === voiceName) : undefined;
+        if (v) { u.voice = v; u.lang = v.lang; } else { u.lang = 'de-DE'; }
+        u.pitch = pitch;
+        u.rate = rate;
+        // Chrome on Android pauses speech after the tab was in the background.
+        speechSynthesis.resume();
+        speechSynthesis.speak(u);
+      } catch (e) {}
     }
     """,
 )
