@@ -36,3 +36,8 @@ CLAUDE.md
 /app/src/main/res/mipmap-*/ic_launcher_round.webp
 /app/src/main/res/mipmap-*/ic_launcher_foreground.png
 /fastlane/metadata/android/*/images/
+
+# Kotlin compiler data and Claude Code worktrees
+.kotlin/
+.claude/worktrees/
+.claude/settings.local.json

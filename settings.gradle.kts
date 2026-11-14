@@ -42,6 +42,7 @@ dependencyResolutionManagement {
 rootProject.name = "Waddeln"
 include(":app")
 include(":shared")
+include(":webApp")
 include(":rules-core")
 include(":protocol")
 include(":server")

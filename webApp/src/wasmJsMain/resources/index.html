@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#2E5E1F">
+    <title>Waddeln</title>
+    <link rel="icon" type="image/png" href="icon.png">
+    <style>
+        html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #6B4A2B; }
+        #loading, #unsupported {
+            position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center;
+            justify-content: center; gap: 18px; color: #FFD54F; font: 600 20px system-ui, sans-serif;
+            text-align: center; padding: 24px; box-sizing: border-box;
+        }
+        #loading .title { font-size: 48px; font-weight: 800; }
+        #loading .spinner {
+            width: 42px; height: 42px; border-radius: 50%; border: 4px solid rgba(255, 213, 79, 0.25);
+            border-top-color: #FFD54F; animation: spin 0.9s linear infinite;
+        }
+        #unsupported { display: none; color: #fff; font-weight: 400; font-size: 17px; line-height: 1.5; }
+        #unsupported b { color: #FFD54F; font-size: 22px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+<div id="loading">
+    <div class="title">Waddeln</div>
+    <div class="spinner"></div>
+    <div>Wird geladen …</div>
+</div>
+<div id="unsupported">
+    <b>Dein Browser ist zu alt für Waddeln.</b>
+    <span>Die Browser-Version braucht WebAssembly mit Garbage Collection:<br>
+        Chrome oder Edge ab 119, Firefox ab 120, Safari ab 18.2.<br>
+        Bitte aktualisiere deinen Browser – oder hol dir die App für Android.</span>
+</div>
+<script>
+    // A tiny module with a GC struct type: only browsers with WasmGC accept it.
+    const wasmGc = typeof WebAssembly === 'object' &&
+        WebAssembly.validate(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 95, 1, 120, 0]));
+    if (wasmGc) {
+        const script = document.createElement('script');
+        script.src = 'webApp.js';
+        document.body.appendChild(script);
+    } else {
+        document.getElementById('loading').remove();
+        document.getElementById('unsupported').style.display = 'flex';
+    }
+</script>
+</body>
+</html>

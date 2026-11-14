@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web-dev",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8080", "--bind", "127.0.0.1", "--directory", "webApp/build/dist/wasmJs/developmentExecutable"],
+      "port": 8080
+    },
+    {
+      "name": "web-release",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8081", "--bind", "127.0.0.1", "--directory", "webApp/build/dist/wasmJs/productionExecutable"],
+      "port": 8081
+    }
+  ]
+}
