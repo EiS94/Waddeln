@@ -23,7 +23,8 @@ Die Spielregeln stehen in [`WADDELN_RULES.md`](WADDELN_RULES.md).
 |---|---|
 | `rules-core/` | Spiellogik als Kotlin-Multiplatform-Bibliothek (JVM und Browser/Wasm): Zustandsautomat, legale Aktionen, Stiche, Schub, Punkte; regelbasierter Bot und Merkmale fürs Netz |
 | `protocol/` | Nachrichten zwischen App und Server (kotlinx.serialization; JVM und Browser/Wasm) |
-| `app/` | Android-App (Jetpack Compose), Offline-Spiel, KI-Inferenz mit ONNX Runtime |
+| `shared/` | Oberfläche, ViewModels und Spielablauf für Android und Browser (Compose Multiplatform); Texte, Bilder und Töne unter `src/commonMain/composeResources` |
+| `app/` | Android-Hülle: `MainActivity`, Speicherung, Ton/Sprache, WebSocket (OkHttp), KI-Inferenz mit ONNX Runtime |
 | `server/` | Spielserver (Ktor, WebSocket), läuft in Docker |
 | `training/` | Python-Nachbau der Regeln und KI-Training mit PyTorch – siehe [`training/README.md`](training/README.md) |
 | `design/` | Kartenbilder und Skripte, die daraus die App-Grafiken und das Launcher-Icon erzeugen |
