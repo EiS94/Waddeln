@@ -66,6 +66,7 @@ android {
 dependencies {
     implementation(project(":rules-core"))
     implementation(project(":protocol"))
+    implementation(project(":shared"))
     implementation(libs.okhttp)
     implementation(libs.androidx.core.ktx)
     implementation(platform(libs.androidx.compose.bom))
