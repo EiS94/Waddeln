@@ -31,7 +31,7 @@ CLAUDE.md
 /design/cards/
 /design/Spieltisch.jpeg
 /design/launcher_icon_preview.png
-/app/src/main/res/drawable-nodpi/card_*
+/shared/src/commonMain/composeResources/drawable/card_*
 /app/src/main/res/mipmap-*/ic_launcher.webp
 /app/src/main/res/mipmap-*/ic_launcher_round.webp
 /app/src/main/res/mipmap-*/ic_launcher_foreground.png

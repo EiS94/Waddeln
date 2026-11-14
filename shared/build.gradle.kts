@@ -43,7 +43,20 @@ kotlin {
         commonTest.dependencies {
             implementation(kotlin("test"))
         }
+        androidMain.dependencies {
+            implementation(libs.androidx.activity.compose)
+        }
+        getByName("androidHostTest").dependencies {
+            implementation(libs.junit)
+        }
     }
+}
+
+// Keeps `./gradlew test` covering this module: Android host tests and Wasm tests in the browser.
+tasks.register("test") {
+    group = "verification"
+    description = "Runs the tests of all targets."
+    dependsOn("allTests")
 }
 
 compose.resources {

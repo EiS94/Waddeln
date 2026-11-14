@@ -2,7 +2,7 @@
 
     training/.venv/Scripts/python design/convert_assets.py      (from the project root)
 
-- design/cards/card_<farbe>_<wert>.png  ->  app/src/main/res/drawable-nodpi/card_<farbe>_<wert>.webp
+- design/cards/card_<farbe>_<wert>.png  ->  shared/src/commonMain/composeResources/drawable/card_<farbe>_<wert>.webp
   (cropped so that the card sits centred: the scans carry a few pixels of shadow on the right and bottom)
 - design/cards/rueckseite.png  ->  card_back.webp (+ card_back_landscape.webp, turned by 90 degrees)
 - design/table_<style>.jpg  ->  table_<style>.webp (dark and light wood, chosen in the settings)
@@ -13,7 +13,8 @@ from pathlib import Path
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "app" / "src" / "main" / "res" / "drawable-nodpi"
+# Compose Multiplatform resources, used by the Android app and the web app.
+OUT = ROOT / "shared" / "src" / "commonMain" / "composeResources" / "drawable"
 
 
 def is_frame(pixel) -> bool:
