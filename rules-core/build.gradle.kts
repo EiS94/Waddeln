@@ -27,7 +27,7 @@ kotlin {
             implementation(project.dependencies.platform(libs.junit.bom))
             implementation(libs.junit.jupiter)
             runtimeOnly(libs.junit.platform.launcher)
-            // ONNX Runtime (JVM) only to verify the model interface; the app uses onnxruntime-android.
+            // ONNX Runtime (JVM) only to check MlpQFunction against it; app and browser compute the network in Kotlin.
             implementation(libs.onnxruntime)
             implementation(libs.kotlinx.serialization.json)
         }

@@ -137,7 +137,7 @@ class SchubStats {
         val matches = System.getenv("SCHUB_STATS")?.toInt() ?: return
         timing()
         measure("Rule-based", matches) { SchubManners(RuleBasedAgent(), Random(it.toLong())) }
-        OrtQFunction(File("../app/src/main/assets/models/waddeln.onnx").readBytes()).use { q ->
+        OrtQFunction(File("../models/waddeln.onnx").readBytes()).use { q ->
             measure("Before the brake (hard)", matches) { OldManners(MlAgent(q), Random(it.toLong())) }
             measure("Network (hard)", matches) { SchubManners(MlAgent(q), Random(it.toLong())) }
             measure("Network (medium)", matches) { SchubManners(MlAgent(q, 0.7, Random(it.toLong())), Random(it.toLong() + 1)) }

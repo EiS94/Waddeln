@@ -18,11 +18,6 @@ android {
         targetSdk = 36
         versionCode = 10
         versionName = "1.5.1"
-
-        // Phones are ARM; leaving out the x86 libraries of ONNX Runtime keeps the APK small.
-        ndk {
-            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
-        }
     }
 
     // The release key is read from keystore.properties (not checked in); without it the
@@ -76,7 +71,7 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
-    implementation(libs.onnxruntime.android)
+
     debugImplementation(libs.androidx.compose.ui.tooling)
     testImplementation(libs.junit)
 }

@@ -17,7 +17,7 @@ für den Raspberry Pi 5.
 | `waddeln/selfplay.py` | Matches spielen, Trainingsbeispiele sammeln, Bewertung |
 | `train_dmc.py` | Training (parallele Self-Play-Prozesse + Lernprozess) |
 | `export_onnx.py` | Checkpoint → ONNX für die App |
-| `export_weights.py` | Checkpoint/ONNX → `waddeln.mlp` für die Kotlin-Inferenz (Browser) |
+| `export_weights.py` | Checkpoint/ONNX → `waddeln.mlp` für die Kotlin-Inferenz (App und Browser) |
 | `tests/test_parity.py` | Spielt Kotlin-Protokolle nach und vergleicht alles |
 
 ## Regeln Kotlin ↔ Python abgleichen
@@ -98,13 +98,13 @@ Netz ~55 % der Matches gegen den Regel-Bot. Weitertrainieren auf dem Pi:
 
 ```bash
 .venv/bin/python export_onnx.py checkpoints/run1/best.pt waddeln.onnx
-# waddeln.onnx nach app/src/main/assets/models/waddeln.onnx kopieren
+# waddeln.onnx nach models/waddeln.onnx kopieren (Server-Bots und Kotlin-Tests)
 .venv/bin/python export_weights.py checkpoints/run1/best.pt waddeln.mlp
-# waddeln.mlp: dieselben Gewichte für die Browser-Version (reines Kotlin, MlpQFunction.kt)
+# waddeln.mlp nach shared/src/commonMain/composeResources/files/waddeln.mlp kopieren (App und Browser)
 ```
 
-Jedes neue Modell immer in **beiden** Formaten exportieren: Android und Server rechnen mit ONNX Runtime,
-die Browser-Version mit `MlpQFunction` (ohne ONNX Runtime). Aus einem schon exportierten ONNX-Modell
+Jedes neue Modell immer in **beiden** Formaten exportieren: Der Server rechnet mit ONNX Runtime,
+Android-App und Browser-Version mit `MlpQFunction` (reines Kotlin, ohne ONNX Runtime). Aus einem schon exportierten ONNX-Modell
 geht es auch: `export_weights.py waddeln.onnx waddeln.mlp`. Das Format (Kennung `WMLP`, Version, Schichten
 mit Gewichten und Bias als Little-Endian-`float32`) steht oben in `export_weights.py`.
 
