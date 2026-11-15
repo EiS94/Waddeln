@@ -44,6 +44,9 @@ class InviteTest {
         val page = response.bodyAsText()
         assertTrue("K7QMX" in page)
         assertTrue("https://play.google.com/store/apps/details?id=com.schaubeck.waddeln" in page)
+        // Without the app: play the room in the browser.
+        assertTrue("href=\"/play/#K7QMX\"" in page)
+        assertTrue("Im Browser spielen" in page)
         assertTrue(response.headers["Content-Security-Policy"]!!.startsWith("default-src 'none'"))
     }
 
