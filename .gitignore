@@ -37,11 +37,12 @@ CLAUDE.md
 /app/src/main/res/mipmap-*/ic_launcher_foreground.png
 /fastlane/metadata/android/*/images/
 
-# Kotlin compiler data and Claude Code worktrees
+# Kotlin compiler data
 .kotlin/
-.claude/worktrees/
-.claude/settings.local.json
 
 # Copied there by the README recipe for running your own server
 /server/install/
 /server/web/
+
+# Claude Code (local only, like CLAUDE.md): worktrees, settings, preview servers
+.claude/

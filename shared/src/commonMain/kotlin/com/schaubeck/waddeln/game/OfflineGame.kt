@@ -6,7 +6,6 @@ import com.schaubeck.waddeln.rules.Deal
 import com.schaubeck.waddeln.rules.GameState
 import com.schaubeck.waddeln.rules.PLAYER_COUNT
 import com.schaubeck.waddeln.rules.PendingRound
-import com.schaubeck.waddeln.rules.Phase
 import com.schaubeck.waddeln.rules.RoundResult
 import com.schaubeck.waddeln.rules.SchadetTalk
 import com.schaubeck.waddeln.rules.Trick
