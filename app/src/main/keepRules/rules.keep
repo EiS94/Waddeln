@@ -1,6 +1,3 @@
 # Keep rules for R8. AGP combines all keep rule files in src/main/keepRules.
-# kotlinx.serialization and OkHttp bring their own rules.
-
-# ONNX Runtime ships no rules, but its native library finds and creates the Java classes
-# (sessions, tensors, exceptions) by name through JNI.
--keep class ai.onnxruntime.** { *; }
+# kotlinx.serialization and OkHttp bring their own rules; the network is computed in Kotlin
+# (MlpQFunction), so no native library looks up classes by name any more.

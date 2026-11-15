@@ -30,7 +30,7 @@ fun main() {
     MainScope().launch {
         // The network plays the bots; without it (download failed) they play rule-based, as on Android.
         val model = try {
-            WebRes.readBytes("files/waddeln.mlp")
+            SharedRes.readBytes("files/waddeln.mlp")
         } catch (e: Throwable) {
             Log.w("Main", "No model, using rule-based bots", e)
             null

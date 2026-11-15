@@ -75,7 +75,7 @@ class MlAgentTest {
 
     @Test
     fun `the bundled app model keeps working whatever feature layout it was trained with`() {
-        val model = java.io.File("../app/src/main/assets/models/waddeln.onnx")
+        val model = java.io.File("../models/waddeln.onnx")
         if (!model.exists()) return
         OrtQFunction(model.readBytes()).use { q ->
             assertTrue(q.inputSize in FeatureEncoder.INPUT_SIZES)

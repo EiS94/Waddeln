@@ -39,7 +39,7 @@ dependencies {
 
 // The server bots use the same network as the app.
 tasks.processResources {
-    from(rootProject.file("app/src/main/assets/models")) { into("models") }
+    from(rootProject.file("models")) { into("models") }
 }
 
 tasks.test {

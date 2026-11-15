@@ -80,12 +80,12 @@ class MlpQFunctionTest {
 
     /**
      * Same checks with the real app model plus timings. The .mlp of the app model is not committed:
-     * `training/export_weights.py ../app/src/main/assets/models/waddeln.onnx <file>` and set WADDELN_APP_MLP=<file>.
+     * `training/export_weights.py ../models/waddeln.onnx <file>` and set WADDELN_APP_MLP=<file>.
      */
     @Test
     fun `app model - MLP matches ONNX, timing of a typical decision`() {
         val mlpFile = System.getenv("WADDELN_APP_MLP")?.let(::File) ?: return
-        val onnxFile = File("../app/src/main/assets/models/waddeln.onnx")
+        val onnxFile = File("../models/waddeln.onnx")
         if (!mlpFile.exists() || !onnxFile.exists()) return
         val mlp = MlpQFunction(mlpFile.readBytes())
         OrtQFunction(onnxFile.readBytes()).use { onnx ->

@@ -29,7 +29,7 @@ class PimcBenchmark {
         val oracle = System.getenv("PIMC_ORACLE") != null
         // Softmax temperature of DealInference; without it the deals are not weighted.
         val inference = System.getenv("PIMC_INFERENCE")?.toDouble()
-        val model = File("../app/src/main/assets/models/waddeln.onnx").readBytes()
+        val model = File("../models/waddeln.onnx").readBytes()
 
         val cardDecisions = AtomicLong()
         val overridden = AtomicLong()

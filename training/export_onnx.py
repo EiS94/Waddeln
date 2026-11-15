@@ -1,6 +1,6 @@
 """Exports a checkpoint to ONNX for the app (ONNX Runtime for Android).
 
-    python export_onnx.py checkpoints/run1/best.pt ../app/src/main/assets/models/waddeln.onnx
+    python export_onnx.py checkpoints/run1/best.pt ../models/waddeln.onnx
 
 The model maps a float tensor "input" [N, INPUT_SIZE] (state + action features, see
 features.py / Encoding.kt) to "q" [N]: the scaled change of the acting team's chance to win the match (match_value.py).

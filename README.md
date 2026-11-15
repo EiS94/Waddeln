@@ -13,7 +13,7 @@ against three AI opponents or online with friends. The app itself is in German.*
 - **Online-Modus**: private Räume mit Raum-Code, Platzwahl, Bots für freie Plätze, Wiederverbinden
   nach Verbindungsabbruch. Keine Accounts – nur ein Spitzname.
 - **KI-Gegner** per Deep Monte-Carlo (Self-Play, wie DouZero), trainiert auf einem Raspberry Pi 5
-  und als ONNX-Modell in die App eingebaut.
+  und in die App eingebaut (gerechnet in reinem Kotlin; der Server nutzt ONNX Runtime).
 
 Die Spielregeln stehen in [`WADDELN_RULES.md`](WADDELN_RULES.md).
 
@@ -25,7 +25,7 @@ Die Spielregeln stehen in [`WADDELN_RULES.md`](WADDELN_RULES.md).
 | `protocol/` | Nachrichten zwischen App und Server (kotlinx.serialization; JVM und Browser/Wasm) |
 | `shared/` | Oberfläche, ViewModels und Spielablauf für Android und Browser (Compose Multiplatform); Texte, Bilder und Töne unter `src/commonMain/composeResources` |
 | `webApp/` | Browser-Version (Kotlin/Wasm): Einstieg, `index.html`, Speicherung in `localStorage`, Ton/Sprache des Browsers, KI als reines Kotlin (`waddeln.mlp`) |
-| `app/` | Android-Hülle: `MainActivity`, Speicherung, Ton/Sprache, WebSocket (OkHttp), KI-Inferenz mit ONNX Runtime |
+| `app/` | Android-Hülle: `MainActivity`, Speicherung, Ton/Sprache, WebSocket (OkHttp) |
 | `server/` | Spielserver (Ktor, WebSocket), läuft in Docker |
 | `training/` | Python-Nachbau der Regeln und KI-Training mit PyTorch – siehe [`training/README.md`](training/README.md) |
 | `design/` | Kartenbilder und Skripte, die daraus die App-Grafiken und das Launcher-Icon erzeugen |
