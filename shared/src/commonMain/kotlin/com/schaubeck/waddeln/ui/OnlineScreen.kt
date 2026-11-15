@@ -18,11 +18,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -205,7 +202,7 @@ private fun Lobby(
             color = Highlight,
             fontSize = 44.sp,
             fontWeight = FontWeight.Bold,
-            fontFamily = FontFamily.Monospace,
+            fontFamily = LocalAppFonts.current.monospace,
             modifier = Modifier.clickable { copy() },
         )
         Text(stringResource(Res.string.online_room_code_text), color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp, textAlign = TextAlign.Center)
@@ -290,11 +287,10 @@ private fun SeatBox(
                     fontWeight = if (mine) FontWeight.Bold else FontWeight.Normal,
                 )
                 if (free && onRename != null) {
-                    Text(
-                        "✎",
+                    PencilGlyph(
                         color = Highlight,
-                        fontSize = 17.sp,
-                        modifier = Modifier.clickable { onRename(seat) }.padding(start = 8.dp, end = 2.dp),
+                        size = 18.dp,
+                        modifier = Modifier.handCursor().clickable { onRename(seat) }.padding(start = 8.dp, end = 2.dp),
                     )
                 }
             }

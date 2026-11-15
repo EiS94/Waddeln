@@ -18,8 +18,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -63,7 +61,7 @@ fun MainMenu(
                 color = Highlight,
                 fontSize = 52.sp,
                 fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Serif,
+                fontFamily = LocalAppFonts.current.serif,
             )
             Text(stringResource(Res.string.menu_subtitle), color = Color.White, fontSize = 16.sp)
             Spacer(Modifier.height(40.dp))

@@ -6,6 +6,12 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.layout.offset
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -40,6 +46,7 @@ fun suitColor(suit: Suit): Color = when (suit) {
 }
 
 private val CardShape = RoundedCornerShape(6.dp)
+private val HOVER_LIFT = 8.dp
 private val TrumpGold = Color(0xFFFFC107)
 
 fun cardImage(card: Card): DrawableResource = CARD_IMAGES[card.index]
@@ -110,15 +117,20 @@ fun CardView(
         isTrump -> 2.5.dp
         else -> 0.dp
     }
+    val playable = onClick != null && enabled
+    // With a mouse, a playable card under the pointer rises a little (touch screens have no hover).
+    val hover = remember { MutableInteractionSource() }
+    val hovered by hover.collectIsHoveredAsState()
     Box(
         modifier = modifier
+            .offset(y = if (playable && hovered) -HOVER_LIFT else 0.dp)
             .size(width, width * CARD_ASPECT)
             .alpha(if (enabled) 1f else 0.55f)
             .shadow(3.dp, CardShape)
             .clip(CardShape)
             .background(Color.White)
             .then(if (frame > 0.dp) Modifier.border(BorderStroke(frame, TrumpGold), CardShape) else Modifier)
-            .then(if (onClick != null && enabled) Modifier.clickable(onClick = onClick) else Modifier)
+            .then(if (playable) Modifier.handCursor().hoverable(hover).clickable(onClick = onClick) else Modifier)
             .semantics { contentDescription = description },
     ) {
         Image(

@@ -10,6 +10,12 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.window.ComposeViewport
 import com.schaubeck.waddeln.WaddelnApp
 import com.schaubeck.waddeln.platform.Log
+import com.schaubeck.waddeln.ui.AppFonts
+import com.schaubeck.waddeln.web.resources.droid_sans_mono
+import com.schaubeck.waddeln.web.resources.noto_serif_bold
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import org.jetbrains.compose.resources.Font
 import com.schaubeck.waddeln.resources.allDrawableResources
 import com.schaubeck.waddeln.sound.TableSound
 import kotlinx.browser.document
@@ -37,7 +43,12 @@ fun main() {
             var invite by remember { mutableStateOf(roomCodeFromAddress()) }
             LaunchedEffect(Unit) { roomCodeChanges().collect { invite = it } }
             PreloadImages()
-            WaddelnApp(platform, WebSharing, sound, invite, resumeOnline = true, onInviteTaken = {
+            val fonts = AppFonts(
+                serif = FontFamily(Font(WebRes.font.noto_serif_bold, FontWeight.Bold)),
+                monospace = FontFamily(Font(WebRes.font.droid_sans_mono)),
+                drawnPencil = true,
+            )
+            WaddelnApp(platform, WebSharing, sound, invite, resumeOnline = true, limitWidth = true, fonts = fonts, onInviteTaken = {
                 invite = null
                 clearRoomCodeFromAddress()
             })

@@ -9,6 +9,8 @@
 -->
 <resources>
     <string name="app_name">Waddeln</string>
+    <!-- Browser only: a landscape window that is too low for the table -->
+    <string name="rotate_device">Waddeln spielt sich im Hochformat.\nDreh dein Gerät – oder zieh das Fenster höher.</string>
 
     <!-- Common -->
     <string name="common_back">‹ Zurück</string>
