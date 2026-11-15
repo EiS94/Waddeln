@@ -4,7 +4,6 @@ import com.schaubeck.waddeln.platform.BotThread
 import com.schaubeck.waddeln.platform.KeyValueStore
 import com.schaubeck.waddeln.platform.Log
 import com.schaubeck.waddeln.platform.ModelLoader
-import com.schaubeck.waddeln.platform.OnlineSocketFactory
 import com.schaubeck.waddeln.platform.Platform
 import com.schaubeck.waddeln.platform.TextFile
 import com.schaubeck.waddeln.rules.ml.MlpQFunction
@@ -24,10 +23,11 @@ fun webPlatform(model: ByteArray?): Platform {
     return Platform(
         stores = { name -> LocalStorageStore(name) },
         matchFile = LocalStorageFile("match.json"),
-        // The browser WebSocket comes with the online mode (Phase 5 of WEB_PLAN.md).
-        sockets = OnlineSocketFactory { _, _ -> null },
+        sockets = BrowserSockets,
         models = ModelLoader { model?.let(::MlpQFunction) },
         newBotThread = { MainThread },
+        defaultServerUrl = pageServerUrl(),
+        foreground = pageVisibleAgain(),
     )
 }
 

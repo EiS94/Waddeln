@@ -44,7 +44,12 @@ import com.schaubeck.waddeln.game.TableStyle
 
 /** Settings are applied and stored immediately. */
 @Composable
-fun SettingsScreen(settings: Settings, onChange: (Settings) -> Unit, onBack: () -> Unit) {
+fun SettingsScreen(
+    settings: Settings,
+    onChange: (Settings) -> Unit,
+    onBack: () -> Unit,
+    defaultServerUrl: String = Settings.DEFAULT_SERVER_URL,
+) {
     WoodBackground {
         Column(Modifier.fillMaxSize().safeDrawingPadding()) {
             Row(
@@ -106,11 +111,11 @@ fun SettingsScreen(settings: Settings, onChange: (Settings) -> Unit, onBack: () 
                     TextSetting(
                         label = stringResource(Res.string.settings_server_url),
                         value = settings.serverUrl,
-                        placeholder = Settings.DEFAULT_SERVER_URL,
+                        placeholder = defaultServerUrl,
                         keyboardType = KeyboardType.Uri,
                         maxLength = 200,
                     ) { onChange(settings.copy(serverUrl = it)) }
-                    TextButton(onClick = { onChange(settings.copy(serverUrl = Settings.DEFAULT_SERVER_URL)) }) {
+                    TextButton(onClick = { onChange(settings.copy(serverUrl = defaultServerUrl)) }) {
                         Text(stringResource(Res.string.settings_server_reset), color = Highlight)
                     }
                 }

@@ -78,7 +78,12 @@ data class Settings(
 }
 
 /** Persists [Settings] (on Android in the SharedPreferences "settings", as before). */
-class SettingsStore(stores: KeyValueStores, strings: Strings) {
+class SettingsStore(
+    stores: KeyValueStores,
+    strings: Strings,
+    /** The server used while no address of the player's own is stored. */
+    private val defaultServerUrl: String = Settings.DEFAULT_SERVER_URL,
+) {
     val defaultNames: List<String> = Settings.DEFAULT_NAMES.map { strings.get(it) }
 
     private val prefs = stores.open("settings")
@@ -89,7 +94,7 @@ class SettingsStore(stores: KeyValueStores, strings: Strings) {
         names = List(PLAYER_COUNT) { prefs.getString("$KEY_NAME$it") ?: defaultNames[it] },
         genders = List(PLAYER_COUNT) { enumOrDefault(prefs.getString("$KEY_GENDER$it"), Gender.MALE) },
         onlineName = prefs.getString(KEY_ONLINE_NAME).orEmpty(),
-        serverUrl = prefs.getString(KEY_SERVER_URL) ?: Settings.DEFAULT_SERVER_URL,
+        serverUrl = prefs.getString(KEY_SERVER_URL) ?: defaultServerUrl,
         soundEffects = prefs.getBoolean(KEY_SOUND_EFFECTS, true),
         voices = prefs.getBoolean(KEY_VOICES, true),
         table = enumOrDefault(prefs.getString(KEY_TABLE), TableStyle.DARK),
@@ -122,7 +127,7 @@ class SettingsStore(stores: KeyValueStores, strings: Strings) {
             settings.genders.forEachIndexed { seat, gender -> putString("$KEY_GENDER$seat", gender.name) }
             putString(KEY_ONLINE_NAME, settings.onlineName)
             // Only an address of the user's own is stored, so a later change of the default reaches everyone.
-            if (settings.serverUrl.trim() == Settings.DEFAULT_SERVER_URL) {
+            if (settings.serverUrl.trim() == defaultServerUrl) {
                 remove(KEY_SERVER_URL)
             } else {
                 putString(KEY_SERVER_URL, settings.serverUrl)

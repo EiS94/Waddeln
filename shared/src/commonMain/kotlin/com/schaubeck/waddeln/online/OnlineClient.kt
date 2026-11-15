@@ -53,6 +53,14 @@ class OnlineClient(
 
     fun send(message: ClientMessage): Boolean = socket?.send(message.encode()) ?: false
 
+    /** Connects at once if the connection is lost and a reconnect is waiting (e.g. the app is visible again). */
+    fun reconnectNow() {
+        if (url == null || socket != null) return
+        reconnectJob?.cancel()
+        failures = 0
+        connect()
+    }
+
     private fun connect() {
         val target = url ?: return
         val opened = sockets.connect(target, Listener())

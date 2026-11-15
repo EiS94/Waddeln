@@ -1,7 +1,10 @@
 package com.schaubeck.waddeln.platform
 
+import com.schaubeck.waddeln.game.Settings
 import com.schaubeck.waddeln.rules.ml.QFunction
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlin.time.TimeSource
 
 /**
@@ -19,6 +22,13 @@ class Platform(
     val models: ModelLoader,
     /** A new thread (or what stands in for it) for the bots of one offline game. */
     val newBotThread: () -> BotThread,
+    /** Game server used while the player has not entered one of their own. */
+    val defaultServerUrl: String = Settings.DEFAULT_SERVER_URL,
+    /**
+     * Emits when the app is in front again after it was hidden. Browsers on phones cut connections of
+     * hidden tabs; the online game then reconnects at once instead of waiting for its next try.
+     */
+    val foreground: Flow<Unit> = emptyFlow(),
 )
 
 /** One named area of key-value pairs, like an Android SharedPreferences file. */

@@ -1,6 +1,11 @@
 package com.schaubeck.waddeln.web
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.window.ComposeViewport
 import com.schaubeck.waddeln.WaddelnApp
@@ -28,8 +33,14 @@ fun main() {
         val sound = TableSound(WebSoundOutput())
         document.getElementById("loading")?.remove()
         ComposeViewport(document.body!!) {
+            // An invitation link (/play/#CODE) opens the room, also when it is opened while the page is open.
+            var invite by remember { mutableStateOf(roomCodeFromAddress()) }
+            LaunchedEffect(Unit) { roomCodeChanges().collect { invite = it } }
             PreloadImages()
-            WaddelnApp(platform, WebSharing, sound, invite = null, onInviteTaken = {})
+            WaddelnApp(platform, WebSharing, sound, invite, resumeOnline = true, onInviteTaken = {
+                invite = null
+                clearRoomCodeFromAddress()
+            })
         }
     }
 }
