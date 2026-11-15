@@ -23,7 +23,10 @@ import com.schaubeck.waddeln.platform.Platform
 import com.schaubeck.waddeln.platform.Sharing
 import com.schaubeck.waddeln.sound.LocalTableSound
 import com.schaubeck.waddeln.sound.TableSound
+import com.schaubeck.waddeln.ui.AppFonts
+import com.schaubeck.waddeln.ui.AppFrame
 import com.schaubeck.waddeln.ui.GameScreen
+import com.schaubeck.waddeln.ui.LocalAppFonts
 import com.schaubeck.waddeln.ui.LocalSharing
 import com.schaubeck.waddeln.ui.LocalTableStyle
 import com.schaubeck.waddeln.ui.MainMenu
@@ -51,6 +54,9 @@ fun WaddelnApp(
     onInviteTaken: () -> Unit,
     /** Start at the online table if the player sat in a room last time (the browser after a reload). */
     resumeOnline: Boolean = false,
+    /** Keep the screens a centred column in wide windows (see [AppFrame]); the browser. */
+    limitWidth: Boolean = false,
+    fonts: AppFonts = AppFonts(),
 ) {
     // The view models need the texts right away; reading them takes a moment only at the start.
     val strings by produceState<Strings?>(null) { value = Strings.load() }
@@ -65,7 +71,7 @@ fun WaddelnApp(
         viewModel.saveMatch()
     }
 
-    CompositionLocalProvider(LocalTableSound provides sound, LocalSharing provides sharing) { MaterialTheme {
+    CompositionLocalProvider(LocalTableSound provides sound, LocalSharing provides sharing, LocalAppFonts provides fonts) { MaterialTheme {
         val ui by viewModel.ui.collectAsStateWithLifecycle()
         val online by onlineViewModel.ui.collectAsStateWithLifecycle()
         sound.effectsOn = ui.settings.soundEffects
@@ -94,7 +100,7 @@ fun WaddelnApp(
         }
         PlatformBackHandler(enabled = screen != Screen.MENU) { screen = Screen.MENU }
 
-        CompositionLocalProvider(LocalTableStyle provides ui.settings.table) { when (screen) {
+        CompositionLocalProvider(LocalTableStyle provides ui.settings.table) { AppFrame(limitWidth) { when (screen) {
             Screen.MENU -> MainMenu(
                 matchInProgress = ui.matchInProgress,
                 onContinue = { screen = Screen.GAME },
@@ -212,7 +218,7 @@ fun WaddelnApp(
                     )
                 }
             }
-        } }
+        } } }
     } }
 }
 
