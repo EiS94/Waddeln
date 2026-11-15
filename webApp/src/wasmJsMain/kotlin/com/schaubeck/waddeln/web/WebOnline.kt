@@ -1,5 +1,6 @@
 package com.schaubeck.waddeln.web
 
+import com.schaubeck.waddeln.game.Settings
 import com.schaubeck.waddeln.platform.OnlineSocket
 import com.schaubeck.waddeln.platform.OnlineSocketFactory
 import com.schaubeck.waddeln.protocol.WS_PATH
@@ -36,15 +37,19 @@ object BrowserSockets : OnlineSocketFactory {
 }
 
 /**
- * The game server of the page itself: a page served by the server (https://host/play/) talks to
- * wss://host/ws; a page from a local development server to a game server on port 8765 of that host.
+ * The game server for this page:
+ * - a page served by the game server itself (https://host/play/) talks to wss://host/ws;
+ * - a page on this computer (localhost) to a local game server on port 8765;
+ * - any other page (e.g. a test copy in the home network on its own port) to the public server.
  */
 fun pageServerUrl(): String {
     val protocol = pageProtocol()
     val host = pageHostname()
     val port = pagePort()
+    val ownPort = port.isNotEmpty() && port != "80" && port != "443"
     return when {
-        port.isNotEmpty() && port != "80" && port != "443" -> "ws://$host:8765$WS_PATH"
+        host == "localhost" || host == "127.0.0.1" -> "ws://$host:8765$WS_PATH"
+        ownPort -> Settings.DEFAULT_SERVER_URL
         protocol == "https:" -> "wss://$host$WS_PATH"
         else -> "ws://$host$WS_PATH"
     }
