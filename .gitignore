@@ -41,3 +41,7 @@ CLAUDE.md
 .kotlin/
 .claude/worktrees/
 .claude/settings.local.json
+
+# Copied there by the README recipe for running your own server
+/server/install/
+/server/web/

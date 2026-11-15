@@ -8,6 +8,7 @@ import io.ktor.server.application.Application
 import io.ktor.server.application.install
 import io.ktor.server.cio.CIO
 import io.ktor.server.engine.embeddedServer
+import io.ktor.server.plugins.autohead.AutoHeadResponse
 import io.ktor.server.plugins.origin
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
@@ -32,6 +33,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
+import java.nio.file.Path
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
@@ -58,20 +60,26 @@ fun main() {
             if (++minutes % STATUS_MINUTES == 0 && server.active) log.info("Status: {}", server.status)
         }
     }
+    // The browser version (webApp distribution); without it /play/ answers 404.
+    val webDir = System.getenv("WEB_DIR")?.takeIf { it.isNotBlank() }?.let { Path.of(it) }
+    if (webDir != null) log.info("Web app from {}", webDir)
     log.info("Waddeln server listening on port {}", port)
-    embeddedServer(CIO, port = port) { waddeln(server, gameThread) }.start(wait = true)
+    embeddedServer(CIO, port = port) { waddeln(server, gameThread, webDir) }.start(wait = true)
 }
 
-/** Installs the WebSocket endpoint [WS_PATH], a health check at `/health` and the [invites]. */
-fun Application.waddeln(server: GameServer, gameThread: CoroutineDispatcher) {
+/** Installs the WebSocket endpoint [WS_PATH], a health check at `/health`, the [invites] and the [webApp] from [webDir]. */
+fun Application.waddeln(server: GameServer, gameThread: CoroutineDispatcher, webDir: Path? = null) {
     install(WebSockets) {
         pingPeriod = 20.seconds
         timeout = 45.seconds
         maxFrameSize = 16 * 1024
     }
+    // HEAD requests (link checkers, monitoring) get the headers of the GET routes.
+    install(AutoHeadResponse)
     routing {
         get("/health") { call.respondText("ok") }
         invites()
+        webApp(webDir)
 
         webSocket(WS_PATH) {
             val session = this

@@ -89,7 +89,8 @@ private fun invitePage(code: String): String {
         <p><a class="button" href="$appLink">In der App öffnen</a></p>
         <p>Hat sich die App nicht geöffnet? Starte Waddeln, tippe auf „Online spielen“ und gib den Code bei
         „Raum beitreten“ ein.</p>
-        <p>Noch keine App?</p>
+        <p>Noch keine App? Spiel gleich im Browser mit – oder hol dir die App.</p>
+        <p><a class="button" href="$WEB_PATH/#$code">Im Browser spielen</a></p>
         <p><a class="button" href="$STORE_LINK">Bei Google Play laden</a></p>
         </main></body>
         </html>

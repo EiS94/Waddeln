@@ -50,10 +50,13 @@ Kotlin- und Python-Regeln müssen identisch sein; der Abgleich über zufällig e
 
 ```bash
 ./gradlew :server:installDist
-cd server && cp -r build/install . && docker compose up -d --build
+./gradlew :webApp:wasmJsBrowserDistribution
+cp -r server/build/install server/ && cp -r webApp/build/dist/wasmJs/productionExecutable server/web
+cd server && docker compose up -d --build
 ```
 
-Der Server lauscht auf Port 8765 (`/ws` für WebSocket, `/health` für einen Statuscheck) und ist
+Der Server lauscht auf Port 8765 (`/ws` für WebSocket, `/health` für einen Statuscheck, `/play/` für die
+Browser-Version) und ist
 nur lokal erreichbar; nach außen geht es z. B. über einen Cloudflare Tunnel. `server/deploy.sh`
 baut und startet ihn per SSH auf einem anderen Rechner. Die Server-Adresse lässt sich in der App
 unter *Einstellungen* ändern.
