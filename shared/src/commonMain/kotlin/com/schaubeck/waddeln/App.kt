@@ -12,6 +12,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.Lifecycle
+import kotlinx.coroutines.CancellationException
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -57,10 +58,24 @@ fun WaddelnApp(
     /** Keep the screens a centred column in wide windows (see [AppFrame]); the browser. */
     limitWidth: Boolean = false,
     fonts: AppFonts = AppFonts(),
+    /** The app is ready (texts read, first screen composed); the browser hides its start check. */
+    onStarted: () -> Unit = {},
+    /** Reading the texts failed; the browser shows the error instead of an empty page. */
+    onStartError: (Throwable) -> Unit = {},
 ) {
     // The view models need the texts right away; reading them takes a moment only at the start.
-    val strings by produceState<Strings?>(null) { value = Strings.load() }
+    val strings by produceState<Strings?>(null) {
+        value = try {
+            Strings.load()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            onStartError(e)
+            null
+        }
+    }
     val texts = strings ?: return
+    LaunchedEffect(Unit) { onStarted() }
     val viewModel = viewModel { GameViewModel(platform, texts) }
     val onlineViewModel = viewModel { OnlineViewModel(platform, texts) }
     val statsStore = remember { StatsStore(platform.stores) }

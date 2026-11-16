@@ -28,6 +28,21 @@ import com.schaubeck.waddeln.web.resources.Res as WebRes
 @OptIn(ExperimentalComposeUiApi::class)
 fun main() {
     MainScope().launch {
+        try {
+            start()
+        } catch (e: Throwable) {
+            reportStartError(e)
+        }
+    }
+}
+
+/** Shown by start.js instead of a white page (with the browser's details). */
+private fun reportStartError(e: Throwable) =
+    startError("${e::class.simpleName}: ${e.message} | ${e.stackTraceToString().take(1500)}")
+
+@OptIn(ExperimentalComposeUiApi::class)
+private suspend fun start() {
+    run {
         // The network plays the bots; without it (download failed) they play rule-based, as on Android.
         val model = try {
             SharedRes.readBytes("files/waddeln.mlp")
@@ -48,13 +63,25 @@ fun main() {
                 monospace = FontFamily(Font(WebRes.font.droid_sans_mono)),
                 drawnPencil = true,
             )
-            WaddelnApp(platform, WebSharing, sound, invite, resumeOnline = true, limitWidth = true, fonts = fonts, onInviteTaken = {
-                invite = null
-                clearRoomCodeFromAddress()
-            })
+            WaddelnApp(
+                platform, WebSharing, sound, invite,
+                resumeOnline = true,
+                limitWidth = true,
+                fonts = fonts,
+                onStarted = ::startedOk,
+                onStartError = ::reportStartError,
+                onInviteTaken = {
+                    invite = null
+                    clearRoomCodeFromAddress()
+                },
+            )
         }
     }
 }
+
+private fun startedOk(): Unit = js("{ if (window.waddelnStarted) window.waddelnStarted(); }")
+
+private fun startError(message: String): Unit = js("{ if (window.waddelnStartError) window.waddelnStartError(message); }")
 
 /**
  * In the browser every image is downloaded on first use, so a card dealt for the first time would
