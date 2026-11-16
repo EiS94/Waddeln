@@ -86,8 +86,11 @@
     const wasmGc = typeof WebAssembly === 'object' &&
         WebAssembly.validate(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 95, 1, 120, 0]));
     if (wasmGc) {
+        // The version of this build (set by the server in index.html), so no browser takes an older
+        // webApp.js from its cache after an update (Cloudflare keeps it there for hours).
+        const version = new URL(document.currentScript.src).searchParams.get('v');
         const script = document.createElement('script');
-        script.src = 'webApp.js';
+        script.src = 'webApp.js' + (version ? '?v=' + version : '');
         script.onerror = () => {
             note('webApp.js konnte nicht geladen werden');
             showProblem();

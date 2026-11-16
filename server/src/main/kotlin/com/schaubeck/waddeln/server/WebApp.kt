@@ -8,6 +8,7 @@ import io.ktor.server.request.header
 import io.ktor.server.response.header
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondRedirect
+import io.ktor.server.response.respondText
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.RoutingContext
 import io.ktor.server.routing.get
@@ -78,7 +79,16 @@ internal fun resolve(root: Path, segments: List<String>): Path? {
 
 private suspend fun RoutingContext.serve(file: Path) {
     val type = TYPES[file.extension.lowercase()] ?: ContentType.Application.OctetStream
-    val tag = "\"${Files.size(file).toString(16)}-${Files.getLastModifiedTime(file).toMillis().toString(16)}\""
+    // index.html is never cached anywhere (Cloudflare does not cache HTML), but Cloudflare gives the
+    // other non-hashed files a browser cache of 4 hours, whatever we send. So index.html names the
+    // version of this build in the address of start.js, which passes it on to webApp.js: after an
+    // update every browser loads the new program instead of an old one that no longer fits the texts.
+    val page = if (file.name == "index.html") withVersion(Files.readString(file), file.parent) else null
+    val tag = if (page != null) {
+        "\"p-${page.hashCode().toUInt().toString(16)}\""
+    } else {
+        "\"${Files.size(file).toString(16)}-${Files.getLastModifiedTime(file).toMillis().toString(16)}\""
+    }
     call.response.header(HttpHeaders.ETag, tag)
     call.response.header(
         HttpHeaders.CacheControl,
@@ -93,5 +103,13 @@ private suspend fun RoutingContext.serve(file: Path) {
         call.respond(HttpStatusCode.NotModified)
         return
     }
-    call.respond(LocalFileContent(file.toFile(), type))
+    if (page != null) call.respondText(page, type) else call.respond(LocalFileContent(file.toFile(), type))
+}
+
+/** [html] with `start.js?v=<version>`, the version taken from webApp.js of the same build in [dir]. */
+internal fun withVersion(html: String, dir: Path): String {
+    val app = dir.resolve("webApp.js")
+    if (!Files.isRegularFile(app)) return html
+    val version = (Files.size(app) * 31 + Files.getLastModifiedTime(app).toMillis()).toULong().toString(36)
+    return html.replace("src=\"start.js\"", "src=\"start.js?v=$version\"")
 }

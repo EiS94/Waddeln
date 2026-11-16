@@ -31,7 +31,7 @@ class WebAppTest {
         it.resolve("secret.txt").writeText("secret")
     }
     private val web: Path = base.resolve("web").createDirectories().also { dir ->
-        dir.resolve("index.html").writeText("<!doctype html><title>Waddeln</title>")
+        dir.resolve("index.html").writeText("<!doctype html><title>Waddeln</title><script src=\"start.js\"></script>")
         dir.resolve("webApp.js").writeText("console.log(1)")
         dir.resolve("0c7a3ff214d646587a58.wasm").writeText("wasm")
         dir.resolve("composeResources/files").createDirectories().resolve("shuffle.wav").writeText("wav")
@@ -56,6 +56,20 @@ class WebAppTest {
         assertFalse("unsafe-eval'" in csp.replace("'wasm-unsafe-eval'", ""), csp)
         assertEquals("no-cache", response.headers[HttpHeaders.CacheControl])
         assertEquals("nosniff", response.headers["X-Content-Type-Options"])
+    }
+
+    @Test
+    fun `index html names the build in the address of start js`() = app(web) {
+        val page = client.get("/play/").bodyAsText()
+        val version = Regex("""src="start\.js\?v=([0-9a-z]+)"""").find(page)?.groupValues?.get(1)
+        assertTrue(version != null, page)
+        // A new webApp.js (the next build) gives a new address.
+        web.resolve("webApp.js").writeText("console.log(2) // changed")
+        val again = client.get("/play/").bodyAsText()
+        assertFalse("start.js?v=$version\"" in again, again)
+        // Unchanged, the page is answered with 304.
+        val tag = client.get("/play/").headers[HttpHeaders.ETag]!!
+        assertEquals(HttpStatusCode.NotModified, client.get("/play/") { header(HttpHeaders.IfNoneMatch, tag) }.status)
     }
 
     @Test
