@@ -2,7 +2,7 @@
 
 *English version below.*
 
-Stand: 6. November 2026
+Stand: 16. November 2026
 
 ## Verantwortlicher
 
@@ -24,6 +24,12 @@ an uns übertragen. Einstellungen, Statistiken und die laufende Partie können i
 Android-Sicherung (z. B. Google-Konto) aufgenommen werden, wenn du diese auf deinem Gerät
 aktiviert hast; die Geräte-ID ist davon ausgenommen. Beim Deinstallieren der App werden alle
 lokalen Daten gelöscht.
+
+**Browser-Version** (`waddeln.schaumler.de/play/`): Sie speichert dieselben Daten im lokalen
+Speicher deines Browsers (`localStorage`) statt auf dem Gerät; es werden keine Cookies gesetzt.
+Die Seite und ihre Dateien (Programm, Bilder, Töne, Schriften) kommen vom selben Server wie das
+Online-Spiel; beim Abruf gilt für IP-Adresse und Cloudflare dasselbe wie unten beschrieben, die
+Abrufe werden nicht protokolliert. Löschst du die Website-Daten im Browser, sind alle Daten weg.
 
 ## Online-Spiel
 
@@ -83,7 +89,7 @@ steht unter <https://github.com/EiS94/Waddeln/blob/main/PRIVACY.md>.
 
 # Privacy Policy – Waddeln
 
-Last updated: 6 November 2026
+Last updated: 16 November 2026
 
 ## Controller
 
@@ -104,6 +110,12 @@ the computer and a randomly generated device ID. This data is not sent to us. Se
 and the running match may be included in the Android backup (e.g. your Google account)
 if you have enabled it on your device; the device ID is excluded. Uninstalling the app deletes
 all local data.
+
+**Browser version** (`waddeln.schaumler.de/play/`): it stores the same data in your browser's local
+storage (`localStorage`) instead of on the device; no cookies are set. The page and its files
+(program, images, sounds, fonts) come from the same server as online play; when they are loaded,
+the same applies to the IP address and Cloudflare as described below, and the requests are not
+logged. Deleting the site data in your browser removes all of it.
 
 ## Online play
 

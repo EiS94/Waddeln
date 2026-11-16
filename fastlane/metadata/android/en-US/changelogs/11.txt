@@ -1,0 +1,1 @@
+Waddeln now also runs in the browser (waddeln.schaumler.de/play) and plays in the same rooms as the app. New menu button in the game. The app is much smaller (6.5 MB instead of 38 MB), the bots play just as strong, and it now runs on Chromebooks. The table keeps its size during announcements; names no longer run into the trick.
