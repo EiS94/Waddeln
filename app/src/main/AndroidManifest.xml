@@ -3,6 +3,10 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- screenOrientation="portrait" implies this feature as required; Play would then exclude
+         landscape-only devices (desktop, Play Games on PC, XR). The app still runs there. -->
+    <uses-feature android:name="android.hardware.screen.portrait" android:required="false" />
+
     <!-- Android 11+ only lets the app see a text-to-speech engine it declares here (the players' voices). -->
     <queries>
         <intent>

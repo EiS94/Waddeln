@@ -16,7 +16,7 @@ android {
         applicationId = "com.schaubeck.waddeln"
         minSdk = 26
         targetSdk = 36
-        versionCode = 12
+        versionCode = 13
         versionName = "1.6.1"
     }
 
