@@ -16,8 +16,8 @@ android {
         applicationId = "com.schaubeck.waddeln"
         minSdk = 26
         targetSdk = 36
-        versionCode = 11
-        versionName = "1.6.0"
+        versionCode = 12
+        versionName = "1.6.1"
     }
 
     // The release key is read from keystore.properties (not checked in); without it the
