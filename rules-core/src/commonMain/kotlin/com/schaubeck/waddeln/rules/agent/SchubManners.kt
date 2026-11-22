@@ -12,7 +12,8 @@ import kotlin.random.Random
 
 /**
  * How bots at the table handle a Schub, around any [base] agent (as people play, not part of training):
- * - With the deciding trick already sure ([decidingTrickSure]) nobody says Schub anymore.
+ * - With the deciding trick already sure ([decidingTrickSure]) or sure for the opponents ([decidingTrickLost])
+ *   nobody says Schub anymore.
  * - If the raised game would hand the opponents the match when lost ([raiseLosesMatch]), a Schub is only
  *   kept when the own team is likely to win the game ([winChance]), and not always even then.
  * - At a table of people Schub is said less often the higher the game already is: to 3 quite often, to 4
@@ -25,7 +26,7 @@ class SchubManners(private val base: Agent, private val random: Random = Random.
     override fun chooseAction(observation: Observation, legalActions: List<Action>): Action {
         if (Action.Schub !in legalActions) return base.chooseAction(observation, legalActions)
         val withoutSchub = legalActions - Action.Schub
-        if (withoutSchub.isNotEmpty() && decidingTrickSure(observation)) return base.chooseAction(observation, withoutSchub)
+        if (withoutSchub.isNotEmpty() && (decidingTrickSure(observation) || decidingTrickLost(observation))) return base.chooseAction(observation, withoutSchub)
         val chosen = base.chooseAction(observation, legalActions)
         if (chosen != Action.Schub || withoutSchub.isEmpty()) return chosen
         val chance = winChance(observation, random)
@@ -96,6 +97,24 @@ class SchubManners(private val base: Agent, private val random: Random = Random.
                 val cards = trick + card
                 trickWinnerIndex(cards, trump) == trick.size && sure(cards, obs.player)
             }
+        }
+
+        /**
+         * The opponents need one more trick and have the current one for sure: their card wins so far and
+         * nobody of the own team still to play can beat it (not with the own hand, and for a partner still
+         * to play no unseen card beats it).
+         */
+        fun decidingTrickLost(obs: Observation): Boolean {
+            val trump = obs.trump ?: return false
+            if (obs.tricksWon[1 - obs.team] != TRICKS_TO_WIN - 1 || obs.currentTrick.isEmpty()) return false
+            val trick = obs.currentTrick.map { it.card }
+            if (teamOf(obs.currentTrick[trickWinnerIndex(trick, trump)].player) == obs.team) return false
+            val ownLeft = (trick.size until PLAYER_COUNT).map { (obs.trickLeader + it) % PLAYER_COUNT }.filter { teamOf(it) == obs.team }
+            val candidates = buildSet {
+                if (obs.player in ownLeft) addAll(obs.hand)
+                if (ownLeft.any { it != obs.player }) addAll(PartnerHints.unseen(obs) - obs.visibleBottomCard)
+            }
+            return candidates.none { trickWinnerIndex(trick + it, trump) == trick.size }
         }
 
         /** Staying would raise the game so far that losing it gives the opponents the match (and now it would not). */

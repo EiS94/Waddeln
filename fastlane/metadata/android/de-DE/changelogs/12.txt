@@ -1,0 +1,1 @@
+Die Bots sagen keinen Schub mehr, wenn beim Gegner schon die höchste noch mögliche Karte im entscheidenden Stich liegt.

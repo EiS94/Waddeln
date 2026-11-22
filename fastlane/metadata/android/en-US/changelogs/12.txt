@@ -1,0 +1,1 @@
+Bots no longer say Schub when the opponents already hold the highest card left in the deciding trick.

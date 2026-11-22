@@ -50,6 +50,24 @@ class SchubMannersTest {
     }
 
     @Test
+    fun `the deciding trick is lost when the opponents lie with the highest card left`() {
+        val led = twoTricks().play("E7")
+        assertTrue(SchubManners.decidingTrickLost(led.observationFor(1)), "nothing beats the Secher")
+        assertTrue(SchubManners.decidingTrickLost(led.observationFor(3)))
+        assertFalse(SchubManners.decidingTrickLost(led.observationFor(0)), "not for the team holding it")
+        assertFalse(SchubManners.decidingTrickLost(twoTricks().play("G9").observationFor(1)), "the Haubi is still unseen")
+        assertFalse(SchubManners.decidingTrickLost(twoTricks().observationFor(1)), "no card on the table yet")
+    }
+
+    @Test
+    fun `no Schub with the deciding trick lost`() {
+        val led = twoTricks().play("E7")
+        val legal = Waddeln.legalActions(led, 1)
+        assertTrue(Action.Schub in legal)
+        assertTrue(SchubManners(schubber).chooseAction(led.observationFor(1), legal) != Action.Schub)
+    }
+
+    @Test
     fun `raising is risky when losing would hand the opponents the match`() {
         val obs = playingWith(hands, Rank.ASS, Suit.GRAS, scores = listOf(0, 8)).observationFor(0)
         assertTrue(SchubManners.raiseLosesMatch(obs), "8 + 3 = 11")
