@@ -9,6 +9,9 @@ COPY install/server/ /app/
 COPY web/ /app/web/
 ENV PORT=8765
 ENV WEB_DIR=/app/web
+# Played matches, one JSON line each; /app/data is a volume, so the file survives a redeploy.
+RUN mkdir /app/data && chown waddeln /app/data
+ENV MATCH_LOG=/app/data/matches.jsonl
 EXPOSE 8765
 # Never as root: a hole in the server must not give access to the Pi.
 USER waddeln

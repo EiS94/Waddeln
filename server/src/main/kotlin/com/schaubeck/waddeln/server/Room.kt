@@ -100,6 +100,7 @@ class Room(
     private val timing: Timing,
     private val random: Random,
     private val clock: () -> Long,
+    private val matchLog: MatchLog = MatchLog.NONE,
 ) {
     private val seats = arrayOfNulls<Member>(PLAYER_COUNT)
     private var hostId: String? = null
@@ -137,6 +138,9 @@ class Room(
     /** Start time (ms) of the running match, for the log. */
     private var matchStartedAt = 0L
 
+    /** Human names per seat at the start of the running match, for [matchLog] (they may leave before the end). */
+    private var matchSeats: List<String?> = emptyList()
+
     /** Time (ms) since when no human is connected, for cleanup; null while someone is connected. */
     var abandonedSince: Long? = null
         private set
@@ -162,6 +166,12 @@ class Room(
 
     /** Stops the bots; the room is no longer used. */
     fun close() {
+        state?.let { s ->
+            if (s.phase != Phase.MATCH_OVER) {
+                log.info("Room {}: match broken off in round {}, score {}:{}", code, s.roundNumber, s.scores[0], s.scores[1])
+                recordMatch(s, winningTeam = null)
+            }
+        }
         botJob?.cancel()
         botJob = null
         stopTimer()
@@ -594,6 +604,7 @@ class Room(
 
     private fun logMatchStart() {
         matchStartedAt = clock()
+        matchSeats = seats.map { it?.name }
         log.info("Room {}: match started, seats [{}], bots {}", code, seatList(), strength)
     }
 
@@ -609,7 +620,23 @@ class Room(
                 "Room {}: match over after {} rounds and {} min, team {} wins {}:{}, seats [{}]",
                 code, s.roundNumber, minutes, result.winningTeam, s.scores[0], s.scores[1], seatList(),
             )
+            recordMatch(s, result.winningTeam)
         }
+    }
+
+    private fun recordMatch(s: GameState, winningTeam: Int?) {
+        matchLog.record(
+            MatchRecord(
+                room = code,
+                startedAt = matchStartedAt,
+                endedAt = clock(),
+                rounds = s.roundNumber,
+                scores = s.scores.toList(),
+                winningTeam = winningTeam,
+                seats = seats.indices.map { seat -> seats[seat]?.name ?: matchSeats.getOrNull(seat) },
+                bots = strength,
+            ),
+        )
     }
 
     private fun broadcast() {

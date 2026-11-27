@@ -89,9 +89,10 @@ class GameServerTest {
         seed: Int = 1,
         timing: Timing = Timing(turnTimeoutMs = null),
         limits: Limits = Limits(),
+        matchLog: MatchLog = MatchLog.NONE,
     ) = GameServer(
         CoroutineScope(StandardTestDispatcher(testScheduler)), { RuleBasedAgent() }, timing, Random(seed),
-        clock = { now + testScheduler.currentTime }, limits = limits,
+        clock = { now + testScheduler.currentTime }, limits = limits, matchLog = matchLog,
     )
 
     private fun player(server: GameServer, id: String, ip: String = "local") = Player(server, id, ip).also { it.hello() }
@@ -341,7 +342,44 @@ class GameServerTest {
 
     @Test
     fun `two humans and two bots play complete matches`() = runTest {
-        val server = newServer(seed = 5)
+        val matches = mutableListOf<MatchRecord>()
+        val server = newServer(seed = 5, matchLog = { matches += it })
+        playMatches(server, 3)
+        assertEquals(3, matches.size)
+        for (m in matches) {
+            assertNotNull(m.winningTeam)
+            assertTrue(m.scores[m.winningTeam!!] > m.scores[1 - m.winningTeam!!])
+            assertEquals(listOf("host", "guest", null, null), m.seats)
+            assertTrue(m.rounds >= 1)
+            assertTrue(m.endedAt > m.startedAt)
+        }
+    }
+
+    @Test
+    fun `a match broken off because everybody left is recorded`() = runTest {
+        val matches = mutableListOf<MatchRecord>()
+        val server = newServer(matchLog = { matches += it }, limits = Limits(idleRoomMs = 5_000))
+        val host = player(server, "host")
+        host.send(ClientMessage.CreateRoom)
+        // A lobby that never started is no match.
+        val lobby = player(server, "lobby")
+        lobby.send(ClientMessage.CreateRoom)
+        lobby.send(ClientMessage.LeaveRoom)
+        assertTrue(matches.isEmpty())
+
+        host.send(ClientMessage.StartMatch)
+        advanceUntilIdle()
+        host.disconnect()
+        now += 10_000
+        server.cleanup()
+        val m = matches.single()
+        assertNull(m.winningTeam)
+        assertEquals(1, m.rounds)
+        assertEquals(listOf("host", null, null, null), m.seats)
+        assertTrue(m.toJson().contains("\"finished\":false"))
+    }
+
+    private fun TestScope.playMatches(server: GameServer, count: Int) {
         val host = player(server, "host")
         host.send(ClientMessage.CreateRoom)
         val guest = player(server, "guest")
@@ -352,7 +390,7 @@ class GameServerTest {
         val random = Random(9)
         var matches = 0
         var steps = 0
-        while (matches < 3) {
+        while (matches < count) {
             advanceUntilIdle()
             check(++steps < 20_000) { "Game got stuck" }
             val games = humans.associateWith { it.table.game!! }

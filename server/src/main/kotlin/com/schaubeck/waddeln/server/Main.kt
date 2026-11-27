@@ -52,7 +52,11 @@ fun main() {
     val gameThread = Dispatchers.Default.limitedParallelism(1)
     val errors = CoroutineExceptionHandler { _, e -> log.error("Bot failed", e) }
     val scope = CoroutineScope(SupervisorJob() + gameThread + errors)
-    val server = GameServer(scope, ModelBots.load())
+    // Played matches as JSON lines in a file that outlives the container (its log is gone after a redeploy).
+    val matchLog = System.getenv("MATCH_LOG")?.takeIf { it.isNotBlank() }?.let { Path.of(it) }
+        ?.also { log.info("Matches are written to {}", it) }
+        ?.let(::MatchFile) ?: MatchLog.NONE
+    val server = GameServer(scope, ModelBots.load(), matchLog = matchLog)
     scope.launch {
         var minutes = 0
         while (true) {

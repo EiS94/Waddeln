@@ -49,6 +49,7 @@ class GameServer(
     private val random: Random = SecureRandom().asKotlinRandom(),
     private val clock: () -> Long = System::currentTimeMillis,
     private val limits: Limits = Limits(),
+    private val matchLog: MatchLog = MatchLog.NONE,
 ) {
     private val clients = mutableSetOf<Client>()
     private val rooms = mutableMapOf<String, Room>()
@@ -221,7 +222,7 @@ class GameServer(
             return "Du hast zu viele Räume erstellt. Warte ein paar Minuten."
         }
         leaveCurrentRoom(id)
-        val room = Room(newCode(), scope, bots, timing, random, clock)
+        val room = Room(newCode(), scope, bots, timing, random, clock, matchLog)
         rooms[room.code] = room
         roomCreators[room.code] = client.ip
         log.info("Room {} created by '{}' ({})", room.code, client.name, status)
