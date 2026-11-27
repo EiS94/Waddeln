@@ -33,6 +33,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
+import java.io.IOException
 import java.nio.file.Path
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -126,6 +127,9 @@ fun Application.waddeln(server: GameServer, gameThread: CoroutineDispatcher, web
                         }
                     }
                 }
+            } catch (e: IOException) {
+                // A phone that went to sleep or lost its network stops answering pings: an ordinary disconnect.
+                log.info("Connection lost: {}", e.message)
             } finally {
                 withContext(NonCancellable + gameThread) { server.disconnect(client) }
                 sender.cancel()
